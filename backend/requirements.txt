@@ -1,0 +1,30 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+sqlalchemy>=2.0.36
+alembic>=1.14
+pydantic>=2.10
+pydantic-settings>=2.6
+email-validator>=2.2
+pyjwt>=2.10
+argon2-cffi>=23.1
+python-multipart>=0.0.18
+pypdf>=5.1
+python-docx>=1.1
+httpx>=0.28
+pytest>=8.3
+# ---- local AI / ML ----
+# Install the CPU-only PyTorch first to avoid a 2+ GB GPU download:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+sentence-transformers>=3.0
+scikit-learn>=1.5
+joblib>=1.4
+numpy>=1.26
+# ---- voice interview (local speech) ----
+transformers>=4.45          # Whisper speech-to-text
+soundfile>=0.12
+misaki>=0.7.4               # phoneme helpers for Kokoro (base package only, no spaCy)
+phonemizer-fork>=3.3        # GPL-3.0, see README licences
+espeakng-loader>=0.2        # bundles espeak-ng (GPL-3.0) for Windows/macOS/Linux
+loguru>=0.7
+# Kokoro TTS pins an old numpy with no Python 3.14 build, so it is installed separately WITHOUT dependencies:
+#   pip install --no-deps kokoro==0.7.16

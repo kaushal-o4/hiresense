@@ -1,0 +1,60 @@
+{
+  "label": "baseline",
+  "model": "qwen3:4b",
+  "num_ctx": 8192,
+  "runs": 5,
+  "stages": {
+    "llm_question_first_call_ms": 63926,
+    "llm_question_ms": {
+      "n": 5,
+      "p50_ms": 8434,
+      "p95_ms": 9148,
+      "mean_ms": 8215,
+      "min_ms": 6472,
+      "max_ms": 9272
+    },
+    "llm_score_ms": {
+      "n": 5,
+      "p50_ms": 10607,
+      "p95_ms": 27631,
+      "mean_ms": 13471,
+      "min_ms": 7048,
+      "max_ms": 31852
+    },
+    "server_answer_to_next_question_ms": {
+      "n": 5,
+      "p50_ms": 18993,
+      "p95_ms": 36081,
+      "mean_ms": 21686,
+      "min_ms": 13519,
+      "max_ms": 40286
+    },
+    "tts_whole_question_ms": {
+      "n": 3,
+      "p50_ms": 5001,
+      "p95_ms": 15981,
+      "mean_ms": 8877,
+      "min_ms": 4428,
+      "max_ms": 17201
+    },
+    "tts_first_sentence_ms": {
+      "n": 3,
+      "p50_ms": 946,
+      "p95_ms": 3525,
+      "mean_ms": 1897,
+      "min_ms": 933,
+      "max_ms": 3811
+    },
+    "tts_audio_seconds": 12.145,
+    "stt_ms": {
+      "n": 3,
+      "p50_ms": 3821,
+      "p95_ms": 3845,
+      "mean_ms": 3825,
+      "min_ms": 3806,
+      "max_ms": 3848
+    },
+    "stt_audio_seconds": 25.69
+  },
+  "ollama_breakdown": {}
+}

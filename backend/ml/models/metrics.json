@@ -1,0 +1,235 @@
+{
+  "trained_at": "2026-10-10T06:30:17+00:00",
+  "type": {
+    "target": "type",
+    "n_total": 191,
+    "n_train": 143,
+    "n_test": 48,
+    "class_counts": {
+      "behavioral": 26,
+      "communication": 22,
+      "hr": 34,
+      "project": 20,
+      "technical": 89
+    },
+    "holdout": [
+      {
+        "model": "tfidf_logreg",
+        "accuracy": 0.917,
+        "macro_f1": 0.881
+      },
+      {
+        "model": "majority_baseline",
+        "accuracy": 0.458,
+        "macro_f1": 0.126
+      },
+      {
+        "model": "keyword_rule_baseline",
+        "accuracy": 0.854,
+        "macro_f1": 0.836
+      }
+    ],
+    "cv5": [
+      {
+        "model": "tfidf_logreg",
+        "accuracy": 0.885,
+        "macro_f1": 0.845
+      },
+      {
+        "model": "keyword_rule_baseline",
+        "accuracy": 0.848,
+        "macro_f1": 0.829
+      }
+    ],
+    "holdout_per_class": {
+      "behavioral": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1-score": 1.0,
+        "support": 7.0
+      },
+      "communication": {
+        "precision": 0.75,
+        "recall": 0.6,
+        "f1-score": 0.6666666666666666,
+        "support": 5.0
+      },
+      "hr": {
+        "precision": 1.0,
+        "recall": 0.7777777777777778,
+        "f1-score": 0.875,
+        "support": 9.0
+      },
+      "project": {
+        "precision": 0.8333333333333334,
+        "recall": 1.0,
+        "f1-score": 0.9090909090909091,
+        "support": 5.0
+      },
+      "technical": {
+        "precision": 0.9166666666666666,
+        "recall": 1.0,
+        "f1-score": 0.9565217391304348,
+        "support": 22.0
+      },
+      "accuracy": 0.9166666666666666,
+      "macro avg": {
+        "precision": 0.9,
+        "recall": 0.8755555555555556,
+        "f1-score": 0.8814558629776021,
+        "support": 48.0
+      },
+      "weighted avg": {
+        "precision": 0.9184027777777777,
+        "recall": 0.9166666666666666,
+        "f1-score": 0.9124430445761966,
+        "support": 48.0
+      }
+    },
+    "holdout_confusion": {
+      "labels": [
+        "behavioral",
+        "communication",
+        "hr",
+        "project",
+        "technical"
+      ],
+      "matrix": [
+        [
+          7,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          3,
+          0,
+          0,
+          2
+        ],
+        [
+          0,
+          1,
+          7,
+          1,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          5,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          22
+        ]
+      ]
+    },
+    "deployed": true
+  },
+  "difficulty": {
+    "target": "difficulty",
+    "n_total": 191,
+    "n_train": 143,
+    "n_test": 48,
+    "class_counts": {
+      "easy": 70,
+      "hard": 38,
+      "medium": 83
+    },
+    "holdout": [
+      {
+        "model": "tfidf_logreg",
+        "accuracy": 0.521,
+        "macro_f1": 0.532
+      },
+      {
+        "model": "majority_baseline",
+        "accuracy": 0.438,
+        "macro_f1": 0.203
+      },
+      {
+        "model": "keyword_rule_baseline",
+        "accuracy": 0.396,
+        "macro_f1": 0.371
+      }
+    ],
+    "cv5": [
+      {
+        "model": "tfidf_logreg",
+        "accuracy": 0.518,
+        "macro_f1": 0.508
+      },
+      {
+        "model": "keyword_rule_baseline",
+        "accuracy": 0.524,
+        "macro_f1": 0.5
+      }
+    ],
+    "holdout_per_class": {
+      "easy": {
+        "precision": 0.5238095238095238,
+        "recall": 0.6111111111111112,
+        "f1-score": 0.5641025641025641,
+        "support": 18.0
+      },
+      "hard": {
+        "precision": 0.5454545454545454,
+        "recall": 0.6666666666666666,
+        "f1-score": 0.6,
+        "support": 9.0
+      },
+      "medium": {
+        "precision": 0.5,
+        "recall": 0.38095238095238093,
+        "f1-score": 0.43243243243243246,
+        "support": 21.0
+      },
+      "accuracy": 0.5208333333333334,
+      "macro avg": {
+        "precision": 0.523088023088023,
+        "recall": 0.5529100529100529,
+        "f1-score": 0.5321783321783321,
+        "support": 48.0
+      },
+      "weighted avg": {
+        "precision": 0.5174512987012987,
+        "recall": 0.5208333333333334,
+        "f1-score": 0.5132276507276506,
+        "support": 48.0
+      }
+    },
+    "holdout_confusion": {
+      "labels": [
+        "easy",
+        "hard",
+        "medium"
+      ],
+      "matrix": [
+        [
+          11,
+          1,
+          6
+        ],
+        [
+          1,
+          6,
+          2
+        ],
+        [
+          9,
+          4,
+          8
+        ]
+      ]
+    },
+    "deployed": false
+  }
+}

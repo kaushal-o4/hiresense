@@ -1,0 +1,177 @@
+question,type,difficulty
+What is a variable in programming?,technical,easy
+What is the difference between a compiler and an interpreter?,technical,easy
+What is an array?,technical,easy
+Explain what a linked list is.,technical,easy
+What is the difference between a list and a tuple in Python?,technical,easy
+What is a primary key in a database?,technical,easy
+What does HTML stand for and what is it used for?,technical,easy
+What is the difference between == and === in JavaScript?,technical,easy
+What is a function and why do we use functions?,technical,easy
+What is an operating system?,technical,easy
+What is the difference between RAM and ROM?,technical,easy
+What is a loop? Name the types of loops you know.,technical,easy
+What is Git used for?,technical,easy
+What is an IP address?,technical,easy
+What is a class and what is an object?,technical,easy
+What is inheritance in object-oriented programming?,technical,easy
+What is SQL?,technical,easy
+What does the SELECT statement do in SQL?,technical,easy
+What is a foreign key?,technical,easy
+What is the difference between GET and POST requests?,technical,easy
+What is a stack?,technical,easy
+What is recursion? Give a simple example.,technical,easy
+What is a boolean data type?,technical,easy
+What is CSS used for?,technical,easy
+What is the difference between frontend and backend development?,technical,easy
+What is an API?,technical,easy
+What is cloud computing?,technical,easy
+What is a constructor in Java?,technical,easy
+What is the difference between an interface and an abstract class?,technical,medium
+How does a hash table handle collisions?,technical,medium
+Explain the difference between processes and threads and when you would use each.,technical,medium
+Explain database indexing and how it improves query performance.,technical,medium
+What are the ACID properties of a transaction?,technical,medium
+Explain the difference between INNER JOIN and LEFT JOIN with an example.,technical,medium
+How does garbage collection work in Java?,technical,medium
+What is the virtual DOM in React and why is it useful?,technical,medium
+Explain the event loop in JavaScript.,technical,medium
+What is the difference between TCP and UDP?,technical,medium
+What happens when you type a URL into the browser and press Enter?,technical,medium
+How would you reverse a linked list? What is the time complexity?,technical,medium
+Explain how binary search works and why it needs a sorted array.,technical,medium
+What is a deadlock and what conditions cause it?,technical,medium
+What is polymorphism? Explain compile-time versus runtime polymorphism.,technical,medium
+How do REST APIs differ from GraphQL APIs?,technical,medium
+What are Python decorators and when would you use one?,technical,medium
+Explain the difference between merge sort and quick sort.,technical,medium
+What is normalisation in databases? Explain up to third normal form.,technical,medium
+What is the difference between overfitting and underfitting in machine learning?,technical,medium
+How does HTTPS keep data secure?,technical,medium
+What is a closure in JavaScript?,technical,medium
+Explain the difference between authentication and authorisation.,technical,medium
+How do you find the middle element of a linked list in one pass?,technical,medium
+What is dependency injection?,technical,medium
+Explain how a Docker container differs from a virtual machine.,technical,medium
+What is the difference between a shallow copy and a deep copy?,technical,medium
+Explain the bias-variance trade-off.,technical,medium
+How does the useEffect hook work in React?,technical,medium
+What is cross-validation and why is it used?,technical,medium
+What is the difference between SQL and NoSQL databases?,technical,medium
+Design a URL shortening service. How would you handle billions of URLs and high read traffic?,technical,hard
+How would you design a rate limiter for a public API? Discuss the trade-offs between algorithms.,technical,hard
+Explain how you would detect a cycle in a directed graph and analyse the complexity.,technical,hard
+How would you design a distributed cache and keep it consistent with the database?,technical,hard
+Explain the CAP theorem and give an example of a system that chooses availability over consistency.,technical,hard
+How would you find the k most frequent elements in a stream of data that does not fit in memory?,technical,hard
+Explain how database replication and sharding work together and the problems each one introduces.,technical,hard
+How would you design the backend for a real-time chat application with millions of users?,technical,hard
+Explain how a B-tree index works and why databases prefer it over a binary search tree.,technical,hard
+How would you implement an LRU cache with O(1) get and put operations?,technical,hard
+Describe how you would debug a memory leak in a long-running production service.,technical,hard
+How does the transformer attention mechanism work and why does it scale quadratically?,technical,hard
+Compare optimistic and pessimistic locking and explain when each fails.,technical,hard
+How would you design a recommendation system for an e-commerce site and evaluate it offline?,technical,hard
+Explain how consensus algorithms such as Raft keep replicas consistent.,technical,hard
+How would you make a slow SQL query on a table with 100 million rows faster?,technical,hard
+Find the longest substring without repeating characters and explain an O(n) solution.,technical,hard
+How would you handle class imbalance in a fraud detection model and which metrics would you report?,technical,hard
+Explain how you would design an idempotent payment API that survives retries and network failures.,technical,hard
+What is the difference between horizontal and vertical scaling and how would you migrate between them?,technical,hard
+Tell me about yourself.,hr,easy
+Why do you want to work for our company?,hr,easy
+What are your hobbies?,hr,easy
+Where do you see yourself in five years?,hr,easy
+Are you willing to relocate?,hr,easy
+Are you comfortable working in night shifts?,hr,easy
+What do you know about our company?,hr,easy
+Why did you choose engineering?,hr,easy
+What are your salary expectations?,hr,medium
+What is your greatest strength?,hr,easy
+What is your biggest weakness?,hr,medium
+Why should we hire you?,hr,medium
+Do you have any questions for us?,hr,easy
+How do you handle pressure and stress?,hr,medium
+Why are there gaps in your education?,hr,medium
+Would you prefer working alone or in a team?,hr,easy
+What motivates you to do your best work?,hr,easy
+How would your friends describe you?,hr,easy
+Are you planning to pursue higher studies?,hr,medium
+What will you do if you get a better offer from another company after joining?,hr,hard
+Why do you want to switch from your current domain to software?,hr,medium
+What does success mean to you?,hr,medium
+How do you keep yourself updated with new technologies?,hr,easy
+Are you okay with signing a service agreement?,hr,medium
+What kind of work environment do you prefer?,hr,easy
+Tell me something about yourself that is not on your resume.,hr,medium
+How do you prioritise when everything seems urgent?,hr,medium
+What would you do in your first 90 days in this role?,hr,hard
+If you were rejected today what would you improve before your next interview?,hr,medium
+Why should we not hire you?,hr,hard
+Tell me about a time you worked in a team that faced a conflict. How did you handle it?,behavioral,medium
+Describe a situation where you failed. What did you learn from it?,behavioral,medium
+Tell me about a time you had to meet a tight deadline.,behavioral,medium
+Give an example of when you showed leadership.,behavioral,medium
+Describe a time you had to learn something new quickly.,behavioral,easy
+Tell me about a time you disagreed with your teacher or manager.,behavioral,medium
+Describe a time when you went beyond what was expected of you.,behavioral,medium
+Tell me about a time you made a mistake and how you fixed it.,behavioral,medium
+Give an example of a goal you set and how you achieved it.,behavioral,easy
+Describe a situation where you had to work with a difficult team member.,behavioral,medium
+Tell me about a time you received critical feedback. How did you respond?,behavioral,medium
+Describe a time when you had to make a decision without all the information.,behavioral,hard
+Tell me about a time you had to persuade your team to change direction.,behavioral,hard
+Describe a time when you managed several responsibilities at once.,behavioral,medium
+Tell me about a time you helped a teammate who was struggling.,behavioral,easy
+Describe a situation where you had to adapt to a big change.,behavioral,medium
+Tell me about a time a project you worked on did not go as planned.,behavioral,medium
+Give an example of a time you took initiative without being asked.,behavioral,easy
+Tell me about the hardest problem you have solved and how you approached it.,behavioral,hard
+Describe a time you had to handle an ethical dilemma.,behavioral,hard
+Tell me about a time you had to deliver bad news to someone.,behavioral,hard
+Describe a time you balanced quality against a deadline. What trade-off did you make?,behavioral,hard
+Tell me about a time you organised an event or activity.,behavioral,easy
+Describe a time you had to motivate others.,behavioral,medium
+Tell me about a time you worked with people from different backgrounds.,behavioral,easy
+Explain your final-year project to someone with no technical background.,communication,medium
+How would you explain cloud computing to your grandparents?,communication,easy
+Describe a time you had to convince someone to accept your idea.,communication,medium
+Summarise a recent technology news story and why it matters.,communication,medium
+Explain what the internet is to a ten-year-old.,communication,easy
+How would you explain machine learning to a non-technical manager?,communication,medium
+Describe your hometown in one minute.,communication,easy
+Explain the importance of teamwork in two minutes.,communication,easy
+Give a short presentation on a book you recently read.,communication,easy
+How would you explain a technical delay to an unhappy client?,communication,hard
+Explain why cybersecurity matters to a small shop owner.,communication,medium
+Persuade me to buy this pen.,communication,medium
+How would you present your project results to senior leadership in five minutes?,communication,hard
+Explain the difference between a website and a mobile app to a beginner.,communication,easy
+Describe the advantages and disadvantages of social media.,communication,easy
+How would you explain an API using a real-life analogy?,communication,medium
+Summarise the main idea of your favourite subject for a first-year student.,communication,easy
+How would you explain a complex bug to a non-technical product owner?,communication,hard
+Explain the benefits of online learning versus classroom learning.,communication,easy
+How would you write an email asking your manager for a deadline extension?,communication,medium
+Describe how you would run a meeting where two teams disagree.,communication,hard
+Explain the role of artificial intelligence in healthcare in simple words.,communication,medium
+Walk me through the architecture of the main project on your resume.,project,medium
+What was the most challenging bug in your project and how did you fix it?,project,medium
+Why did you choose this technology stack for your project?,project,medium
+What was your individual contribution to your group project?,project,easy
+If you rebuilt your project today what would you change and why?,project,hard
+How did you test your project?,project,medium
+What is the main problem your project solves?,project,easy
+How would your project handle ten times more users?,project,hard
+What did you learn from your internship project?,project,easy
+How did you deploy your project?,project,medium
+Which part of your project are you most proud of?,project,easy
+How did you store and model the data in your project?,project,medium
+What security risks exist in your project and how did you address them?,project,hard
+How did you measure whether your machine learning project worked well?,project,medium
+Explain one design decision in your project that involved a trade-off.,project,hard
+What features would you add to your project next?,project,easy
+How did your team divide work and use version control on the project?,project,medium
+What would break first in your project under heavy load and how would you fix it?,project,hard
+Describe the dataset you used in your project and how you cleaned it.,project,medium
+How long did your project take and how did you plan it?,project,easy

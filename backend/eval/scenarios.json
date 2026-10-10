@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "notes": "Version-controlled evaluation set for interview and English-conversation behaviour. Candidate answers are scripted (they do not adapt to the question), so this measures how the AI reacts to fixed inputs. Resumes are fictional.",
+  "resumes": {
+    "hospital_python": {
+      "target_role": "Python Developer",
+      "raw_text": "Rohan Mehta. B.Tech Computer Engineering, Pune University, 2026, CGPA 8.1. Skills: Python, Django, MySQL, HTML, CSS, JavaScript, Git. Project: Hospital Resources Management System - a Django web app that tracks beds, oxygen cylinders and staff shifts across wards; built the bed-allocation module and REST endpoints. Project: Attendance Analyzer - Python and pandas script that reads CSV attendance and flags students below 75 percent. Internship: WebNova Solutions, Python intern, 2 months, wrote data-cleaning scripts.",
+      "analysis": {
+        "full_name": "Rohan Mehta",
+        "candidate_summary": "Final-year computer engineering student with Python and Django experience, who built a hospital resource management web app and a pandas attendance analyser, and did a two-month Python internship.",
+        "education": [{"institution": "Pune University", "degree": "B.Tech", "field": "Computer Engineering", "year": "2026", "score": "8.1 CGPA"}],
+        "skills": [{"name": "Python", "category": "programming_language"}, {"name": "Django", "category": "framework"},
+                   {"name": "MySQL", "category": "database"}, {"name": "JavaScript", "category": "programming_language"},
+                   {"name": "Git", "category": "tool"}, {"name": "pandas", "category": "framework"}],
+        "projects": [
+          {"name": "Hospital Resources Management System", "description": "Django web app that tracks beds, oxygen cylinders and staff shifts across wards; the candidate built the bed-allocation module and REST endpoints.", "technologies": ["Python", "Django", "MySQL"]},
+          {"name": "Attendance Analyzer", "description": "Python and pandas script that reads CSV attendance and flags students below 75 percent.", "technologies": ["Python", "pandas"]}
+        ],
+        "experience": [],
+        "internships": [{"organization": "WebNova Solutions", "role": "Python intern", "duration": "2 months", "summary": "Wrote data-cleaning scripts."}],
+        "certifications": [],
+        "recommended_topics": ["Django ORM", "REST API design", "SQL indexing", "input validation", "unit testing"]
+      }
+    },
+    "cyber_analyst": {
+      "target_role": "Security Analyst",
+      "raw_text": "Priya Nair. B.Sc Computer Science, Kerala University, 2026. Skills: Linux, Wireshark, Python, Splunk basics, networking (TCP/IP). Project: Home Lab SIEM - set up Splunk free edition to collect SSH logs from two Linux VMs and wrote alerts for repeated failed logins. Certification: CompTIA Security+ (in progress).",
+      "analysis": {
+        "full_name": "Priya Nair",
+        "candidate_summary": "Computer science graduate interested in security operations, with a home-lab Splunk SIEM project and Linux, Wireshark and Python skills.",
+        "education": [{"institution": "Kerala University", "degree": "B.Sc", "field": "Computer Science", "year": "2026", "score": ""}],
+        "skills": [{"name": "Linux", "category": "tool"}, {"name": "Wireshark", "category": "tool"}, {"name": "Python", "category": "programming_language"},
+                   {"name": "Splunk", "category": "tool"}, {"name": "TCP/IP", "category": "domain"}],
+        "projects": [{"name": "Home Lab SIEM", "description": "Set up Splunk free edition to collect SSH logs from two Linux VMs and wrote alerts for repeated failed logins.", "technologies": ["Splunk", "Linux"]}],
+        "experience": [], "internships": [], "certifications": [],
+        "recommended_topics": ["incident triage", "false positives", "log analysis", "brute-force detection"]
+      }
+    }
+  },
+  "answer_sets": {
+    "mixed_quality": [
+      {"kind": "vague", "text": "I developed a hospital management project."},
+      {"kind": "partial", "text": "I made the bed allocation part. When a patient comes we check which bed is free and give it. I used Django models for beds and wards. I think it worked fine."},
+      {"kind": "vague_claim", "text": "I used AI in my project and I improved the performance a lot."},
+      {"kind": "strong", "text": "For invalid input, every REST endpoint validated the payload with a Django form before saving, so a ward id that did not exist returned a 400 error with a clear message instead of crashing. I also added a database constraint so the same bed could not be allocated twice, and I wrote unit tests that post bad data and check the error response."},
+      {"kind": "team_vague", "text": "I worked with a team and we finished it on time."},
+      {"kind": "incorrect", "text": "Django is a database, so it stores all the beds directly, and MySQL is the frontend part that shows the pages to the user."},
+      {"kind": "stt_errors", "text": "so the jango view takes the request and um the bed model saves it in my sequel and then it returns jason to the front end"},
+      {"kind": "short", "text": "Not sure."},
+      {"kind": "long", "text": "So basically the biggest problem was that two nurses could allocate the same bed at the same moment, because each request read the free bed and then saved it. First I tried to check again before saving, but the problem still happened when requests were very close. Then I read about database transactions and I used select_for_update inside a transaction so the row is locked while one request is allocating it. I tested it by writing a small script that sends twenty requests at the same time, and after the change only one of them got the bed and the others got a clear message. It was the hardest bug in the project and I learned that you cannot trust a check that is done outside the transaction."},
+      {"kind": "correction", "text": "Sorry, I said earlier that I used MySQL for everything, but actually the oxygen cylinder data was kept in a simple CSV file at first and we only moved it to MySQL later."}
+    ],
+    "cyber": [
+      {"kind": "vague", "text": "I made a SIEM in my home lab."},
+      {"kind": "partial", "text": "I would look at the logs and see where the failed logins are coming from, maybe block the IP."},
+      {"kind": "strong", "text": "First I would check whether the failures come from one source IP or many, which usernames are targeted, and whether any attempt finally succeeded. If one IP tries many usernames, that looks like password spraying; if there is a success after many failures I would treat it as a possible compromise, collect the auth logs and the session details, and escalate."},
+      {"kind": "short", "text": "Check the firewall."}
+    ],
+    "behavioral": [
+      {"kind": "vague", "text": "Yes, once a project did not go well but we managed."},
+      {"kind": "partial", "text": "In my final-year project our database design was wrong and we found out late. I talked to the team and we changed it."},
+      {"kind": "strong", "text": "In our hospital project the demo was in one week and the bed allocation kept giving double bookings. My task was the allocation module, so I owned it. I reproduced the bug with a script, fixed it with a database lock, and told the team lead the demo scope we could safely show. The demo worked, and since then I write a reproduction test before fixing anything."},
+      {"kind": "team_vague", "text": "I am a team player and I always help everyone."}
+    ]
+  },
+  "interview_runs": [
+    {"id": "aria_hospital", "interviewer": "aria", "resume": "hospital_python", "category": "mixed", "difficulty": "easy", "questions": 5, "answers": "mixed_quality", "answer_order": [0, 1, 2, 3]},
+    {"id": "victor_hospital", "interviewer": "victor", "resume": "hospital_python", "category": "technical", "difficulty": "hard", "questions": 5, "answers": "mixed_quality", "answer_order": [0, 1, 2, 3]},
+    {"id": "marcus_hospital", "interviewer": "marcus", "resume": "hospital_python", "category": "mixed", "difficulty": "hard", "questions": 5, "answers": "mixed_quality", "answer_order": [0, 1, 2, 3]},
+    {"id": "elena_hospital", "interviewer": "elena", "resume": "hospital_python", "category": "behavioral", "difficulty": "medium", "questions": 5, "answers": "behavioral", "answer_order": [0, 1, 3, 2]},
+    {"id": "victor_cyber", "interviewer": "victor", "resume": "cyber_analyst", "category": "technical", "difficulty": "medium", "questions": 4, "answers": "cyber", "answer_order": [0, 1, 3]},
+    {"id": "aria_long", "interviewer": "aria", "resume": "hospital_python", "category": "mixed", "difficulty": "medium", "questions": 10, "answers": "mixed_quality", "answer_order": [0, 1, 2, 3, 4, 5, 6, 7, 8]}
+  ],
+  "english_runs": [
+    {"id": "games_to_movies_free", "learning_mode": "free_conversation", "topic": "Your hobbies and weekends", "turns": [
+      {"text": "I like playing video games.", "expect_any": ["game", "play"]},
+      {"text": "I like story based games where your choices change the ending.", "expect_any": ["story", "choice", "ending", "character"]},
+      {"text": "Yesterday I go to my friend house and we play it together.", "expect_any": ["friend", "together", "game", "play"], "has_error": true},
+      {"text": "Actually, I prefer talking about movies now. I watched a science fiction movie yesterday.", "expect_any": ["movie", "film", "science", "sci-fi", "watch"], "topic_switch": "movies"},
+      {"text": "I liked the idea of travelling through time.", "expect_any": ["time", "travel", "past", "future"]},
+      {"text": "Can we talk about technology and AI instead?", "expect_any": ["technolog", "ai", "artificial", "tech"], "topic_switch": "technology"}
+    ]},
+    {"id": "learning_mode_grammar", "learning_mode": "english_learning", "topic": "College life and friends", "turns": [
+      {"text": "Yesterday I go to college and meet my friend.", "expect_any": ["went", "met"], "has_error": true, "expect_correction": true},
+      {"text": "We was discussing about our project and he give me good idea.", "expect_any": ["project", "idea"], "has_error": true, "expect_correction": true},
+      {"text": "I also play the guitar in the college band.", "expect_any": ["guitar", "band", "music", "play"]},
+      {"text": "As I said before, I practise it every evening after class.", "expect_any": ["guitar", "band", "music", "practi"], "memory_check": "guitar"}
+    ]},
+    {"id": "confidence_cricket", "learning_mode": "confidence", "topic": "Sports", "turns": [
+      {"text": "I like cricket.", "expect_any": ["cricket", "match", "team", "play", "watch"]},
+      {"text": "Close final overs.", "expect_any": ["over", "match", "ball", "exciting", "last", "final"]},
+      {"text": "um yes one match", "expect_any": ["match", "remember", "who", "what", "which"]}
+    ]}
+  ]
+}
