@@ -2,11 +2,14 @@
 import { EventReporter } from "./eventReporter";
 import { FaceMonitor } from "./faceMonitor";
 import { observe } from "./frameAnalysis";
+import { ObjectMonitor, ObjectTracker } from "./objectMonitor";
+import { PasteGuard } from "./pasteGuard";
+import { ScreenGuard } from "./screenGuard";
 import { FocusTracker, SignalTracker } from "./signalTracker";
 
 export class InterviewMonitor {
   /**
-   * features: consented {camera, face_presence, multiple_faces, attention, focus_changes}
+   * features: consented {camera, face_presence, multiple_faces, attention, focus_changes, paste, screen, objects}
    * onStatus({analysis: "starting"|"running"|"unavailable"|"stopped", faces, light}), onWarning({type, message} | {clear: type})
    */
   constructor({ sessionId, features, t0, onStatus, onWarning }) {
@@ -20,6 +23,10 @@ export class InterviewMonitor {
       multiple_faces: !!features.multiple_faces, attention_away: !!features.attention,
     });
     this.focus = new FocusTracker();
+    this.objTracker = features.objects ? new ObjectTracker() : null;
+    this.objects = null;
+    this.paste = null;
+    this.screen = null;
     this.face = null;
     this.lostAt = null;
     this.lastStatus = 0;
@@ -44,11 +51,23 @@ export class InterviewMonitor {
       window.addEventListener("blur", this._blur);
       window.addEventListener("focus", this._focus);
     }
+    const report = (e) => this.reporter.add(e);
+    if (this.features.paste) {
+      this.paste = new PasteGuard({ now: () => this.now(), onEvent: report, onWarning: this.onWarning });
+      this.paste.attach(document);
+    }
+    if (this.features.screen) {
+      // fullscreen itself was requested by the setup screen's Start click (browsers require a user gesture)
+      this.screen = new ScreenGuard({ now: () => this.now(), onEvent: report, onWarning: this.onWarning });
+      this.screen.start();
+    }
+    if (this.features.camera && this.features.objects && video) this._startObjects(video);
     const cameraFeatures = this.features.face_presence || this.features.multiple_faces || this.features.attention;
     if (!this.features.camera || !cameraFeatures || !video) { this.onStatus?.({ analysis: "off" }); return; }
     this.onStatus?.({ analysis: "starting" });
     this.face = new FaceMonitor({
-      fps: 4,
+      fps: 2, // plenty for multi-second grace periods, and leaves CPU for the voice and AI models
+
       onFrame: ({ faces, light, t }) => {
         this._apply(this.tracker.update(t - this.t0, observe(faces, light, { attention: !!this.features.attention })));
         if (t - this.lastStatus > 500) { // UI status twice a second is plenty
@@ -70,6 +89,16 @@ export class InterviewMonitor {
     }
   }
 
+  /** Phone / notes detection: 1 frame per second at most (the voice models need the CPU more). */
+  _startObjects(video) {
+    this.objects = new ObjectMonitor({
+      fps: 1,
+      onFrame: ({ objects, t }) => this._apply(this.objTracker.update(t - this.t0, objects)),
+      onError: () => { this.objects?.stop(); this.objects = null; }, // face monitoring carries on
+    });
+    this.objects.start(video).catch(() => { this.objects = null; }); // model unavailable: just skip this check
+  }
+
   /** From CameraSession: the camera stream was interrupted or a permission was revoked. */
   cameraLost(reason) {
     const t = Math.round(this.now());
@@ -86,6 +115,13 @@ export class InterviewMonitor {
   async stop() {
     this.face?.stop();
     this.face = null;
+    this.objects?.stop();
+    this.objects = null;
+    if (this.objTracker) this._apply(this.objTracker.flush());
+    this.paste?.detach();
+    this.paste = null;
+    await this.screen?.stop(); // records an open "left full screen" episode and leaves full screen
+    this.screen = null;
     document.removeEventListener("visibilitychange", this._vis);
     window.removeEventListener("blur", this._blur);
     window.removeEventListener("focus", this._focus);

@@ -6,8 +6,11 @@ import { FaceMonitor } from "../../monitoring/faceMonitor";
 import { setupGuidance } from "../../monitoring/frameAnalysis";
 import { cameraErrorMessage, checkNetwork, testMicrophone } from "../../monitoring/mediaSession";
 
-const FEATURE_ORDER = ["camera", "face_presence", "multiple_faces", "attention", "focus_changes"];
-const NONE = { camera: false, face_presence: false, multiple_faces: false, attention: false, focus_changes: false };
+const FEATURE_ORDER = ["camera", "face_presence", "multiple_faces", "attention", "objects", "focus_changes", "screen", "paste"];
+const NONE = { camera: false, face_presence: false, multiple_faces: false, attention: false, focus_changes: false,
+  paste: false, screen: false, objects: false };
+const CAMERA_FEATURES = ["face_presence", "multiple_faces", "attention", "objects"]; // need the camera
+const NO_CAMERA = { camera: false, face_presence: false, multiple_faces: false, attention: false, objects: false };
 
 /**
  * Steps before a live interview: 1) what happens and what is monitored (separate opt-in per feature),
@@ -42,8 +45,8 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
   const monitoringOn = policy?.enabled !== false;
   const toggle = (k, v) => setFeatures((f) => {
     const n = { ...f, [k]: v };
-    if (k === "camera" && !v) Object.assign(n, { face_presence: false, multiple_faces: false, attention: false });
-    if (k !== "camera" && k !== "focus_changes" && v) n.camera = true;
+    if (k === "camera" && !v) Object.assign(n, NO_CAMERA);
+    if (CAMERA_FEATURES.includes(k) && v) n.camera = true;
     return n;
   });
 
@@ -83,7 +86,10 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
     setError(null);
     onUnlockAudio?.();
     const granted = camState.status === "on";
-    const consented = monitoringOn ? { ...features, ...(granted ? {} : { camera: false, face_presence: false, multiple_faces: false, attention: false }) } : NONE;
+    const consented = monitoringOn ? { ...features, ...(granted ? {} : NO_CAMERA) } : NONE;
+    // Full screen must be requested inside this click (browsers only allow it from a user gesture), before any await.
+    const fullscreen = consented.screen && !document.fullscreenElement
+      ? document.documentElement.requestFullscreen?.().catch(() => {}) : null;
     try {
       await post(`/student/interviews/${session.id}/monitoring/consent`, {
         policy_version: policy.version, features: consented,
@@ -94,6 +100,7 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
       if (!consented.camera && camera.active) camera.stop();
       onStart({ features: consented, video: video.current });
     } catch (e) {
+      if (fullscreen && document.fullscreenElement) document.exitFullscreen().catch(() => {}); // didn't start
       setError(e.message);
       setStarting(false);
     }
@@ -126,7 +133,7 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
               ? "This assessment requires your camera. The checks below are needed to start."
               : "Monitoring is optional for this practice interview. Choose what you are comfortable with - nothing is switched on unless you tick it."}</p>
             <div className="mt-3 space-y-2">
-              {FEATURE_ORDER.map((k) => {
+              {FEATURE_ORDER.filter((k) => policy.features[k]).map((k) => {
                 const f = policy.features[k];
                 const locked = required && ["camera", "face_presence", "multiple_faces"].includes(k);
                 return (
@@ -201,7 +208,7 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
       {voice && !voice.stt?.enabled && <p className="text-sm text-amber-700">Speech recognition is off on this server - you will type your answers.</p>}
       {error && <Notice>{error}</Notice>}
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={start} disabled={!canStart} loading={starting}><Play size={16} /> {features.camera && camState.status === "on" ? `I agree - start the interview with ${p.name}` : `Start the interview with ${p.name}`}</Button>
+        <Button onClick={start} disabled={!canStart} loading={starting}><Play size={16} /> {features.camera && camState.status === "on" ? `I agree - start the interview with ${p.name}` : `Continue - start the interview with ${p.name}`}</Button>
         {cameraBlocked && !required && <span className="text-xs text-slate-500">Camera not tested: the interview will start without camera monitoring.</span>}
         {required && camState.status !== "on" && <span className="text-xs text-red-700">The camera check must pass first.</span>}
       </div>

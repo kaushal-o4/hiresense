@@ -121,7 +121,13 @@ export default function VoiceInterview() {
   const monitor = useRef(null);
   const [monFeatures, setMonFeatures] = useState(null);
   const [monStatus, setMonStatus] = useState(null);
-  const [monWarning, setMonWarning] = useState(null);
+  // Active monitoring warnings, newest last. The newest is shown; clearing or dismissing it brings back any older
+  // warning that is still active (one warning must never hide another, e.g. "face not visible" under "pasted text").
+  const [monWarnings, setMonWarnings] = useState([]);
+  const monWarning = monWarnings[monWarnings.length - 1] || null;
+  const setMonWarning = (w) => setMonWarnings(w ? (list) => [...list.filter((x) => x.type !== w.type), w] : []);
+  const onMonWarning = (w) => setMonWarnings((list) => (w.clear ? list.filter((x) => x.type !== w.clear)
+    : [...list.filter((x) => x.type !== w.type), w]));
   const [camHidden, setCamHidden] = useState(false);
   const [camLost, setCamLost] = useState(false);
 
@@ -199,11 +205,11 @@ export default function VoiceInterview() {
     if (!monFeatures || monFeatures.withdrawn || monitor.current) return;
     const needsVideo = monFeatures.camera;
     if (needsVideo && !(camOn && camVideo.current)) return;
-    if (!needsVideo && !monFeatures.focus_changes) return;
+    if (!needsVideo && !monFeatures.focus_changes && !monFeatures.paste && !monFeatures.screen) return;
     const m = new InterviewMonitor({
       sessionId: id, features: monFeatures, t0: t0.current,
       onStatus: setMonStatus,
-      onWarning: (w) => setMonWarning((cur) => (w.clear ? (cur?.type === w.clear ? null : cur) : w)),
+      onWarning: onMonWarning,
     });
     monitor.current = m;
     m.start(needsVideo ? camVideo.current : null);
@@ -648,21 +654,8 @@ export default function VoiceInterview() {
     dispatch({ type: "FINISH" });
   };
   const monitoredCamera = !!(monFeatures?.camera && !monFeatures.withdrawn && camOn);
-  const toggleCamera = async () => {
-    if (monitoredCamera) { setCamHidden((h) => !h); return; } // monitoring keeps the camera on; only the self-view hides
-    if (camOn) {
-      camStream.current?.getTracks().forEach((t) => t.stop());
-      camStream.current = null;
-      setCamOn(false);
-      return;
-    }
-    try {
-      camStream.current = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
-      setCamOn(true);
-    } catch (e) {
-      toast(e.name === "NotAllowedError" ? "Camera permission was denied." : "The camera could not be started.", "error");
-    }
-  };
+  // monitoring keeps the camera on; this only hides/shows the self-view (the "Camera on" badge stays visible)
+  const toggleCamera = () => { if (monitoredCamera) setCamHidden((h) => !h); };
   useEffect(() => { if (camOn && camVideo.current) camVideo.current.srcObject = camStream.current; }, [camOn]);
 
   // ------------------------------------------------------------------ render
@@ -716,7 +709,7 @@ export default function VoiceInterview() {
       </div>
       {live && (
         <MonitorBar features={monFeatures?.withdrawn ? null : monFeatures} status={monStatus} cameraOn={camOn} cameraLost={camLost}
-          recording={st.recording} warning={monWarning} onDismiss={() => setMonWarning(null)}
+          recording={st.recording} warning={monWarning} onDismiss={() => setMonWarnings((list) => list.slice(0, -1))}
           onStop={monFeatures && !monFeatures.withdrawn && ![S.COMPLETING, S.COMPLETED].includes(st.status) ? () => stopMonitoring({ withdraw: true }) : null} />
       )}
 
@@ -845,10 +838,12 @@ export default function VoiceInterview() {
               <RoundButton label={settings.voiceOn ? "Turn interviewer voice off" : "Turn interviewer voice on"} onClick={toggleVoice}>
                 {settings.voiceOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
               </RoundButton>
-              <RoundButton label={monitoredCamera ? (camHidden ? "Show my self-view (camera stays on for monitoring)" : "Hide my self-view (camera stays on for monitoring - use Stop monitoring to turn it off)")
-                : camOn ? "Hide my camera" : "Show my camera (optional, not monitored)"} onClick={toggleCamera}>
-                {camOn && !camHidden ? <CameraOff size={18} /> : <Camera size={18} />}
-              </RoundButton>
+              {/* The camera runs only when the candidate opted into monitoring at setup; this hides/shows the self-view. */}
+              {monitoredCamera && (
+                <RoundButton label={camHidden ? "Show my self-view (camera stays on for monitoring)" : "Hide my self-view (camera stays on for monitoring - use Stop monitoring to turn it off)"} onClick={toggleCamera}>
+                  {camHidden ? <Camera size={18} /> : <CameraOff size={18} />}
+                </RoundButton>
+              )}
               <RoundButton label="Settings" active={showSettings} onClick={() => setShowSettings((v) => !v)}><Settings2 size={18} /></RoundButton>
               <ConfirmButton size="sm" variant="danger" className="ml-1 rounded-full"
                 message={session?.answered ? "End the interview now and get feedback on the answers so far?" : "End this interview? No answers have been given, so it will be discarded."}

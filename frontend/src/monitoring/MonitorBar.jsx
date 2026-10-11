@@ -8,9 +8,10 @@ const OFF = "bg-slate-600/90";
 
 /** Always-visible status of camera, microphone and monitoring during the interview, plus neutral warnings. */
 export function MonitorBar({ features, status, cameraOn, recording, warning, onDismiss, onStop, cameraLost }) {
-  const monitored = features && (features.camera || features.focus_changes);
+  const monitored = features && (features.camera || features.focus_changes || features.paste || features.screen);
   const list = [features?.face_presence && "face visibility", features?.multiple_faces && "more than one face",
-    features?.attention && "approximate attention", features?.focus_changes && "tab/window focus"].filter(Boolean);
+    features?.attention && "approximate attention", features?.objects && "phone/notes", features?.focus_changes && "tab/window focus",
+    features?.screen && "full screen", features?.paste && "pasting"].filter(Boolean);
   const face = status?.analysis === "running" && features?.face_presence
     ? (status.faces === 1 ? "Face visible" : status.faces > 1 ? "More than one face" : "Face not visible") : null;
   return (
@@ -37,6 +38,10 @@ export function MonitorBar({ features, status, cameraOn, recording, warning, onD
       {warning && (
         <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
           <span className="mr-auto">{warning.message}</span>
+          {warning.type === "fullscreen_exit" && document.documentElement.requestFullscreen && (
+            <button type="button" className="text-xs font-semibold underline"
+              onClick={() => document.documentElement.requestFullscreen().catch(() => {})}>Return to full screen</button>
+          )}
           <button type="button" className="text-xs underline" onClick={onDismiss}>Dismiss</button>
         </div>
       )}
