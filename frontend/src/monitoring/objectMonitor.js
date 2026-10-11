@@ -8,7 +8,11 @@ import { SignalTracker } from "./signalTracker";
 
 // COCO label -> our condition. Laptops/monitors are not flagged: the interview itself runs on one.
 export const OBJECT_CLASSES = { "cell phone": "phone_in_view", book: "notes_in_view" };
-export const OBJECT_MIN_SCORE = { phone_in_view: 0.45, notes_in_view: 0.55 };
+// Per-frame score limits, checked on real photos (scratch test, Oct 2026): a phone held clearly in front of the
+// camera scored 0.41-0.74 and a book on a desk 0.57, while face portraits produced no detections at all. The
+// limits are kept lowish because one frame proves little anyway: the tracker below only reports an object that
+// is seen in most frames for several seconds.
+export const OBJECT_MIN_SCORE = { phone_in_view: 0.35, notes_in_view: 0.45 };
 
 // At ~1 analysed frame per second. warnMs/minRecordMs/endMs as in signalTracker.DEFAULT_THRESHOLDS.
 export const OBJECT_THRESHOLDS = {
