@@ -65,6 +65,7 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Send reset link").click()
     page.get_by_text("If an account exists for that email").wait_for(timeout=10000)
     ok("forgot password gives the same neutral reply", True)
+    page.wait_for_timeout(800)  # let the page fade-in animation finish
     page.screenshot(path=OUT / "acc_1_forgot.png")
 
     # ---- reset with a real token
@@ -77,6 +78,7 @@ with sync_playwright() as p:
     page.get_by_role("button", name="Save new password").click()
     page.get_by_text("Password updated").wait_for(timeout=10000)
     ok("reset link sets a new password", True)
+    page.wait_for_timeout(800)  # let the page fade-in animation finish
     page.screenshot(path=OUT / "acc_2_reset_done.png")
     page.get_by_role("link", name="Sign in").click()
     page.get_by_label("Email").fill(EMAIL)
@@ -105,6 +107,7 @@ with sync_playwright() as p:
     page.wait_for_url("**/student/jobs?tab=drives", timeout=10000)
     ok("/student/drives opens the 'Placement drives' tab",
        page.get_by_role("tab", name="Placement drives").get_attribute("aria-selected") == "true")
+    page.wait_for_timeout(800)  # let the page fade-in animation finish
     page.screenshot(path=OUT / "acc_3_jobs_drives.png")
 
     # ---- delete account
@@ -114,6 +117,7 @@ with sync_playwright() as p:
     card.get_by_label("Your password").fill(NEW_PW)
     ok("delete stays disabled until DELETE is typed", btn.is_disabled())
     card.get_by_label('Type "DELETE" to confirm').fill("DELETE")
+    page.wait_for_timeout(800)  # let the page fade-in animation finish
     page.screenshot(path=OUT / "acc_4_delete.png")
     btn.click()
     page.wait_for_url("**/login", timeout=15000)
