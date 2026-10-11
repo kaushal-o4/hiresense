@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..database import get_db
 from ..deps import client_ip, require_recruiter, require_student
 from ..models import (
@@ -16,7 +17,7 @@ from ..models import (
 )
 from ..schemas import ApplicationStatusIn, ApplyIn, AssignAssessmentIn, CompareIn, JobIn, MessageIn
 from ..serializers import application_out, interview_out, iso, job_out, resume_out
-from ..services import ai, matching
+from ..services import ai, mailer, matching
 from ..services.access import recruiter_has_applicant
 from ..services.common import audit, normalize_skills, notify, paginate
 from ..services.insights import current_resume, student_summary
@@ -26,6 +27,12 @@ recruiter_router = APIRouter(prefix="/api/recruiter", tags=["recruiter"])
 
 STATUS_LABELS = {"applied": "Applied", "shortlisted": "Shortlisted", "interview_scheduled": "Interview scheduled",
                  "on_hold": "On hold", "selected": "Selected", "rejected": "Not selected", "withdrawn": "Withdrawn"}
+
+
+def _email_student(student: User, subject: str, text: str) -> None:
+    """Email a recruitment update too (only when SMTP is configured; the in-app notification is always created)."""
+    url = f"{get_settings().frontend_url.rstrip('/')}/student/applications"
+    mailer.send(student.email, subject, f"Hello {student.full_name},\n\n{text}\n\nView your applications: {url}\n")
 
 
 def _aware(dt):
@@ -404,6 +411,7 @@ def update_status(application_id: int, body: ApplicationStatusIn, request: Reque
     audit(db, user.id, "application.status", "application", app.id, {"from": old, "to": body.status},
           client_ip(request))
     db.commit()
+    _email_student(app.student, f"Application update: {app.job.title}", msg)
     return application_out(app, include_student=True)
 
 
@@ -632,6 +640,7 @@ def recruiter_send(application_id: int, body: MessageIn, user: User = Depends(re
     title = "Interview invitation" if body.kind == "invitation" else f"Message from {app.job.company_name}"
     notify(db, app.student_id, title, body.body[:140], "message", "/student/applications")
     db.commit()
+    _email_student(app.student, f"{title} - {app.job.title}", body.body.strip())
     return _thread(db, app, user)
 
 

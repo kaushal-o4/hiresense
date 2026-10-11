@@ -1,4 +1,7 @@
+import atexit
 import os
+import shutil
+import tempfile
 
 # Automated tests never call real models: Ollama points at a closed port and embeddings are off unless a test
 # installs the deterministic FAKE embedding below. Real-model checks live in tests_integration/.
@@ -8,10 +11,17 @@ os.environ["EMBEDDING_PROVIDER"] = "none"
 os.environ["TTS_ENABLED"] = "false"
 os.environ["STT_ENABLED"] = "false"
 os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["SMTP_HOST"] = ""  # never send real email from tests
+os.environ["ADMIN_PASSWORD"] = "Test-Admin-Pass-9"  # fixed, test-only (the real seed generates a random one)
+# Uploaded test resumes go to a throwaway folder, never backend/uploads (the test DB is in memory, so files
+# written there were orphans that piled up on every run).
+_UPLOADS = tempfile.mkdtemp(prefix="hiresense_test_uploads_")
+os.environ["UPLOAD_DIR"] = _UPLOADS
+atexit.register(shutil.rmtree, _UPLOADS, ignore_errors=True)
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -24,6 +34,14 @@ get_settings.cache_clear()
 
 
 @pytest.fixture(autouse=True)
+def _isolated_uploads(tmp_path, monkeypatch):
+    """Each test gets its own upload folder (the in-memory DB restarts user ids at 1 for every test)."""
+    folder = tmp_path / "uploads"
+    monkeypatch.setattr(get_settings(), "upload_dir", str(folder))
+    return folder
+
+
+@pytest.fixture(autouse=True)
 def _reset_ai_caches():
     from app.services import local_llm
     local_llm._status_cache.update(at=0.0, value=None)
@@ -33,6 +51,10 @@ def _reset_ai_caches():
 @pytest.fixture()
 def db_session_factory(monkeypatch):
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+
+    @event.listens_for(engine, "connect")
+    def _fk_on(dbapi_conn, _):  # same as the app's engine (database.py): enforce foreign keys and ON DELETE rules
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
     monkeypatch.setattr(database, "SessionLocal", factory)

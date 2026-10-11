@@ -37,6 +37,9 @@ export default function Login() {
           <input className="input" type="password" autoComplete="current-password" required value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })} />
         </Field>
+        <p className="-mt-2 text-right text-sm">
+          <Link className="text-brand-600 hover:underline" to="/forgot-password">Forgot password?</Link>
+        </p>
         <Button type="submit" className="w-full" loading={busy} disabled={!form.email || !form.password}>Sign in</Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">

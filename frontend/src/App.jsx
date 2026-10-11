@@ -5,14 +5,14 @@ import { Spinner } from "./components/ui";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
-import EnglishLearning from "./pages/student/EnglishLearning";
-import PerformanceReport from "./pages/student/PerformanceReport";
-import PracticeHistory from "./pages/student/PracticeHistory";
-import StudentDrives from "./pages/student/Drives";
+import ProgressHub from "./pages/student/ProgressHub";
+import Opportunities from "./pages/student/Opportunities";
 
 import StudentDashboard from "./pages/student/Dashboard";
 import Resume from "./pages/student/Resume";
@@ -22,9 +22,7 @@ import VoiceInterview from "./pages/student/VoiceInterview";
 import English from "./pages/student/English";
 import EnglishSession from "./pages/student/EnglishSession";
 import StudentAssessments from "./pages/student/Assessments";
-import Progress from "./pages/student/Progress";
 import Rewards from "./pages/student/Rewards";
-import Jobs from "./pages/student/Jobs";
 import Applications from "./pages/student/Applications";
 import Mentoring from "./pages/student/Mentoring";
 
@@ -69,6 +67,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -79,15 +79,19 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Navigate to={HOME[user.role]} replace />} />
       <Route path="/register" element={<Navigate to={HOME[user.role]} replace />} />
+      <Route path="/forgot-password" element={<Navigate to="/settings" replace />} />
+      <Route path="/reset-password" element={<ResetPassword />} />{/* a reset link may be opened while signed in */}
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to={HOME[user.role]} replace />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="/student/english-learning" element={r("student", <EnglishLearning />)} />
-        <Route path="/student/report" element={r("student", <PerformanceReport />)} />
-        <Route path="/student/history" element={r("student", <PracticeHistory />)} />
-        <Route path="/student/drives" element={r("student", <StudentDrives />)} />
+        {/* speaking drills were removed; old bookmarks go to English conversation practice */}
+        <Route path="/student/english-learning" element={<Navigate to="/student/english" replace />} />
+        {/* merged pages: old links (bookmarks, notifications) open the matching tab */}
+        <Route path="/student/report" element={<Navigate to="/student/progress?tab=report" replace />} />
+        <Route path="/student/history" element={<Navigate to="/student/progress?tab=history" replace />} />
+        <Route path="/student/drives" element={<Navigate to="/student/jobs?tab=drives" replace />} />
 
         <Route path="/student" element={r("student", <StudentDashboard />)} />
         <Route path="/student/resume" element={r("student", <Resume />)} />
@@ -97,9 +101,9 @@ export default function App() {
         <Route path="/student/english" element={r("student", <English />)} />
         <Route path="/student/english/:id" element={r("student", <EnglishSession />)} />
         <Route path="/student/assessments" element={r("student", <StudentAssessments />)} />
-        <Route path="/student/progress" element={r("student", <Progress />)} />
+        <Route path="/student/progress" element={r("student", <ProgressHub />)} />
         <Route path="/student/rewards" element={r("student", <Rewards />)} />
-        <Route path="/student/jobs" element={r("student", <Jobs />)} />
+        <Route path="/student/jobs" element={r("student", <Opportunities />)} />
         <Route path="/student/applications" element={r("student", <Applications />)} />
         <Route path="/student/mentoring" element={r("student", <Mentoring />)} />
 

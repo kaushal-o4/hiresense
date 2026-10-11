@@ -9,7 +9,7 @@ from .config import get_settings
 from .database import SessionLocal
 from .models import ErrorLog
 from .routers import (
-    admin, assessments, auth, common, english, exercises, interviews, jobs, mentors, monitoring, students, voice,
+    admin, assessments, auth, common, english, interviews, jobs, mentors, monitoring, students, voice,
 )
 
 logger = logging.getLogger("hiresense")
@@ -56,7 +56,6 @@ async def unhandled_error(request: Request, exc: Exception):
 
 for r in (auth.router, common.router, students.router, students.shared, interviews.public_router,
           interviews.router, english.router,
-          exercises.router,
           assessments.student_router, assessments.manage_router, jobs.student_router, jobs.recruiter_router,
           mentors.router, admin.router, voice.router, monitoring.router):
     app.include_router(r)
@@ -86,6 +85,29 @@ def warm_up_models():
             db.close()
     except Exception:  # noqa: BLE001 - e.g. tables not migrated yet
         logger.warning("could not purge expired integrity events", exc_info=True)
+    warn_published_admin_password()
+
+
+def warn_published_admin_password():
+    """Loud warning while any admin account still accepts the password older versions published in the README."""
+    from sqlalchemy import select
+
+    from . import database
+    from .models import User
+    from .security import verify_password
+    from .seed import PUBLISHED_ADMIN_PASSWORD
+    try:
+        db = database.SessionLocal()
+        try:
+            weak = [u.email for u in db.scalars(select(User).where(User.role == "admin"))
+                    if verify_password(PUBLISHED_ADMIN_PASSWORD, u.password_hash)]
+        finally:
+            db.close()
+    except Exception:  # noqa: BLE001 - e.g. tables not migrated yet
+        return
+    for email in weak:
+        logger.warning("SECURITY: admin account %s still uses the published default password. Change it now "
+                       "(Account settings -> Change password).", email)
 
 
 @app.get("/api/health", tags=["health"])

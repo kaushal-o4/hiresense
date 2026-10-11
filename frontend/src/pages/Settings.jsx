@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
-import { get, post, put } from "../api";
+import { api, get, post, put } from "../api";
 import { useAuth } from "../auth";
 import { Button, Card, ErrorBox, Field, PageHeader, Spinner, useApi, useToast } from "../components/ui";
 import { speak } from "../components/useSpeech";
@@ -105,6 +105,51 @@ export default function Settings() {
           <div><Button type="submit" variant="secondary" loading={pwBusy}>Update password</Button></div>
         </form>
       </Card>
+      {user.role === "student" && <DeleteAccount />}
     </div>
+  );
+}
+
+function DeleteAccount() {
+  const { setUser } = useAuth();
+  const [form, setForm] = useState({ password: "", confirm: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/auth/me", { method: "DELETE", body: form });
+      setUser(null); // signed out; the router sends the visitor to the sign-in page
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="Delete my account">
+      <form onSubmit={submit} className="max-w-2xl space-y-4">
+        <p className="text-sm text-slate-600">
+          This permanently deletes your account and all your data: resumes, interviews and feedback, English practice,
+          assessments, job applications, rewards and mentor notes. <b>It cannot be undone.</b>
+        </p>
+        <ErrorBox message={error} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Your password">
+            <input className="input" type="password" autoComplete="current-password" required value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })} />
+          </Field>
+          <Field label='Type "DELETE" to confirm'>
+            <input className="input" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+          </Field>
+        </div>
+        <Button type="submit" variant="danger" loading={busy} disabled={!form.password || form.confirm !== "DELETE"}>
+          Permanently delete my account
+        </Button>
+      </form>
+    </Card>
   );
 }

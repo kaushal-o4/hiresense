@@ -5,6 +5,7 @@
 
 Safe to run repeatedly (existing rows are left untouched).
 """
+import secrets
 import sys
 
 from sqlalchemy import select
@@ -16,6 +17,10 @@ from .models import (
     RecruiterProfile, RewardRule, StudentProfile, User,
 )
 from .security import hash_password
+
+# The admin password that older versions of this project shipped and documented. Never accepted for new installs,
+# and the server warns at startup while an admin account still uses it.
+PUBLISHED_ADMIN_PASSWORD = "Admin@12345"
 
 BADGES = [
     ("first_interview", "First Interview", "Completed your first mock interview.", "🎤", "interviews_completed", 1, 20),
@@ -36,13 +41,11 @@ REWARD_RULES = [
     ("assessment_passed", "Pass a skill assessment (first pass of each assessment only)", 25, 5, {}),
     ("score_improvement", "Beat your previous best interview score", 40, 1, {"min_improvement": 10}),
     ("goal_completed", "Complete a goal set by your mentor", 30, 5, {}),
-    ("english_exercise", "Complete a pronunciation or speaking exercise", 5, 10, {"min_active_seconds": 15}),
 ]
 
 CHALLENGES = [
-    ("Speak for 15 minutes", "Practise spoken English (conversations or drills) for 15 verified minutes today.",
+    ("Speak for 15 minutes", "Practise spoken English with Aria for 15 verified minutes today.",
      "english_minutes", 15, "daily", 20),
-    ("Pronunciation warm-up", "Complete 5 pronunciation drills today.", "pronunciation_drills", 5, "daily", 10),
     ("Interview week", "Complete 3 mock interviews this week.", "interviews_completed", 3, "weekly", 50),
     ("Test yourself", "Pass 2 assessments this week.", "assessments_passed", 2, "weekly", 40),
 ]
@@ -159,9 +162,15 @@ def seed(demo: bool = False) -> None:
     db = SessionLocal()
     try:
         if not db.scalar(select(User).where(User.email == settings.admin_email.lower())):
-            db.add(User(email=settings.admin_email.lower(), password_hash=hash_password(settings.admin_password),
+            password = settings.admin_password
+            if not password or password == PUBLISHED_ADMIN_PASSWORD:
+                password = secrets.token_urlsafe(12)
+                print(f"Created admin account: {settings.admin_email}\n"
+                      f"  Generated password (shown only now - store it safely): {password}")
+            else:
+                print(f"Created admin account: {settings.admin_email} (password from ADMIN_PASSWORD)")
+            db.add(User(email=settings.admin_email.lower(), password_hash=hash_password(password),
                         full_name="Platform Administrator", role="admin", status="active"))
-            print(f"Created admin account: {settings.admin_email}")
         for code, name, desc, icon, ctype, threshold, points in BADGES:
             if not db.scalar(select(Badge).where(Badge.code == code)):
                 db.add(Badge(code=code, name=name, description=desc, icon=icon, criteria_type=ctype,
@@ -177,6 +186,17 @@ def seed(demo: bool = False) -> None:
                 db.flush()
                 for q, diff, tag in BANK.get(code, []):
                     db.add(BankQuestion(category_id=cat.id, question=q, difficulty=diff, role_tag=tag))
+        # Pronunciation/speaking drills were removed from the student portal: retire their challenge in existing
+        # databases (kept, not deleted, so past completions and points stay in the history).
+        for old in db.scalars(select(Challenge).where(Challenge.metric.in_(("pronunciation_drills",
+                                                                             "speaking_exercises")))):
+            old.active = False
+        drill_rule = db.scalar(select(RewardRule).where(RewardRule.activity_type == "english_exercise"))
+        if drill_rule:
+            drill_rule.active = False
+        speak =db.scalar(select(Challenge).where(Challenge.title == "Speak for 15 minutes"))
+        if speak and "or drills" in speak.description:
+            speak.description = "Practise spoken English with Aria for 15 verified minutes today."
         for title, desc, metric, target, period, points in CHALLENGES:
             if not db.scalar(select(Challenge).where(Challenge.title == title)):
                 db.add(Challenge(title=title, description=desc, metric=metric, target=target, period=period,

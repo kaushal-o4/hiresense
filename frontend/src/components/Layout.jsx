@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
-  Award, BarChart3, Bell, BookOpen, Briefcase, CalendarClock, CalendarDays, ClipboardCheck, ClipboardList, FileBarChart,
-  FileText, Gauge, GraduationCap, History, Languages, LayoutDashboard, LogOut, Megaphone, Menu, MessagesSquare, Mic,
+  Award, BarChart3, Bell, BookOpen, Briefcase, CalendarClock, ClipboardCheck, ClipboardList,
+  FileText, Gauge, GraduationCap, LayoutDashboard, LogOut, Megaphone, Menu, MessagesSquare, Mic,
   ScrollText, Search, Settings, ShieldAlert, SlidersHorizontal, Sparkles, Target, TrendingUp, User, Users, X,
 } from "lucide-react";
 import { useAuth } from "../auth";
@@ -15,15 +15,11 @@ const NAV = {
     { to: "/student/resume", label: "Resume Analysis", icon: FileText },
     { to: "/student/interviews", label: "Mock Interviews", icon: Mic },
     { to: "/student/english", label: "English Conversation", icon: MessagesSquare },
-    { to: "/student/english-learning", label: "Speaking Practice", icon: Languages },
     { to: "/student/assessments", label: "Assessments", icon: ClipboardCheck },
-    { to: "/student/progress", label: "Progress", icon: BarChart3 },
-    { to: "/student/report", label: "Performance Report", icon: FileBarChart },
-    { to: "/student/history", label: "Practice History", icon: History },
+    { to: "/student/progress", label: "My Progress", icon: BarChart3 }, // overview, full report, practice history
     { to: "/student/rewards", label: "Rewards & Challenges", icon: Award },
-    { to: "/student/jobs", label: "Jobs", icon: Briefcase },
+    { to: "/student/jobs", label: "Jobs & Drives", icon: Briefcase }, // job openings + placement drives
     { to: "/student/applications", label: "My Applications", icon: ClipboardList },
-    { to: "/student/drives", label: "Placement Drives", icon: CalendarDays },
     { to: "/student/mentoring", label: "Mentoring", icon: Target },
   ],
   recruiter: [

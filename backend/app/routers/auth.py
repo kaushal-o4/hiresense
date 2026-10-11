@@ -1,20 +1,29 @@
+import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from sqlalchemy import delete as sa_delete
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..database import get_db
 from ..deps import client_ip, get_current_user
-from ..models import RecruiterProfile, StudentProfile, User
-from ..schemas import ChangePassword, LoginIn, RecruiterRegister, StudentRegister
-from ..security import COOKIE_NAME, create_access_token, hash_password, verify_password
+from ..models import RecruiterProfile, Resume, StudentProfile, User
+from ..schemas import ChangePassword, LoginIn, RecruiterRegister, StudentRegister, _strong_password
+from ..security import (
+    COOKIE_NAME, create_access_token, create_reset_token, hash_password, read_reset_token, reset_token_matches,
+    verify_password,
+)
 from ..serializers import profile_out
+from ..services import mailer
 from ..services.ai import ai_status
 from ..services.common import audit, get_setting, notify
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger("hiresense.auth")
 
 # Simple in-memory brute-force protection: email -> [failed attempt timestamps]
 _failed: dict[str, list[float]] = {}
@@ -118,6 +127,97 @@ def logout(response: Response):
 @router.get("/me")
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return {"user": profile_out(user), "ai": ai_status(db)}
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    token: str = Field(min_length=20, max_length=2000)
+    new_password: str = Field(max_length=128)
+
+    _pw = field_validator("new_password")(_strong_password)
+
+
+class DeleteAccountIn(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+    confirm: str = Field(max_length=20)
+
+
+# per-email limit on reset requests (in memory, like the login limiter)
+_reset_requests: dict[str, list[float]] = {}
+MAX_RESET_REQUESTS = 3
+GENERIC_RESET_REPLY = {"ok": True, "message": "If an account exists for that email, a reset link has been sent. "
+                       "If email is not set up on this server, ask the placement office for the link."}
+
+
+@router.post("/forgot-password")
+def forgot_password(body: ForgotPasswordIn, request: Request, db: Session = Depends(get_db)):
+    """Start a password reset. Always returns the same reply, so it can't be used to find out who has an account."""
+    email = body.email.lower()
+    now = datetime.now(timezone.utc).timestamp()
+    recent = [t for t in _reset_requests.get(email, []) if now - t < WINDOW_SECONDS]
+    if len(recent) >= MAX_RESET_REQUESTS:
+        return GENERIC_RESET_REPLY  # silently ignore floods; same reply as always
+    _reset_requests[email] = recent + [now]
+    user = db.scalar(select(User).where(User.email == email))
+    if not user or user.status in ("deactivated", "pending"):
+        return GENERIC_RESET_REPLY
+    settings = get_settings()
+    link = f"{settings.frontend_url.rstrip('/')}/reset-password?token={create_reset_token(user.id, user.password_hash)}"
+    sent = mailer.send(user.email, "Reset your HireSense password",
+                       f"Hello {user.full_name},\n\nSomeone (hopefully you) asked to reset your HireSense password. "
+                       f"Open this link within {settings.password_reset_minutes} minutes to choose a new one:\n\n{link}\n\n"
+                       "If you didn't ask for this, ignore this email - your password stays the same.")
+    if not sent:  # email is off: the link goes to the server log so the placement office can pass it on
+        logger.warning("Password reset requested for %s (email disabled). Reset link, valid %d min: %s",
+                       user.email, settings.password_reset_minutes, link)
+    audit(db, user.id, "auth.password_reset_requested", "user", user.id, {"emailed": sent}, client_ip(request))
+    db.commit()
+    return GENERIC_RESET_REPLY
+
+
+@router.post("/reset-password")
+def reset_password(body: ResetPasswordIn, request: Request, db: Session = Depends(get_db)):
+    payload = read_reset_token(body.token)
+    user = db.get(User, int(payload["sub"])) if payload and str(payload.get("sub", "")).isdigit() else None
+    if not user or not reset_token_matches(payload, user.password_hash) or user.status in ("deactivated", "pending"):
+        raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
+    user.password_hash = hash_password(body.new_password)  # also invalidates this and any older reset link
+    _failed.pop(user.email, None)
+    audit(db, user.id, "auth.password_reset", "user", user.id, {}, client_ip(request))
+    notify(db, user.id, "Your password was changed",
+           "Your password was reset using a reset link. If this wasn't you, contact the placement office.", "warning")
+    db.commit()
+    return {"ok": True, "message": "Password updated. You can now sign in with your new password."}
+
+
+@router.delete("/me")
+def delete_my_account(body: DeleteAccountIn, request: Request, response: Response,
+                      user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Permanently delete a student's own account and personal data (resumes and their files, interviews, English
+    practice, applications, rewards, notifications). Audit entries keep only the anonymous user id."""
+    if user.role != "student":
+        raise HTTPException(403, "Only student accounts can be deleted here. Contact an administrator.")
+    if body.confirm != "DELETE":
+        raise HTTPException(400, 'Type DELETE to confirm')
+    if not verify_password(body.password, user.password_hash):
+        raise HTTPException(400, "Password is incorrect")
+    files = [Path(p) for p in db.scalars(select(Resume.stored_path).where(Resume.student_id == user.id)) if p]
+    uid = user.id
+    audit(db, None, "user.self_delete", "user", uid, {"role": "student"}, client_ip(request))
+    db.flush()
+    db.expunge(user)
+    db.execute(sa_delete(User).where(User.id == uid))  # the database cascades to every table that references it
+    db.commit()
+    for f in files:
+        f.unlink(missing_ok=True)
+    folder = Path(get_settings().upload_dir) / str(uid)
+    if folder.is_dir() and not any(folder.iterdir()):
+        folder.rmdir()
+    response.delete_cookie(COOKIE_NAME, path="/")
+    return {"ok": True, "message": "Your account and data have been deleted."}
 
 
 @router.post("/change-password")

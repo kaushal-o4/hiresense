@@ -21,9 +21,21 @@ class Settings(BaseSettings):
     # Store per-step timings for the admin performance dashboard (never stores candidate content)
     perf_metrics_enabled: bool = True
 
-    # Initial admin account, created by `python -m app.seed`
+    # Initial admin account, created by `python -m app.seed`. Leave the password empty to have the seed generate a
+    # random one and print it once. Never ship the old published default.
     admin_email: str = "admin@hiresense.app"
-    admin_password: str = "Admin@12345"
+    admin_password: str = ""
+
+    # Outgoing email (password resets, application updates). Empty SMTP_HOST = email off: reset links are then
+    # printed to the server log so an administrator can pass them on.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "HireSense <no-reply@hiresense.local>"
+    smtp_starttls: bool = True
+    frontend_url: str = "http://localhost:5173"  # used to build links in emails
+    password_reset_minutes: int = 30
 
     # Local AI. Everything runs on this computer; no student data is sent to an external service.
     ai_enabled: bool = True

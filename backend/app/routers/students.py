@@ -253,6 +253,22 @@ def _run_analysis(db: Session, user: User, resume: Resume) -> str | None:
     return None
 
 
+RESUME_HISTORY = 10  # older versions beyond this are deleted together with their files
+
+
+def _prune_resume_history(db: Session, student_id: int) -> None:
+    """Keep the newest RESUME_HISTORY resumes (and always the current one); delete older ones and their files."""
+    rows = list(db.scalars(select(Resume).where(Resume.student_id == student_id).order_by(Resume.id.desc())))
+    old = [r for r in rows[RESUME_HISTORY:] if not r.is_current]
+    paths = [Path(r.stored_path) for r in old]
+    for r in old:
+        db.delete(r)
+    if old:
+        db.commit()
+        for p in paths:
+            p.unlink(missing_ok=True)
+
+
 @router.post("/resumes", status_code=201)
 def upload_resume(file: UploadFile = File(...), user: User = Depends(require_student),
                   db: Session = Depends(get_db)):
@@ -279,7 +295,12 @@ def upload_resume(file: UploadFile = File(...), user: User = Depends(require_stu
                     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     raw_text=text, is_current=True, analysis_status="pending")
     db.add(resume)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        stored.unlink(missing_ok=True)  # don't leave an orphan file if the record couldn't be saved
+        raise
+    _prune_resume_history(db, user.id)
     error = _run_analysis(db, user, resume)
     db.refresh(resume)
     return {"resume": resume_out(resume), "ai_error": error}

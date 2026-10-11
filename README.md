@@ -23,14 +23,21 @@ The full requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md).
 You need **Python 3.12+** (`py --version`), **Node.js 20+** (`node --version`) and **Ollama** for the AI features (see section 2).
 
 ### Easiest way
-Double-click these two files, or run them from the VS Code terminal:
+Double-click **`start.bat`**. It checks Python, Node.js and Ollama, downloads the AI model on first run, opens the
+backend and frontend in two windows and then opens **http://localhost:5173**.
+
+You can also start the two parts yourself:
 
 ```
 start-backend.bat     -> API on http://127.0.0.1:8000  (docs: http://127.0.0.1:8000/docs)
 start-frontend.bat    -> App on http://localhost:5173
 ```
 
-Then open **http://localhost:5173**.
+On first setup the backend console prints a generated **admin password once**. Copy it somewhere safe.
+
+### Automated tests
+`backend: .\venv\Scripts\python.exe -m pytest tests` and `frontend: npm test`. Once the project is on GitHub,
+`.github/workflows/tests.yml` runs both on every push, plus the database migrations against PostgreSQL.
 
 ### Manual way (two VS Code terminals)
 
@@ -57,12 +64,16 @@ npm run dev
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@hiresense.app | Admin@12345 (set in `backend/.env`) |
+| Admin | admin@hiresense.app | Generated on first seed and printed **once** in the console (or `ADMIN_PASSWORD` in `backend/.env` if you set one) |
 | Student (demo) | student@demo.hiresense | Demo@12345 |
 | Mentor (demo) | mentor@demo.hiresense | Demo@12345 |
 | Recruiter (demo) | recruiter@demo.hiresense | Demo@12345 |
 
-The demo accounts are empty, with no fake scores or activity. The `--demo` flag creates them; leave it out in production and change the admin password.
+The demo accounts are empty, with no fake scores or activity. The `--demo` flag creates them; leave it out in production. The backend logs a security warning at startup while any admin account still uses the old published password `Admin@12345`.
+
+**Forgot password:** the sign-in page has a "Forgot password?" link. With email set up (`SMTP_*` in `backend/.env`), the reset link is emailed. Without email, the link is printed in the backend console so the placement office can pass it on. Links expire after 30 minutes and work only once.
+
+**Deleting an account:** students can permanently delete their own account and data under *Account settings → Delete my account*.
 
 ---
 
