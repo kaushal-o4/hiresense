@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-POLICY_VERSION = "2026-10-11"
+POLICY_VERSION = "2026-10-12"  # bump whenever FEATURES or what is stored changes, so consent is asked again
 CONFIDENCE_SUFFICIENT = 0.6  # share of analysed frames that must agree before a signal can rise above "info"
 
 FEATURES = {
@@ -44,7 +44,27 @@ FEATURES = {
         "why": "Records when you switch to another tab or window during the interview (the app cannot see what is "
                "on other tabs or screens).",
     },
+    "paste": {
+        "label": "Pasted text in answers (optional)",
+        "why": "Records that text of 40 or more characters was pasted into a typed answer, and whether it was long "
+               "(200+ characters). The pasted text itself is never stored. Pasting can be legitimate, for example "
+               "from dictation or accessibility tools, so a normal paste is only noted for information.",
+    },
+    "screen": {
+        "label": "Full screen and extra displays (optional)",
+        "why": "Asks for full screen during the interview and records when you leave it and for how long, and notes "
+               "when a second display is connected (supported in Chrome and Edge). The app cannot see what is on "
+               "any screen.",
+    },
+    "objects": {
+        "label": "Phone or notes in view (optional, approximate)",
+        "why": "Uses on-device object detection on the camera picture to notice a phone or a book/notes that stays "
+               "visible for several seconds. It looks only for objects, never at you, and can mistake other objects "
+               "(for example a wallet) for a phone.",
+        "requires": "camera",
+    },
 }
+FEATURES["camera"]["required_for"] = FEATURES["camera"]["required_for"] + ["objects"]
 
 
 def policy(retention_days: int, camera_required: bool) -> dict:
@@ -75,6 +95,8 @@ EVENT_FEATURE = {
     "multiple_faces": "multiple_faces", "attention_away": "attention", "focus_change": "focus_changes",
     "camera_interrupted": "camera", "permission_revoked": "camera", "monitoring_interrupted": "camera",
     "monitoring_unavailable": "camera",
+    "paste_detected": "paste", "paste_long": "paste", "fullscreen_exit": "screen", "second_display": "screen",
+    "phone_in_view": "objects", "notes_in_view": "objects",
 }
 
 LABELS = {
@@ -84,7 +106,14 @@ LABELS = {
     "monitoring_interrupted": "Monitoring paused (technical)", "focus_change": "Left the interview tab/window",
     "permission_revoked": "Camera or microphone permission revoked", "monitoring_withdrawn": "Candidate stopped monitoring",
     "monitoring_unavailable": "Monitoring unavailable on this device",
+    "paste_detected": "Pasted text into an answer", "paste_long": "Pasted a long text into an answer",
+    "fullscreen_exit": "Left full screen", "second_display": "Second display connected",
+    "phone_in_view": "Phone appeared to be visible (approximate)",
+    "notes_in_view": "Book or notes appeared to be visible (approximate)",
 }
+
+# Repeated long pastes in one interview are more meaningful than one (see report_events).
+PASTE_LONG_REPEAT = 3
 
 
 def severity(event_type: str, duration_ms: int | None, confidence: float | None) -> tuple[str, bool]:
@@ -107,11 +136,29 @@ def severity(event_type: str, duration_ms: int | None, confidence: float | None)
         level = "low"
     elif event_type == "permission_revoked":
         level = "medium"  # could be accidental: a reviewer should look, nothing more
+    elif event_type == "paste_detected":
+        level = "info"  # pasting is a legitimate input route (dictation, accessibility)
+    elif event_type == "paste_long":
+        level = "low"  # raised to "medium" only when repeated - see paste_severity()
+    elif event_type == "fullscreen_exit":
+        level = "low" if secs >= 10 else "info"
+    elif event_type == "second_display":
+        level = "low"  # a docked laptop is common; it only says another screen exists
+    elif event_type == "phone_in_view":
+        # object detection can mistake a wallet or remote for a phone: never above "medium"
+        level = "medium" if secs >= 10 and (confidence or 0) >= 0.7 else "low"
+    elif event_type == "notes_in_view":
+        level = "low"  # books on a shelf behind the candidate are common
     else:
         level = "info"
     if not sure:
         level = "info"
     return level, sure
+
+
+def paste_severity(level: str, previous_long_pastes: int) -> str:
+    """A long paste becomes "medium" once it has happened PASTE_LONG_REPEAT times in the same interview."""
+    return "medium" if level == "low" and previous_long_pastes + 1 >= PASTE_LONG_REPEAT else level
 
 
 def session_status(monitoring: dict | None, counts: dict[str, int], unreviewed_serious: int) -> dict:

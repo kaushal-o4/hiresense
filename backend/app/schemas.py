@@ -164,6 +164,9 @@ class MonitoringFeatures(BaseModel):
     multiple_faces: bool = False
     attention: bool = False  # approximate head direction / gaze (optional, separate consent)
     focus_changes: bool = False  # browser tab/window focus changes
+    paste: bool = False  # long pastes into typed answers (never the text)
+    screen: bool = False  # full screen exits and extra displays
+    objects: bool = False  # phone / notes in the camera view (on-device object detection; needs camera)
 
 
 class MonitoringConsentIn(BaseModel):
@@ -175,7 +178,8 @@ class MonitoringConsentIn(BaseModel):
 class IntegrityEventIn(BaseModel):
     event_type: Literal["face_absent", "multiple_faces", "attention_away", "camera_interrupted", "camera_obstructed",
                         "low_light", "monitoring_interrupted", "focus_change", "permission_revoked",
-                        "monitoring_unavailable"]
+                        "monitoring_unavailable", "paste_detected", "paste_long", "fullscreen_exit",
+                        "second_display", "phone_in_view", "notes_in_view"]
     t_ms: int = Field(ge=0, le=6 * 3600 * 1000)  # interview-relative time
     duration_ms: int | None = Field(default=None, ge=0, le=6 * 3600 * 1000)
     confidence: float | None = Field(default=None, ge=0, le=1)

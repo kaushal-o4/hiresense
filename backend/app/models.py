@@ -664,7 +664,9 @@ class PerfMetric(TimestampMixin, Base):
 
 INTEGRITY_EVENT_TYPES = ("face_absent", "multiple_faces", "attention_away", "camera_interrupted",
                          "camera_obstructed", "low_light", "monitoring_interrupted", "focus_change",
-                         "permission_revoked", "monitoring_withdrawn", "monitoring_unavailable")
+                         "permission_revoked", "monitoring_withdrawn", "monitoring_unavailable",
+                         "paste_detected", "paste_long", "fullscreen_exit", "second_display", "phone_in_view",
+                         "notes_in_view")
 INTEGRITY_SEVERITIES = ("info", "low", "medium", "high")
 INTEGRITY_REVIEW = ("pending", "no_concern", "concern_noted", "dismissed")
 

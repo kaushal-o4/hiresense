@@ -1,14 +1,16 @@
 // Notices text pasted into an answer box (typed interview answers, coding questions). Only the fact that a paste
-// happened is recorded, never the pasted text. Short pastes (a variable name, a fixed typo) are ignored.
-// Like every integrity signal this is for a human reviewer: pasting your own notes can be legitimate.
+// happened, and whether it was long, is recorded - never the pasted text. Short pastes (a variable name, a fixed
+// typo) are ignored. Pasting is also a legitimate input route (dictation and accessibility tools), so a normal
+// paste is informational and only long pastes stand out for a human reviewer.
 
 export const PASTE_MIN_CHARS = 40;
+export const PASTE_LONG_CHARS = 200; // roughly a full paragraph-length answer
 
-/** Event for one paste, or null if it is too short to matter. */
+/** Event for one paste ("paste_detected" or, from PASTE_LONG_CHARS, "paste_long"), or null if too short. */
 export function pasteEvent(text, tMs, minChars = PASTE_MIN_CHARS) {
   const n = (text || "").trim().length;
   if (n < minChars) return null;
-  return { event_type: "paste_detected", t_ms: Math.max(0, Math.round(tMs)) };
+  return { event_type: n >= PASTE_LONG_CHARS ? "paste_long" : "paste_detected", t_ms: Math.max(0, Math.round(tMs)) };
 }
 
 const isAnswerField = (el) => !!el && (el.tagName === "TEXTAREA" || el.isContentEditable
@@ -26,8 +28,10 @@ export class PasteGuard {
       const ev = pasteEvent(e.clipboardData?.getData("text") || "", this.now(), this.minChars);
       if (!ev) return;
       this.onEvent?.(ev);
-      this.onWarning?.({ type: "paste_detected",
-        message: "Pasted text was noticed in your answer. Please answer in your own words." });
+      if (ev.event_type === "paste_long") { // a short paste isn't worth interrupting the candidate for
+        this.onWarning?.({ type: "paste_long",
+          message: "A long pasted text was noticed in your answer. Please answer in your own words." });
+      }
     };
   }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ObjectTracker, observeObjects } from "./objectMonitor";
-import { PASTE_MIN_CHARS, PasteGuard, pasteEvent } from "./pasteGuard";
+import { PASTE_LONG_CHARS, PASTE_MIN_CHARS, PasteGuard, pasteEvent } from "./pasteGuard";
 import { FullscreenTracker, ScreenGuard, secondDisplayEvent } from "./screenGuard";
 
 const det = (name, score) => ({ categories: [{ categoryName: name, score }] });
@@ -11,15 +11,20 @@ describe("paste detection", () => {
     const ev = pasteEvent("x".repeat(PASTE_MIN_CHARS), 1234.6);
     expect(ev).toEqual({ event_type: "paste_detected", t_ms: 1235 });
     expect(JSON.stringify(ev)).not.toContain("xxx");
+    expect(pasteEvent("y".repeat(PASTE_LONG_CHARS), 0).event_type).toBe("paste_long");
   });
 
-  it("only watches answer fields", () => {
+  it("only watches answer fields, and only interrupts the candidate for long pastes", () => {
     const onEvent = vi.fn();
-    const g = new PasteGuard({ now: () => 500, onEvent });
-    const text = "a".repeat(80);
-    g._paste({ target: { tagName: "TEXTAREA" }, clipboardData: { getData: () => text } });
-    g._paste({ target: { tagName: "DIV", isContentEditable: false }, clipboardData: { getData: () => text } });
+    const onWarning = vi.fn();
+    const g = new PasteGuard({ now: () => 500, onEvent, onWarning });
+    const paste = (tagName, text) => g._paste({ target: { tagName }, clipboardData: { getData: () => text } });
+    paste("TEXTAREA", "a".repeat(80));
+    paste("DIV", "a".repeat(80));
     expect(onEvent).toHaveBeenCalledTimes(1);
+    expect(onWarning).not.toHaveBeenCalled();
+    paste("TEXTAREA", "b".repeat(300));
+    expect(onWarning).toHaveBeenCalledWith(expect.objectContaining({ type: "paste_long" }));
   });
 });
 

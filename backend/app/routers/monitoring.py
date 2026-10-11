@@ -89,6 +89,8 @@ def give_consent(session_id: int, body: MonitoringConsentIn, user: User = Depend
         f = {k: False for k in f}
     if not f["camera"]:  # camera features need the camera
         f.update(face_presence=False, multiple_faces=False, attention=False)
+        if "objects" in f:
+            f["objects"] = False
     if get_setting(db, "monitoring_camera_required") and (not f["camera"] or body.camera_permission != "granted"):
         raise HTTPException(403, "This assessment requires the camera. It cannot start without camera access. "
                                  "If you cannot use a camera, contact your placement cell for an alternative.")
@@ -127,6 +129,8 @@ def report_events(session_id: int, body: IntegrityEventsIn, user: User = Depends
     if s.status != "in_progress" and not (done_at and datetime.now(timezone.utc) - done_at < LATE_EVENTS_GRACE):
         raise HTTPException(400, "This interview is already finished")
     have = db.scalar(select(func.count(IntegrityEvent.id)).where(IntegrityEvent.session_id == s.id)) or 0
+    long_pastes = db.scalar(select(func.count(IntegrityEvent.id)).where(
+        IntegrityEvent.session_id == s.id, IntegrityEvent.event_type == "paste_long")) or 0
     stored = 0
     for e in body.events:
         if have + stored >= MAX_EVENTS_PER_SESSION:
@@ -134,6 +138,9 @@ def report_events(session_id: int, body: IntegrityEventsIn, user: User = Depends
         if not features.get(integrity.EVENT_FEATURE.get(e.event_type, "camera")):
             continue  # only what the candidate agreed to is recorded
         level, sure = integrity.severity(e.event_type, e.duration_ms, e.confidence)
+        if e.event_type == "paste_long":
+            level = integrity.paste_severity(level, long_pastes)
+            long_pastes += 1
         db.add(IntegrityEvent(session_id=s.id, event_type=e.event_type, t_ms=e.t_ms, duration_ms=e.duration_ms,
                               confidence=round(e.confidence, 3) if e.confidence is not None else None,
                               confidence_sufficient=sure, severity=level))
