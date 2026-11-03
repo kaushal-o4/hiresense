@@ -9,23 +9,19 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        database: [sqlite, postgres]
     services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: hiresense
-          POSTGRES_PASSWORD: hiresense
-          POSTGRES_DB: hiresense
-        ports: ["5432:5432"]
+      mongodb:
+        image: mongo:8
+        ports: ["27017:27017"]
         options: >-
-          --health-cmd "pg_isready -U hiresense" --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping: 1})'" --health-interval 5s --health-timeout 5s
+          --health-retries 10
     defaults:
       run:
         working-directory: backend
+    env:
+      MONGODB_URL: mongodb://localhost:27017
+      SECRET_KEY: ci-only-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -37,20 +33,14 @@ jobs:
         run: |
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -r requirements.txt
-          pip install -r requirements-postgres.txt
-      - name: Unit and API tests (in-memory SQLite)
-        if: matrix.database == 'sqlite'
+      - name: Unit and API tests (MongoDB test database)
         run: python -m pytest tests -q
-      - name: Migrations on PostgreSQL
-        if: matrix.database == 'postgres'
+      - name: Seed a fresh database twice (must be repeatable)
         env:
-          DATABASE_URL: postgresql+psycopg://hiresense:hiresense@localhost:5432/hiresense
-          SECRET_KEY: ci-only-secret
+          MONGODB_DB: hiresense_ci
         run: |
-          alembic upgrade head
-          python -m app.seed --demo
-          alembic downgrade base
-          alembic upgrade head
+          python -m app.seed
+          python -m app.seed
 
   frontend:
     runs-on: ubuntu-latest

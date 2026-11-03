@@ -7,8 +7,8 @@ The full requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md).
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite, Tailwind CSS, Recharts, React Router |
-| Backend | Python FastAPI, SQLAlchemy 2, Alembic migrations |
-| Database | SQLite by default. PostgreSQL is supported by changing `DATABASE_URL`. |
+| Backend | Python FastAPI, a small MongoDB data layer (`backend/app/odm.py`, pymongo) |
+| Database | **MongoDB** (local Windows service by default; MongoDB Atlas works by changing `MONGODB_URL`). Uploaded files are stored on local disk in `backend/uploads/`. |
 | Auth | JWT in an httpOnly cookie (Bearer header also accepted). Argon2 password hashing. Role-based access is enforced on the backend. |
 | AI (text) | **Local** language model via [Ollama](https://ollama.com): `qwen3:4b` by default, with JSON-schema-constrained outputs. No API key is needed and no student data leaves the computer. |
 | AI (matching) | **Local** Sentence Transformers embeddings (`all-MiniLM-L6-v2`) + transparent skill rules |
@@ -20,7 +20,8 @@ The full requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
 ## 1. Run it (Windows, VS Code)
 
-You need **Python 3.12+** (`py --version`), **Node.js 20+** (`node --version`) and **Ollama** for the AI features (see section 2).
+You need **Python 3.12+** (`py --version`), **Node.js 20+** (`node --version`), **MongoDB Community Server** (runs as the
+Windows service "MongoDB" on `127.0.0.1:27017`) and **Ollama** for the AI features (see section 2).
 
 ### Easiest way
 Double-click **`start.bat`**. It checks Python, Node.js and Ollama, downloads the AI model on first run, opens the
@@ -37,7 +38,7 @@ On first setup the backend console prints a generated **admin password once**. C
 
 ### Automated tests
 `backend: .\venv\Scripts\python.exe -m pytest tests` and `frontend: npm test`. Once the project is on GitHub,
-`.github/workflows/tests.yml` runs both on every push, plus the database migrations against PostgreSQL.
+`.github/workflows/tests.yml` runs both on every push, with a MongoDB service container.
 
 ### Manual way (two VS Code terminals)
 
@@ -50,8 +51,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu   # first tim
 pip install -r requirements.txt       # first time only
 pip install --no-deps kokoro==0.7.16  # first time only (voice; see section 2b)
 copy .env.example .env                # first time only, then edit it
-alembic upgrade head                  # create/upgrade database tables
-python -m app.seed --demo             # admin + defaults (+ demo accounts)
+python -m app.seed                    # indexes, admin account, badges, question bank (safe to re-run)
 uvicorn app.main:app --reload --port 8000
 
 # Terminal 2 - frontend
@@ -65,11 +65,13 @@ npm run dev
 | Role | Email | Password |
 |---|---|---|
 | Admin | admin@hiresense.app | Generated on first seed and printed **once** in the console (or `ADMIN_PASSWORD` in `backend/.env` if you set one) |
-| Student (demo) | student@demo.hiresense | Demo@12345 |
-| Mentor (demo) | mentor@demo.hiresense | Demo@12345 |
-| Recruiter (demo) | recruiter@demo.hiresense | Demo@12345 |
 
-The demo accounts are empty, with no fake scores or activity. The `--demo` flag creates them; leave it out in production. The backend logs a security warning at startup while any admin account still uses the old published password `Admin@12345`.
+There are **no demo accounts or sample users**. Students and recruiters register on the sign-up page (recruiters can be
+set to need admin approval); the admin creates mentor accounts in *Admin → Users*. The seed only adds the platform's
+reference data: interview categories and question bank, rubrics, badges, reward rules, challenges and four starter
+assessments. The backend logs a security warning at startup while any admin account still uses the old published password `Admin@12345`.
+
+**Lost the admin password?** From `backend/` run `venv\Scripts\python -m app.reset_admin` to generate and print a new one, or `venv\Scripts\python -m app.reset_admin "YourNewPassword"` to set your own.
 
 **Forgot password:** the sign-in page has a "Forgot password?" link. With email set up (`SMTP_*` in `backend/.env`), the reset link is emailed. Without email, the link is printed in the backend console so the placement office can pass it on. Links expire after 30 minutes and work only once.
 
@@ -77,7 +79,7 @@ The demo accounts are empty, with no fake scores or activity. The `--demo` flag 
 
 ---
 
-## 2. Turn on the AI features (local, free, private)
+## 2. Turn on the AI features (local, free, private - or Gemini, see 2a)
 
 All AI runs on your own computer. Nothing is sent to an outside AI service, and there is no API key.
 
@@ -109,6 +111,12 @@ A GPU is not required. On the test laptop, Ollama split the model between the GP
 The first request after starting loads the model and takes 30–70 s longer. `OLLAMA_KEEP_ALIVE=30m` keeps it loaded afterwards.
 Requests are processed one at a time (`AI_MAX_CONCURRENT=1`) so a laptop doesn't run out of memory.
 
+### Per-task models (2026-10-25)
+`OLLAMA_MODEL_FAST` / `OLLAMA_MODEL_STRONG` route tasks to different models (`services/model_router.py`); empty = `OLLAMA_MODEL`.
+Measured on this laptop: `qwen3:1.7b` for English chat takes ~2 s per turn instead of ~22 s, but it scores answers far too
+generously, so only chat uses it. Switching models costs 5-8 s on a 4 GB GPU. Details: `docs/PERFORMANCE_BASELINE.md`.
+Health checks: `/api/health/live`, `/api/health/ready`. English replies stream from `POST /api/student/english/{id}/message/stream`.
+
 ### How each feature works
 * **Resume analysis**: PDF/DOCX text → local model (resume text wrapped in tags, with an instruction to ignore any instructions inside it) → JSON validated against a schema (one retry if invalid).
   Then **every skill, project, employer, certification and the name is checked against the resume text**, and anything not found is removed.
@@ -134,6 +142,31 @@ The app still runs, but it never fakes AI results:
 
 Each user is limited to `AI_DAILY_LIMIT_PER_USER` AI calls per day (default 200). Admins can switch all AI off under **Settings → ai_features_enabled**.
 The admin **AI usage** log records the status, latency and token counts of each call, never the resume or answer text.
+
+## 2a. Gemini API (fast, hosted) - default provider since 2026-10-29
+
+`LOCAL_AI_PROVIDER=gemini` in `backend/.env` sends every language-model call to Google Gemini instead of the local
+Ollama model. Speech (Kokoro/Whisper), embeddings and camera monitoring still run on this computer.
+
+**Privacy:** with Gemini, prompts containing resumes and interview/English answers are sent to Google. Use
+`LOCAL_AI_PROVIDER=ollama` if that is not acceptable (e.g. no consent from students).
+
+Setup:
+1. Create a key at https://aistudio.google.com/apikey
+2. Put it in `backend/.env`: `GEMINI_API_KEY=...` (never commit this file), then restart the backend.
+3. Admin > Monitoring shows `Model: ... (gemini)` and "Gemini API: running".
+
+How it stays fast and reliable (`backend/app/services/gemini_llm.py`, plugged into `local_llm.chat_json`):
+- `GEMINI_MODEL=gemini-flash-latest` (Google's alias for the newest Flash). If the key can't use the configured
+  model, the newest stable Flash model it can use is picked automatically. Per-task tiers: `GEMINI_MODEL_FAST/_STRONG`.
+- Thinking is turned down (`GEMINI_THINKING=minimal`) - the app asks for JSON with a schema, so it isn't needed.
+- Replies are streamed, so the interviewer starts speaking at the first sentence.
+- Rate limits (429) and Google errors (5xx) / network drops are retried up to `GEMINI_RETRIES` times with backoff.
+- Up to `GEMINI_MAX_CONCURRENT` requests run in parallel (Ollama: 1), and background feedback no longer waits behind
+  the candidate's turn.
+- `AI_FALLBACK_TO_OLLAMA=true`: no key, no internet or quota used up -> the same request is answered by the local
+  Ollama model (only if nothing was streamed yet). Admin > Monitoring shows when the fallback is in use.
+- Tests never call Gemini (`tests/conftest.py` forces Ollama); `tests/test_gemini.py` uses a fake HTTP client.
 
 ## 2b. Live voice interview (animated AI interviewer)
 
@@ -186,7 +219,8 @@ examples), and for every question type when the model itself says the answer doe
 ### Privacy
 * The microphone opens only after you press **I agree – start the interview**. It is open only while it is your turn (red "Recording" badge), and it is released between answers. It is never on while Aria speaks (the state machine blocks it).
 * Audio is sent only to this app's backend, transcribed in memory and **not stored**. Only the text you submit is saved.
-* The camera is optional, off by default, only shown to you, and never recorded or uploaded.
+* The camera is used only for the disclosed interview monitoring (§2e): analysed in your browser, never recorded or
+  uploaded; only short event records are stored.
 * The old text-mode voice input (Web Speech API) sends audio to Google/Microsoft in Chrome/Edge. The live interview does **not** use it.
 
 ### State machine (`frontend/src/voice/interviewMachine.js`)
@@ -296,16 +330,320 @@ sessions keep the plain chat page.
 - Measured on this laptop (no browser running): transcription ~4 s and Aria's reply ~15 s. In the headless E2E,
   each step is 3-10x slower because Chromium renders the 3D avatar on the CPU.
 
+## 2e. Interview speed, response modes and camera monitoring (2026-10-11)
+
+### What made the interviewer slow (measured, `tests_perf/`)
+| Bottleneck found | Fix |
+|---|---|
+| **`localhost` on Windows**: every connection to Ollama tried IPv6 first and waited **~2.1 s** (and the 2 s status check could time out) | Ollama URL uses `127.0.0.1`; one kept-alive HTTP connection (`services/local_llm.py`) |
+| **Token generation** is the slow part (~17-25 tokens/s, model split between the 4 GB GPU and CPU); prompt reading is 0.1-0.6 s | shorter questions (Fast mode), compact history, an unused scoring field removed, tighter output limits |
+| Speech waited for the **whole** question and the **whole** audio | `/turn` streams: each finished sentence is synthesised and played while the rest is written |
+| **Cold model**: first AI call 64 s | model, voice and transcription loaded at server start and again from the setup screen (`POST /api/voice/warmup`); first question written while the student does the setup |
+| **Background feedback** (~350 tokens) competed with the next turn (one spoken sentence took 122 s in a browser run) | priority gate: candidate-facing work goes first, background generation pauses during turns, speech and transcription, and resumes later |
+| Long first sentence → long synthesis before any sound | the first sentence is synthesised in two parts at a natural comma |
+
+### Before / after (real models, this laptop)
+| Step | Before (p50 / p95) | After, Fast mode (p50 / p95) |
+|---|---|---|
+| First AI call after start (model load) | 63.9 s | 4.7 s (preloaded) |
+| Write a question | 8.4 s / 9.1 s | 4.1 s / 4.5 s |
+| First spoken sentence of the question ready | (whole question only) | 2.8 s / 3.1 s |
+| Score an answer | 10.6 s / 27.6 s | 3.3 s / 3.4 s |
+| Server: answer → next question complete | 19.0 s / 36.1 s | 7.4 s / 7.7 s |
+| Server: answer → first sentence ready for speech | — | 6.1 s / 6.4 s |
+| TTS of the first sentence | (whole question 5.0 s) | 1.2 s |
+| Browser E2E: Start → first interviewer audio | (≈ cold model + TTS) | 1.0-1.2 s |
+| Browser E2E: answer submitted → next question audible | — | 10.8-15.0 s |
+Coaching mode: first sentence ready 2.1 s (spoken feedback comes first), whole reply 6.5 s.
+Re-measured after the coverage-plan question generator was added (more metadata per question): first spoken
+sentence 2.6 s and answer → first sentence 6.3 s (unchanged), whole question 7.5 s, answer → question complete 11.0 s
+(`tests_perf/results/final_fast.json`). Numbers vary with what
+else the laptop is doing; the 1-3 s target is not reachable for a full turn with `qwen3:4b` on this hardware
+(scoring alone generates ~50 tokens ≈ 3 s). Re-measure with `tests_perf\bench_interview_latency.py`.
+Headless Chromium **without a GPU** renders the 3D avatar on the CPU and makes every step 3-10x slower; use
+`HS_E2E_GPU=1` (or `HS_E2E_NO_WEBGL=1`) for representative E2E timings.
+
+### Response modes (chosen on the start form)
+* **Fast interview**: one short question (~25 words), first sentence of the greeting only, a short cached spoken
+  acknowledgement (since 2026-10-25; see below),
+  detailed feedback written in the background and shown at the end.
+* **Coaching**: 1-2 spoken sentences of feedback before each question (what was good, what was missing, an English
+  phrasing tip when communication < 6/10), hints for every interviewer, 50% more answer time, longer pause before the
+  microphone stops, written coaching notes after each answer.
+
+### Speech recognition
+End of answer = a pause of **2.0 s** (Fast) / **3.0 s** (Coaching) after at least 1.2 s of speech, adjustable in the room
+settings (0.6-4 s). A 1.0 s default was tried and measured: an ordinary pause between two spoken sentences reads as
+1.3-2 s of silence to the detector (soft sentence endings fall below its level threshold), so answers were cut off
+after the first sentence (`tests_e2e\partial_transcript_check.py`). Long answers are cut into pieces at natural pauses and transcribed while the student is still
+talking ("Heard so far"), so only the last piece is transcribed after they stop. **Continue speaking** appends to the
+transcript; **Send automatically** is an optional setting (off by default).
+
+**Live transcription (2026-10-29).** Speech recognition now uses **faster-whisper** (CTranslate2, int8, greedy) instead
+of the transformers pipeline (`STT_ENGINE=faster`, falls back to `transformers` if the package is missing). Measured on
+this laptop's CPU with `tests_perf\bench_stt.py` (Kokoro-voiced answers, base.en):
+
+| clip | transformers | faster-whisper | faster-whisper small.en |
+|---|---|---|---|
+| 9 s answer | 2.3 s | **0.7 s** | 2.0 s |
+| 16 s answer | 4.2-4.9 s | **0.8 s** | 2.3 s |
+
+small.en was no more accurate on these clips, so base.en stays the default. The room now behaves like a live interviewer:
+- **Live captions** - the unfinished piece of the answer is transcribed about every 1.2 s while the student talks (one
+  request at a time, `live=true`, own rate limit) and shown under "Heard so far".
+- **No wait after the pause** - when the latest live caption already reaches the end of the speech, its text is the
+  final text, so nothing is transcribed after the student stops (`client.stt_roundtrip` metric has `reused_live`).
+- **Sent automatically** - the answer goes to the interviewer as soon as the end-of-answer pause is detected (setting
+  "Send my answer automatically", now on by default; turn it off to check the text first).
+- The current question is given to Whisper as context, so technical words come out right ("FastAPI", not "Fast API").
+
+`tests_e2e\partial_transcript_check.py` (fake microphone, 3-sentence answer): 18 caption updates in 27 s, all sentences
+in order, **transcript ready 0.0 s after recording stopped** (was: the last piece's transcription, ~2-5 s). The 2 s
+end-of-answer pause itself is unchanged (shorter pauses cut answers off, see above).
+
+### Camera monitoring (disclosed, on-device)
+* Setup screen before every live interview: what is monitored and why, processed **in the browser** (MediaPipe Face
+  Landmarker, model served from `public/models`), nothing stored except event records, retention (default 90 days,
+  setting `monitoring_retention_days`), who can see it, how to stop. Separate opt-ins; permissions are requested only
+  when the student presses **Test my camera and microphone**; camera preview with face/lighting/framing guidance.
+* **Camera required by default** (`monitoring_camera_required` = true, admin → Settings): camera, face visibility
+  and multiple-face checks are mandatory; approximate gaze/head direction and tab-focus changes stay optional.
+  Without camera access the interview does not start and the student is told why.
+* Signals: face not visible, more than one face, sustained looking away (approximate), camera blocked/dark, low light,
+  camera disconnected, permission revoked, tab/window focus changes, monitoring stopped/unavailable. Grace periods,
+  hysteresis and frame-agreement confidence (`src/monitoring/signalTracker.js`); neutral warnings only.
+* Severity is assigned by the server (`services/integrity.py`); gaze is never above "low", and low-confidence signals
+  stay "info". Events **never change scores** and never trigger a penalty.
+* Review: admin → AI & Monitoring → **Interview integrity**; mentors only with the extra permission
+  `review_integrity` and only for students they can access; recruiters: only completed interviews of their own applicants (see §2g). Views and reviews are audit-logged.
+  Students see their events after the interview and can add an explanation.
+* Media handling: one camera stream, self-view always marked "Camera on", **Stop monitoring** turns it off at once,
+  everything is stopped when the interview ends or the page is left. Frames and audio are never sent to other services.
+
+### Performance dashboard
+Admin → AI & Monitoring → **Performance**: count, failures, average, p50, p95 and max per step (LLM with
+load/prompt/generation split, TTS, STT, whole turn, and browser-measured waiting times). Only timings are stored
+(`perf_metrics` table), never content. `PERF_METRICS_ENABLED=false` turns it off.
+
+### Smoother avatar, faster speech (2026-10-25)
+Measured on this laptop (real models; browser E2E `latency_monitoring_browser.py` with `HS_E2E_GPU=1` and a frame probe).
+| Cause found | Fix |
+|---|---|
+| `num_ctx` 8192 left 45% of `qwen3:4b` on the CPU (Ollama keeps ~1 GB VRAM spare), so generation was slow **and** Kokoro TTS, also on the CPU, slowed down beside it (perf log: 7-25 s per sentence during live turns) | `OLLAMA_NUM_CTX=4096` (largest prompt ever logged: ~2,700 tokens) + `OLLAMA_NUM_GPU=99` (all layers on the GPU, ~3.1 GB VRAM; falls back to Ollama's own placement if loading fails). `MAX_RESUME_CHARS` 12000 → 9000 so a resume still fits. Warm-up reloads a model loaded with other settings |
+| Silence after Submit while the answer is scored | the interviewer's cached acknowledgement now plays in Fast mode too (first sound ~0.1 s after Submit) |
+| Avatar capped at 30 fps with uneven frame spacing (strict frame-time threshold) | Balanced = 60 fps (the Intel GPU Chrome uses holds it, p95 18 ms), jitter-tolerant pacing, shadow map redrawn every 3rd frame, no per-frame allocations; automatic step down (30 fps → lower resolution → no shadows) when frames run late |
+| Phone/notes detection blocked the page ~73 ms every second (4-5 dropped avatar frames each time) | runs in a Web Worker (`public/mediapipe/object-worker.js`; `vision_bundle.js` there is a copy of the npm package's file - update it with `wasm/` on upgrades) |
+| The mic worklet posted ~375 messages/s, each re-rendering the interview page | 1024-sample batches; the level meter updates at most ~12x/s |
+
+Server, Fast mode, p50 (`tests_perf/results/gpu_full_ctx4096.json`): answer → first sentence ready 6.3 s → **4.0 s**,
+answer → whole question 8.9 s → **5.7 s**, scoring 3.3 s → 2.4 s, question 5.8 s → 3.3 s, TTS first sentence 1.2 s →
+0.8 s, LLM 17 → 25 tokens/s. Avatar during the live interview: ~28 → ~70 fps (144 Hz display), frames > 50 ms late per
+phase 10-21 → 0-4, p99 frame gap 55-107 ms → 18-37 ms. Still not tried with a real human camera/mic. If another
+program holds GPU memory, Ollama may fall back to partial GPU placement (logged as "loading with num_gpu=99 failed").
+
+## 2f. Interview intelligence and the English conversation companion (2026-10-11)
+
+No model was trained or fine-tuned. The same local `qwen3:4b` is used; what changed is the information it gets,
+the checks on what it returns, and per-personality behaviour configuration.
+
+**Why questions were generic or repeated (found in the code):** the prompt got project *names* only (no description,
+technologies or the candidate's part); repeats were detected by wording only (`difflib` + word overlap), so
+paraphrases passed; nothing recorded what each question had already covered; personalities differed mainly in prompt
+wording.
+
+**Interview engine** (`backend/app/services/interview_engine.py`, wired into `routers/interviews.py`):
+* *Candidate facts*: projects with description, technologies and role, internships, education, skills. The prompt
+  says these are the only experience the interviewer may refer to; missing details must be asked, not assumed.
+* *Answer signals* (deterministic): vague team answers ("we did it"), unmeasured claims ("improved performance"),
+  unexplained AI, very short, self-correction, partly unsure, "can you repeat the question". Each suggests the most
+  useful follow-up; the interviewer's `followup_preference` decides which one comes first.
+* *Coverage*: each stored question records `topic` (worked out in code from the resume) and `aspect` (one short
+  label from the model); the prompt lists what was explored and what is still open - guidance, not a script.
+* *Duplicates*, checked before a question is accepted: same wording; same request ("Tell me about / Explain /
+  Describe the hospital project" are one question); same meaning (MiniLM cosine >= 0.78, calibrated: paraphrases
+  0.81-0.94, different follow-ups on one project <= 0.69); same topic + aspect with similar wording. A clarifying
+  follow-up and "please repeat the question" are allowed.
+* *Retries*: live voice interviews 1 retry (each costs ~4 s while the candidate waits; anything already spoken is
+  retracted), text mode 2. Then a resume-grounded template ("Which part of X did you build yourself?"), then the
+  admin question bank, then general role questions - an interview never gets stuck. Rejection reason codes (never
+  text) are stored in the question's `meta`.
+* *Output checks*: stock praise ("Great answer!", "Excellent!") and greetings are removed, internal numbering
+  ("your answer for Q3"), metadata/JSON and over-long questions are rejected.
+* *Personalities* (`services/interviewers.py`): each has its own objective, traits (shown on the card), question
+  length limit, aspect order, follow-up preference, acknowledgement and transition style and prohibited behaviours.
+  Choosing Marcus shows a clear stress-interview notice. Scoring is still identical for every interviewer.
+
+**English conversation companion** (`services/english_companion.py`): a separate personality from the interviewers
+(Aria's avatar and voice, no interview pressure). Three learning modes chosen on the start screen:
+*Free conversation* (at most one on-screen tip, spaced out, never spoken), *English learning* (a short spoken "a more
+natural way to say that is...", then the conversation continues; the same correction is never repeated) and
+*Confidence* (short easy questions, 0.85x speech, 6.5 s before the turn ends, example answers). Topic changes such as
+"Actually, can we talk about movies?" are detected in code; if the model ignores one, the reply is regenerated.
+A compact memory (current/earlier topics, interests, details, questions asked, corrections given; sensitive details
+are never stored) is sent instead of the full transcript and shown as "What Aria remembers". Wrong corrections are
+filtered (British/American spelling, rewrites much longer than what was said, invented quotes).
+
+**Evaluation** (`backend/eval/scenarios.json`, `eval/run_eval.py`, real model, fictional resumes; results in
+`eval/results/`). Same 34 interview questions before and after; duplicates judged independently by MiniLM >= 0.75:
+
+| | before | after |
+|---|---|---|
+| near-duplicate question pairs | 9 | 3 (remaining pairs ask different sides of one project) |
+| follow-up responds to a vague answer (similarity >= 0.35) | 62% | 73% |
+| questions that mention the resume or role | 84% | 73% (behavioural questions rarely name the resume) |
+| robotic phrases / invalid model output | 0 / 0% | 0 / 0% |
+| English: replies follow the student's topic, incl. 2 topic switches | - | 100% (3 sessions) |
+
+Latency (`tests_perf/bench_interview_latency.py --mode fast`, Ollama idle): first spoken sentence 2.5 s
+(unchanged); whole question 5.8 s (was 4.1 s; the extra label and longer prompt); answer -> question complete 8.9 s.
+In text mode a turn where the model keeps repeating itself takes 17-25 s (3 attempts + template).
+
+**Known limits:** a 4B model still asks some similar questions in long interviews; aspect labels are coarse; the
+"resume mentions" metric is a keyword check; each eval was run once (no variance estimate); English "before"
+numbers were not measured because the old code could not be isolated from other work in progress.
+
+## 2g. Interview security module (2026-10-23)
+
+Extends the camera monitoring of §2e into one security module: more detectors, one event engine, a security summary,
+recruiter reports and admin settings. Everything in §2e still applies (disclosed, opt-in per feature, on-device,
+never changes scores). Code: `frontend/src/monitoring/*`, `backend/app/services/integrity.py`,
+`backend/app/routers/monitoring.py`, migration `c6f1a9e3d852`.
+
+### What is detected, and how
+| Category (`event_type`) | How | Where it runs |
+|---|---|---|
+| PROLONGED_LOOKING_AWAY (`attention_away`) | head yaw/pitch from MediaPipe's face transformation matrix + eye-direction blendshapes, measured **from the candidate's own calibrated position**; recorded after 3 s, reminder after 8 s; brief glances are not recorded; not judged in low light | browser |
+| EYE_GAZE_DEVIATION (`attention_repeated`) | 5 recorded deviations within 120 s = one event (then counting restarts) | browser |
+| FACE_NOT_DETECTED / FACE_PARTIALLY_VISIBLE | no face for 4 s+ / face cut by the frame edge for 10 s+ (grace periods, hysteresis, frame agreement) | browser |
+| MULTIPLE_FACES_DETECTED | 2+ faces for 3 s+, with the largest count seen; nobody is identified | browser |
+| BROWSER_TAB_SWITCH, FULLSCREEN_EXIT, SECOND_DISPLAY, PASTE | Page Visibility / blur, Fullscreen API, `screen.isExtended`, paste events (§2e) | browser |
+| POSSIBLE_BACKGROUND_SPEECH (`background_speech`) | while the microphone is open **for the answer**: voiced audio (RMS level only) for 4 s+ while the one visible face's mouth (jawOpen) does not move → "uncertain"; nothing is reported when it cannot be attributed (no face / several faces) | browser |
+| MICROPHONE_DISCONNECTED, CAMERA_DISCONNECTED, PERMISSION_REVOKED | track `ended`/`mute`, getUserMedia errors, Permissions API | browser |
+| NETWORK_INTERRUPTION | `offline`/`online` events + failed event uploads; one event per outage (2 s+) | browser |
+| SESSION_RECONNECTED | the candidate accepted the notice again for the same interview (page reload) - **recorded by the server** | server |
+| INTERVIEW_PAUSED | pause/resume in the room, with the reason (manual / admin pause rule) | browser |
+| POSSIBLE_IDENTITY_MISMATCH | **not implemented** - see limitations | - |
+
+The interviewer is excluded from audio checks by design: the microphone is closed while the interviewer speaks, echo
+cancellation is on, and nothing is analysed between answers. No audio is recorded or uploaded for these checks (the
+answer itself is transcribed as before, §2b).
+
+**Calibration**: the setup screen asks the candidate to sit comfortably, centre their face, look at the screen and
+check the light, then offers *Calibrate now* (5 s). The median head/eye position becomes the baseline, so a camera
+beside the screen or a different posture is not "looking away". If it is skipped, calibration runs during the first
+5 s of the interview. A clearly turned baseline produces a hint to recalibrate (not an error - side cameras are fine).
+
+### Event engine (one path for every detector)
+`InterviewMonitor` → `EventReporter` → `POST /api/student/interviews/{id}/integrity-events` → `integrity_events`.
+* Each event: type, controlled category, interview-relative start (`t_ms`), duration, confidence (frame agreement),
+  whitelisted `details` (`max_faces`, `cause` head/eyes, `edge`, `count`, `reason`), server-assigned severity,
+  detection source, review status/notes. API responses add wall-clock `start_timestamp`/`end_timestamp` (the interview
+  clock starts at the first consent and **continues across reloads**).
+* Consecutive frames are merged into one episode; nothing is sent per frame. Batches every 8 s (or 10 events).
+* Duplicates: every event has a `client_event_id`; retries and page-close flushes are stored once (unique index).
+* Unsent events survive a reload/crash (sessionStorage) and are flushed on `pagehide` with a keepalive request.
+* Server checks: own interview only, consented feature only, interview in progress (3 min grace after finishing), not
+  later than the interview clock allows, 50 events per request, 500 per interview, 30 requests/min per interview.
+* Reviews never change detected fields; each review is appended to `integrity_reviews` (history visible to admins).
+
+### Security summary (risk score)
+`integrity.risk_summary`: rules count related **events** (not frames), multiply by a configurable weight, and are
+capped per rule. Defaults: repeated/very long gaze 1, face absent 15 s+ 2, every 3 tab switches (or one 30 s+) 2,
+second face 5 s+ 3, every 2 possible additional voices 1, phone 10 s+ 2, long paste 1, fullscreen exit 10 s+ 1,
+device interruptions 1. Bands: low ≥ 1, moderate ≥ 4, high ≥ 8. Low-confidence events and events a reviewer marked
+no concern / false positive are not counted. Labels are neutral ("Low/Moderate/High number of potential
+irregularities"); the response always lists the contributing events and how it was calculated. **These weights are
+illustrative engineering values, not validated against real data.** The summary is separate from interview scores
+and must never be the sole basis for rejection or any hiring decision.
+
+### Who sees what
+* Candidate: their own events, summary, review status (not reviewer notes); can add an explanation.
+* Admin: everything, plus review history. Admin → AI & Monitoring → *Interview integrity* and *Security settings*.
+* Mentor: with `review_integrity` and only for students they may access (§2e).
+* Recruiter (**new**): *Security Reports* page and a section on the candidate page - only **completed** interviews of
+  candidates who applied to one of their jobs, only if recruiter access was on **and disclosed when the candidate
+  consented** (not retroactive), and only while the admin setting is still on. Recruiters can mark events reviewed /
+  false positive / concern noted / further review requested, with notes. They never see consent configuration.
+
+### Admin security settings (`GET/PUT /api/admin/security-settings`, audit-logged with a diff)
+Detector switches (face, multiple faces, gaze, focus, full screen, paste, objects, audio), thresholds (frame rate,
+calibration time, gaze record/reminder time, yaw/pitch/eye limits, repeat count/window, face and multiple-face
+times, tab-switch minimum, audio minimum speech, minimum confidence), reminder cooldown (30 s), pause rule (pause when
+no face for N s, default off - the candidate resumes; never ends or fails an interview), severity caps per event type,
+risk weights and bands, recruiter access. Global switches stay in platform settings: `monitoring_enabled`,
+`monitoring_camera_required`, `monitoring_retention_days` (also editable on the same screen). Each interview stores a
+copy of the settings that applied at consent, so later changes affect new interviews only.
+
+### API (all existing paths kept)
+| Method | Path | Who |
+|---|---|---|
+| GET | `/api/monitoring/policy` | signed in (now includes thresholds, cooldown, pause rule) |
+| POST | `/api/student/interviews/{id}/monitoring/consent` | student (returns `elapsed_ms`; re-consent = reconnect) |
+| POST/GET | `/api/student/interviews/{id}/integrity-events` | student, own interview |
+| GET | `/api/monitoring/sessions?q=&date_from=&date_to=&category=&severity=&review_status=&status=&risk=` | admin, mentor*, recruiter* |
+| GET | `/api/monitoring/sessions/{id}` | admin, mentor*, recruiter* (report + summary + events) |
+| PATCH | `/api/monitoring/events/{id}` | admin, mentor*, recruiter* (status + notes only) |
+| GET/PUT | `/api/admin/security-settings` | admin |
+
+### Tests
+* `backend/tests/test_security_module.py` (20): own/other interview, duplicates, malformed events, too many events,
+  expired interview, future timestamps, rate limit, reconnect + clock, session events, admin-only settings with
+  validation/audit/caps/snapshot, monitoring switched off, recruiter access rules, review history, filters, risk.
+* `frontend/src/monitoring/security.test.js` (22): calibration, screen-facing / brief glance / prolonged / repeated /
+  flickering / low light / no face, partial face, multiple faces, brief dropout, audio attribution, tab switch,
+  network outage, reporter ids/retry/reload/429, reminder cooldown and pause rule. Detector inputs are simulated.
+* `backend/tests_e2e/security_module_browser.py`: real browser + real MediaPipe + real AI interviewer, fake camera
+  built from the app's synthetic 3D interviewer (frontal, head turned 45°, empty room, two faces) and fake microphone.
+  Checks reminders, stored events, reconnect, network outage, recruiter report/timeline/review. Result
+  2026-10-23: 22/22 (`output/security_module.json`, screenshots `output/sec_*.png`). Headless Chromium did not hide the
+  background tab, so the tab switch there is triggered with the real `visibilitychange` event.
+
+### How to try it yourself (real camera and microphone)
+1. Start the app, sign in as a student, start a live interview. Tick *Approximate head direction and gaze* and
+   *Possible additional voice*, press *Test my camera and microphone*, then *Calibrate now* while looking at the screen.
+2. Tick the notice and start. Turn your head away for ~10 s → reminder after ~8 s; leave the frame ~10 s; let a second
+   person appear briefly; switch tabs for a few seconds; switch Wi-Fi off for ~10 s; reload the page.
+3. While answering, play a voice from your phone without speaking yourself (mouth still) → possible additional voice.
+4. Finish, then check *Interview monitoring* on the report; as a recruiter of a job you applied to, open *Security
+   Reports*; as admin, *AI & Monitoring → Interview integrity* and *Security settings*.
+
+### Visual attention percentage (2026-10-25)
+A live "Visual attention" card (rolling 30 s, coverage, tracking status, Recalibrate) and an "Estimated visual attention" section in
+the candidate's, admin's, mentor's and recruiter's monitoring report (overall %, coverage, away time, timeline). Time-based, unobserved
+time kept separate, never changes scores. Details, formula, API, tests and limits: `docs/ATTENTION_MONITORING.md`.
+
+### Known limitations (read before relying on it)
+* **Not tested with a real human camera or microphone** in this session - only with synthetic faces and recorded audio.
+  Thresholds need tuning on real sessions (glasses, beards, masks, poor webcams, different skin tones and lighting).
+* Gaze is approximate (head pose + eye blendshapes). It cannot tell what someone looks at; looking away is normal while
+  thinking. It is never above "low" severity.
+* Additional-voice detection is a heuristic (one microphone cannot separate speakers). A beard, mask, face partly out
+  of view or a quiet candidate can cause false signals; speech between answers is not checked.
+* **Identity continuity is not implemented**: it would need face recognition / biometric templates, which this
+  platform deliberately does not create. The category exists in the taxonomy; there is no detector.
+* A web page cannot see other applications, other devices, other tabs' content, or AI tools; it cannot enforce
+  lock-down. A modified browser can suppress or forge events - events are signals, the server validates what it can.
+* No evidence images are captured (the least intrusive option): reports contain event metadata only.
+* Typed interviews (`/student/interviews/:id`) now show the same notice/device check (`InterviewSetup typed`) and run the same detectors via `monitoring/useTypedMonitoring.js` (no microphone / additional-voice check). Browser E2E `tests_e2e	yped_monitoring_browser.py` passes 14/14 (2026-10-25; Chromium's fake camera shows a test pattern, so it checks the wiring - notice, consent, status bar, self-view, stored `focus_change` event, reconnect - not face detection).
+* Not built, on purpose: evidence images (metadata only) and face-recognition identity matching (see above).
+
+---
+
 ## 3. Tests
 
 ```powershell
 cd backend
-.\venv\Scripts\python.exe -m pytest -q                         # 95 automated tests, ~1.5 min, MOCKED models
+.\venv\Scripts\python.exe -m pytest -q                         # 288 automated tests, ~1.5-3 min, MOCKED models, MongoDB test DB
 .\venv\Scripts\python.exe -m pytest tests_integration -s -v    # 9 tests with the REAL local models (LLM, embeddings, TTS, STT), ~3-4 min
 .\venv\Scripts\python.exe -m ml.train_question_classifier      # retrain + evaluate the ML component
 .\venv\Scripts\python.exe tests_e2e\voice_interview_browser.py # full voice interview in a real browser (needs servers running + playwright)
 .\venv\Scripts\python.exe tests_e2e\english_avatar_browser.py  # English practice with Aria: local voice pass + browser voice pass
-cd ..\frontend; npm test                                       # 27 frontend tests (state machines, lip sync, recorder)
+.\venv\Scripts\python.exe tests_perf\bench_interview_latency.py --runs 6 --mode fast   # stage latencies, real models
+.\venv\Scripts\python.exe tests_e2e\latency_monitoring_browser.py   # streamed interview + camera monitoring (set HS_E2E_GPU=1)
+.\venv\Scripts\python.exe tests_e2e\face_video_check.py             # face visible / two faces / off-centre, synthetic face video
+.\venv\Scripts\python.exe tests_e2e\partial_transcript_check.py     # live partial transcript, no cut-off at sentence pauses
+.\venv\Scripts\python.exe tests_e2e\security_module_browser.py    # security module (§2g): gaze/face/two faces/voice/tab/offline/reload + recruiter report
+cd ..\frontend; npm test                                       # frontend tests (state machines, lip sync, recorder, speech queue, monitoring)
 ```
 `tests_e2e/voice_interview_browser.py` drives Chromium with a **fake microphone** that plays a spoken answer, and
 runs the whole cycle with the real local models. It checks that audio plays, the mouth moves, the mic stays off
@@ -330,20 +668,33 @@ The original tests cover:
 - Assessment grading and answer secrecy
 - Admin settings and rubric validation
 
-Tests use an in-memory database and never call the real AI.
+Tests use the MongoDB database `hiresense_test` on the local server (emptied before every test, never the app's
+`hiresense` database) and never call the real AI. `tests/test_odm.py` checks the data layer's SQL-style semantics:
+unique constraints, ON DELETE cascades, rollback, joins, GROUP BY, NULL handling and ordering.
 
 ---
 
-## 4. Switching to PostgreSQL
+## 4. Database (MongoDB) and file storage
 
-```powershell
-cd backend
-pip install -r requirements-postgres.txt
-# in .env:
-DATABASE_URL=postgresql+psycopg://USER:PASSWORD@localhost:5432/hiresense
-alembic upgrade head
-python -m app.seed
+Settings in `backend/.env`:
+
 ```
+MONGODB_URL=mongodb://127.0.0.1:27017     # or mongodb+srv://user:password@cluster.example.net for Atlas
+MONGODB_DB=hiresense
+UPLOAD_DIR=                                # optional; default backend/uploads
+```
+
+- One collection per model in `backend/app/models.py`; ids are integers from the `_counters` collection.
+- No migrations are needed: indexes and unique constraints are created at startup (`database.init_db()`), and a
+  field added to a model later simply gets its default when older documents are read.
+- `ON DELETE CASCADE / SET NULL` rules declared on the models are applied by the data layer, so deleting a user
+  removes their resumes, interviews, applications, etc.
+- Uploaded resumes are files on local disk under `backend/uploads/<user id>/`; MongoDB stores only the path.
+- **Backup:** `GET /api/admin/backup` (admin only, e.g. from http://127.0.0.1:8000/docs) returns a zip with every collection as MongoDB Extended JSON
+  (restore one with `mongoimport --db hiresense --collection <name> --file <name>.json --jsonArray`), or run
+  `mongodump --db hiresense`. Copy `backend/uploads/` as well.
+- The old SQLite files (`backend/hiresense*.db`) are no longer used and were not imported (they held test and demo
+  data: the admin and the three demo accounts with their test interviews). Delete them once you no longer need them.
 
 ---
 
@@ -354,7 +705,9 @@ backend/
   app/
     main.py            FastAPI app, error logging, security headers
     config.py          settings from .env
-    models.py          all database tables (users, profiles, resumes, interviews, english,
+    database.py        MongoDB connection, sessions, index setup
+    odm.py             MongoDB data layer with a SQLAlchemy-style API (select/where/join, Session)
+    models.py          all collections (users, profiles, resumes, interviews, english,
                        assessments, progress, rewards, jobs, applications, mentoring,
                        notifications, audit/AI/error logs, settings)
     schemas.py         request validation
@@ -375,7 +728,6 @@ backend/
     routers/           auth, common, students, interviews, english, assessments,
                        jobs (student + recruiter), mentors, admin
     seed.py            admin, badges, reward rules, categories, question bank, rubrics
-  alembic/             migrations
   ml/                  training data, training script, saved model, metrics (see ml/README.md)
   tests/               pytest suite (mocked models)
   tests_integration/   checks with the real local models
@@ -427,7 +779,7 @@ FastAPI generates interactive docs at **http://127.0.0.1:8000/docs** (Swagger) a
 - Job management, eligibility checks, applications, status history, interview scheduling, candidate search, explainable AI matching and comparison
 - Mentoring: feedback, private notes, improvement plans, auto-tracked goals, follow-up sessions, struggling-student detection, and comparative charts
 - Admin analytics, user management, configuration, flagged-activity review, AI quality and usage monitoring, application error log, audit log, and CSV placement report
-- Alembic migrations, a seed script, a `.env` configuration, and 19 automated tests
+- MongoDB storage, a seed script, a `.env` configuration, and 288 automated tests
 
 ## 9. Known limitations
 
@@ -443,4 +795,4 @@ FastAPI generates interactive docs at **http://127.0.0.1:8000/docs** (Swagger) a
 - Notifications are in-app only and update every 30 seconds. No emails or SMS are sent.
 - Login lockout and rate limiting are tracked in memory per server process. For multi-server production, use Redis or similar.
 - The frontend has no automated UI tests; the backend API is covered by pytest.
-- For production: set a strong `SECRET_KEY` and `COOKIE_SECURE=true`, serve over HTTPS behind a reverse proxy, and use PostgreSQL.
+- For production: set a strong `SECRET_KEY` and `COOKIE_SECURE=true`, serve over HTTPS behind a reverse proxy, and enable MongoDB authentication (a user and password in `MONGODB_URL`).

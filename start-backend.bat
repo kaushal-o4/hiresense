@@ -10,6 +10,6 @@ if not exist venv (
 )
 where ollama >nul 2>nul || echo WARNING: Ollama is not installed - AI features will be unavailable. See README section 2.
 if not exist .env copy .env.example .env
-venv\Scripts\alembic.exe upgrade head
-venv\Scripts\python.exe -m app.seed --demo
+sc query MongoDB | findstr RUNNING >nul || (net start MongoDB >nul 2>nul || echo WARNING: the MongoDB service is not running. Install MongoDB Community Server or start the "MongoDB" service.)
+venv\Scripts\python.exe -m app.seed
 venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload

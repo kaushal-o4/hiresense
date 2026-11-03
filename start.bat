@@ -5,6 +5,7 @@ cd /d "%~dp0"
 
 where py >nul 2>nul || where python >nul 2>nul || (echo ERROR: Python is not installed. Get it from https://www.python.org/downloads/ & pause & exit /b 1)
 where node >nul 2>nul || (echo ERROR: Node.js is not installed. Get it from https://nodejs.org/ & pause & exit /b 1)
+sc query MongoDB >nul 2>nul || (echo ERROR: MongoDB is not installed. Get MongoDB Community Server from https://www.mongodb.com/try/download/community & pause & exit /b 1)
 
 where ollama >nul 2>nul
 if errorlevel 1 (
