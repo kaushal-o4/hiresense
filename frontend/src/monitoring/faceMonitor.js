@@ -25,7 +25,9 @@ async function loadLandmarker() {
 export class FaceMonitor {
   /** onFrame({faces, light, t}) every analysed frame; onError(message) if analysis stops working. */
   constructor({ fps = 4, onFrame, onError } = {}) {
-    this.interval = 1000 / fps;
+    this.base = 1000 / fps;
+    this.interval = this.base; // adaptive: grows (up to 3x) when analysis is slow on this device, so the AI
+    this.cost = 0; // interviewer, voice and page stay responsive; shrinks back when the device has room again
     this.onFrame = onFrame;
     this.onError = onError;
     this.timer = null;
@@ -62,12 +64,21 @@ export class FaceMonitor {
     try {
       const result = this.landmarker.detectForVideo(v, t);
       this.failures = 0;
-      this.onFrame?.({ faces: analyzeFaces(result), light, t });
+      this._adapt(performance.now() - t);
+      this.onFrame?.({ result, faces: analyzeFaces(result), light, t });
     } catch (e) {
       this.failures += 1;
       if (this.failures === 10) this.onError?.(`Face analysis stopped working (${e.message || e}).`);
     }
   }
+
+  _adapt(ms) {
+    this.cost = this.cost ? this.cost * 0.8 + ms * 0.2 : ms;
+    if (this.cost > this.interval * 0.4) this.interval = Math.min(this.base * 3, this.interval * 1.5);
+    else if (this.cost < this.interval * 0.15 && this.interval > this.base) this.interval = Math.max(this.base, this.interval / 1.25);
+  }
+
+  get fps() { return Math.round((1000 / this.interval) * 10) / 10; }
 
   stop() {
     this.running = false;

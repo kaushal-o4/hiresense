@@ -1,9 +1,12 @@
+/* Every practice activity (interviews, English, assessments) in one filterable list (GET /student/history). */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { get } from "../../api";
 import { Card, ErrorBox, PageHeader, Pill, Spinner, Table, fmtDateTime, useApi } from "../../components/ui";
+import { chipClass } from "../shared/chips";
 
-const TYPES = [["", "All"], ["interview", "Interviews"], ["english", "English conversations"], ["pronunciation", "Pronunciation"], ["speaking", "Speaking"], ["assessment", "Assessments"]];
+const TYPES = [["", "All"], ["interview", "Interviews"], ["english", "English conversations"], ["assessment", "Assessments"]];
 const TONE = { interview: "brand", english: "blue", pronunciation: "violet", speaking: "blue", assessment: "amber" };
 
 export default function PracticeHistory() {
@@ -14,7 +17,7 @@ export default function PracticeHistory() {
     <div className="space-y-6">
       <PageHeader title="Practice history" subtitle="Every interview, English session, drill and test you've completed. Click a row to review answers." />
       <div className="flex flex-wrap gap-2">
-        {TYPES.map(([v, l]) => <button key={v || "all"} onClick={() => setType(v)} className={`rounded-full px-3 py-1 text-sm ${type === v ? "bg-brand-600 text-white" : "bg-white ring-1 ring-slate-200"}`}>{l}</button>)}
+        {TYPES.map(([v, l]) => <button key={v || "all"} onClick={() => setType(v)} aria-pressed={type === v} className={chipClass(type === v)}>{l}</button>)}
       </div>
       <Card bodyClass="">
         {loading && <Spinner />}

@@ -1,3 +1,5 @@
+/* Points, badges, streaks, daily challenges and the leaderboard (read-only; the backend awards points). */
+
 import { Award, Flame, Medal, Trophy } from "lucide-react";
 import { get } from "../../api";
 import { Card, ErrorBox, PageHeader, Pill, ScoreBar, Spinner, StatCard, Table, fmtDate, fmtDateTime, useApi } from "../../components/ui";
@@ -20,7 +22,7 @@ export default function Rewards() {
   return (
     <div className="space-y-6">
       <PageHeader title="Rewards & achievements" subtitle="Earn points and badges for verified practice. Repeated or invalid activities don't count." />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Total points" value={d.points} icon={Trophy} tone="amber" />
         <StatCard label="Badges earned" value={`${d.earned_count}/${d.badges.length}`} icon={Medal} />
         <StatCard label="Current streak" value={`${d.stats.current_streak} days`} icon={Flame} tone="red" hint={`Longest ${d.stats.streak_days} days`} />
@@ -61,7 +63,7 @@ export default function Rewards() {
           ))}
         </div>
       </Card>
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <Card title="Points history" className="lg:col-span-2" bodyClass="">
           <Table rows={d.transactions} empty="No points yet" columns={[
             { label: "Activity", render: (t) => <span className={t.revoked ? "line-through text-slate-400" : ""}>{t.reason}</span> },

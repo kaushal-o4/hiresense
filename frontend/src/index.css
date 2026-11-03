@@ -2,19 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------ theme tokens ("dark premium")
+   RGB triplets so Tailwind opacity modifiers work. See tailwind.config.js for what each scale means. */
+:root {
+  color-scheme: dark;
+  --surface: 14 20 38;          /* cards */
+  --n-50: 7 10 22;  --n-100: 18 24 44;  --n-200: 32 41 68;  --n-300: 47 58 92;  --n-400: 98 110 146;
+  --n-500: 139 150 182; --n-600: 166 176 203; --n-700: 198 205 225; --n-800: 223 227 240; --n-900: 243 245 251;
+  --n-950: 255 255 255;
+  --brand-50: 23 25 62;  --brand-100: 31 34 84;  --brand-200: 49 53 128; --brand-300: 82 86 196; --brand-400: 129 140 248;
+  --brand-500: 99 102 241; --brand-600: 112 116 255; --brand-700: 168 172 255; --brand-800: 201 203 255;
+  --brand-900: 228 229 255; --brand-950: 241 241 255;
+  --emerald-50: 9 36 34; --emerald-100: 12 50 44; --emerald-200: 19 82 66; --emerald-300: 28 120 90; --emerald-400: 52 211 153;
+  --emerald-500: 16 185 129; --emerald-600: 45 200 140; --emerald-700: 110 231 183; --emerald-800: 167 243 208;
+  --emerald-900: 209 250 229; --emerald-950: 236 253 245;
+  --rose-50: 44 15 28; --rose-100: 60 19 35; --rose-200: 99 29 52; --rose-300: 150 44 75; --rose-400: 251 113 133;
+  --rose-500: 244 63 94; --rose-600: 230 60 92; --rose-700: 253 164 175; --rose-800: 254 205 211; --rose-900: 255 228 230;
+  --rose-950: 255 241 242;
+  --amber-50: 42 31 10; --amber-100: 58 42 12; --amber-200: 97 70 18; --amber-300: 146 104 22; --amber-400: 251 191 36;
+  --amber-500: 245 158 11; --amber-600: 251 191 36; --amber-700: 252 211 77; --amber-800: 253 230 138; --amber-900: 254 243 199;
+  --amber-950: 255 251 235;
+  --sky-50: 9 31 50; --sky-100: 12 43 68; --sky-200: 20 68 104; --sky-300: 30 110 160; --sky-400: 56 189 248;
+  --sky-500: 14 165 233; --sky-600: 56 189 248; --sky-700: 125 211 252; --sky-800: 186 230 253; --sky-900: 224 242 254;
+  --sky-950: 240 249 255;
+  --teal-50: 9 38 39; --teal-100: 12 53 53; --teal-200: 18 84 80; --teal-300: 25 120 110; --teal-400: 45 212 191;
+  --teal-500: 20 184 166; --teal-600: 45 212 191; --teal-700: 94 234 212; --teal-800: 153 246 228; --teal-900: 204 251 241;
+  --teal-950: 240 253 250;
+}
+
 @layer base {
-  body { @apply text-slate-800 antialiased; }
-  h1, h2, h3 { @apply text-slate-900; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-slate-50 text-slate-700 antialiased;
+    font-feature-settings: "ss01", "cv11";
+    /* soft light from the top corners, fixed so it stays put while scrolling */
+    background-image:
+      radial-gradient(60rem 36rem at 85% -12%, rgb(99 102 241 / 0.16), transparent 60%),
+      radial-gradient(48rem 30rem at -8% 8%, rgb(139 92 246 / 0.10), transparent 60%),
+      radial-gradient(40rem 30rem at 50% 115%, rgb(45 212 191 / 0.06), transparent 60%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3 { @apply font-display tracking-tight text-slate-900; }
+  ::selection { background: rgb(99 102 241 / 0.45); color: #fff; }
+  :focus-visible { outline: 2px solid rgb(var(--brand-400)); outline-offset: 2px; }
+  * { scrollbar-color: rgb(var(--n-300)) transparent; scrollbar-width: thin; }
+  input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: rgb(var(--brand-500)); }
+  option { background: rgb(var(--n-100)); color: rgb(var(--n-900)); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
 }
 
 @layer components {
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm
-           placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200
-           disabled:bg-slate-100;
+    @apply h-10 w-full rounded-xl border border-slate-200 bg-slate-100/70 px-3.5 text-sm text-slate-900 transition
+           placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-400 focus:bg-slate-100 focus:outline-none
+           focus:ring-4 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60;
   }
-  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
-  .card { @apply rounded-xl border border-slate-200 bg-white shadow-sm; }
-  .th { @apply px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500; }
-  .td { @apply px-4 py-3 text-sm text-slate-700; }
+  textarea.input, select[multiple].input, div.input { @apply h-auto py-2.5; }
+  select.input { @apply pr-8; }
+  .label { @apply mb-1.5 block text-[13px] font-medium text-slate-700; }
+
+  /* glass card: surface + a faint top highlight + soft depth */
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-xl;
+    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.035), rgb(255 255 255 / 0) 40%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 20px 40px -24px rgb(0 0 0 / 0.8);
+  }
+  .card-hover { @apply transition duration-200 hover:-translate-y-0.5 hover:border-brand-300/60; }
+  .card-glow { position: relative; }
+  .card-glow::before {
+    content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: linear-gradient(135deg, rgb(129 140 248 / 0.55), rgb(139 92 246 / 0.15) 35%, transparent 60%, rgb(45 212 191 / 0.25));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+  }
+  .th { @apply whitespace-nowrap px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500; }
+  .td { @apply px-4 py-3.5 text-sm text-slate-700; }
+  .text-gradient {
+    background: linear-gradient(90deg, rgb(var(--n-950)), rgb(var(--brand-700)) 60%, #c4b5fd);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+  .eyebrow { @apply text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500; }
+  .grid-bg {
+    background-image: linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .skeleton {
+    background: linear-gradient(90deg, rgb(var(--n-100)), rgb(var(--n-200)), rgb(var(--n-100)));
+    background-size: 200% 100%; border-radius: 0.5rem; animation: hs-shimmer 2.5s linear infinite;
+  }
+  @keyframes hs-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+}
+
+/* soft vignette for 3D stages placed directly on a panel (no visible box edge) */
+.fade-edges {
+  -webkit-mask-image: radial-gradient(closest-side at 45% 52%, #000 62%, transparent 100%);
+  mask-image: radial-gradient(closest-side at 45% 52%, #000 62%, transparent 100%);
 }

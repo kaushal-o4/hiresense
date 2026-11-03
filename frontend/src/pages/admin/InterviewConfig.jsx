@@ -1,3 +1,8 @@
+/*
+ * Interview setup: question bank, interview categories and evaluation rubrics. The bank is the
+ * fallback when the AI model cannot write a question; rubrics are the criteria the AI scores against.
+ */
+
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { del, get, post, put } from "../../api";
@@ -19,7 +24,7 @@ function Categories() {
       {loading && <Spinner />}<ErrorBox message={error} />
       {data && <Table rows={data} columns={[
         { label: "Code", render: (c) => <code>{c.code}</code> }, { label: "Name", key: "name" }, { label: "Description", key: "description" },
-        { label: "Bank questions", key: "question_count" }, { label: "Status", render: (c) => <Pill tone={c.active ? "green" : "gray"}>{c.active ? "active" : "inactive"}</Pill> },
+        { label: "Bank questions", key: "question_count" }, { label: "Status", render: (c) => <Pill dot tone={c.active ? "green" : "gray"}>{c.active ? "Active" : "Inactive"}</Pill> },
         { label: "", render: (c) => <Button size="sm" variant="ghost" onClick={() => setModal({ ...c, description: c.description || "" })}>Edit</Button> }]} />}
       <Modal open={!!modal} onClose={() => setModal(null)} title={modal?.id ? "Edit category" : "New category"} footer={<Button onClick={save}>Save</Button>}>
         {modal && <div className="space-y-3">
@@ -60,7 +65,7 @@ function QuestionBank() {
         <Table rows={data.items} columns={[
           { label: "Question", render: (r) => <span className="text-sm">{r.question}</span> }, { label: "Category", key: "category" },
           { label: "Difficulty", render: (r) => <Pill>{r.difficulty}</Pill> }, { label: "Role tag", render: (r) => r.role_tag || "—" },
-          { label: "Status", render: (r) => <Pill tone={r.active ? "green" : "gray"}>{r.active ? "active" : "inactive"}</Pill> },
+          { label: "Status", render: (r) => <Pill dot tone={r.active ? "green" : "gray"}>{r.active ? "Active" : "Inactive"}</Pill> },
           { label: "", render: (r) => <div className="flex gap-1">
             <Button size="sm" variant="ghost" onClick={() => setModal({ ...r, role_tag: r.role_tag || "" })}>Edit</Button>
             <ConfirmButton size="sm" variant="ghost" message="Delete this question?" onConfirm={async () => { try { await del(`/admin/questions/${r.id}`); reload(); } catch (e) { toast(e.message, "error"); } }}><Trash2 size={14} /></ConfirmButton></div> }]} />
@@ -100,7 +105,7 @@ function Rubrics() {
       <div className="grid gap-4 md:grid-cols-2">
         {data?.map((r) => (
           <div key={r.id} className="rounded-lg border border-slate-200 p-4">
-            <div className="flex items-center justify-between"><p className="font-medium">{r.name}</p><div className="flex gap-1"><Pill tone="brand">{r.applies_to}</Pill><Pill tone={r.active ? "green" : "gray"}>{r.active ? "active" : "inactive"}</Pill></div></div>
+            <div className="flex items-center justify-between"><p className="font-medium">{r.name}</p><div className="flex gap-1"><Pill tone="brand">{r.applies_to}</Pill><Pill dot tone={r.active ? "green" : "gray"}>{r.active ? "Active" : "Inactive"}</Pill></div></div>
             <ul className="mt-2 space-y-1 text-sm">{r.criteria.map((c) => <li key={c.name}><b>{c.name}</b> ({Math.round(c.weight * 100)}%) - <span className="text-slate-600">{c.description}</span></li>)}</ul>
             <Button size="sm" variant="ghost" className="mt-2" onClick={() => setModal(JSON.parse(JSON.stringify(r)))}>Edit</Button>
           </div>

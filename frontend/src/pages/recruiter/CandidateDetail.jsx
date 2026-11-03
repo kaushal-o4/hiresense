@@ -1,3 +1,5 @@
+/* One candidate's profile, resume analysis and resume download, as visible to a recruiter. */
+
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Download } from "lucide-react";
@@ -5,6 +7,7 @@ import { download, get } from "../../api";
 import { Button, Card, ErrorBox, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatCard, StatusPill, Table, fmtDate, useApi, useToast } from "../../components/ui";
 import { ResumeAnalysisView } from "../student/Resume";
 import { InterviewReport } from "../student/InterviewSession";
+import { IntegrityReview } from "../shared/IntegrityReview";
 
 export default function CandidateDetail() {
   const { id } = useParams();
@@ -21,13 +24,13 @@ export default function CandidateDetail() {
       <PageHeader title={st.full_name} subtitle={`${st.college || "—"} · ${st.branch || "—"} · Class of ${st.graduation_year || "—"}${st.email ? ` · ${st.email}` : ""}`}
         actions={data.resume && <Button variant="secondary" onClick={() => download(`/resumes/${data.resume.id}/download`, data.resume.filename).catch((e) => toast(e.message, "error"))}><Download size={16} /> Resume</Button>} />
       {data.notice && <Notice tone="blue">{data.notice}</Notice>}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="CGPA" value={st.cgpa ?? "—"} />
         <StatCard label="Interview average" value={s.interviews.average_score ?? "—"} hint={`${s.interviews.completed} interviews`} tone="sky" />
         <StatCard label="English average" value={s.english.average_score ?? "—"} hint={`${s.english.minutes} min practice`} tone="green" />
         <StatCard label="Assessment average" value={s.assessments.average_score != null ? `${s.assessments.average_score}%` : "—"} hint={`${s.assessments.passed} passed`} tone="violet" />
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="Skills"><div className="flex flex-wrap gap-1">{st.skills.length ? st.skills.map((x) => <Pill key={x} tone="brand">{x}</Pill>) : <span className="text-sm text-slate-500">None listed</span>}</div>
           {st.target_role && <p className="mt-3 text-sm text-slate-600">Target role: <b>{st.target_role}</b></p>}</Card>
         <Card title="Interview performance by area">
@@ -36,7 +39,7 @@ export default function CandidateDetail() {
         </Card>
       </div>
       {data.profile && (data.profile.projects.length > 0 || data.profile.experience.length > 0) && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           <Card title="Projects">{data.profile.projects.map((p, i) => <div key={i} className="mb-2 text-sm"><p className="font-medium">{p.name}</p><p className="text-slate-600">{p.description}</p></div>)}</Card>
           <Card title="Experience">{data.profile.experience.map((e, i) => <div key={i} className="mb-2 text-sm"><p className="font-medium">{e.role} · {e.organization}</p><p className="text-slate-600">{e.summary}</p></div>)}</Card>
         </div>
@@ -55,6 +58,8 @@ export default function CandidateDetail() {
               { label: "", render: (r) => r.flagged ? <Pill tone="red">flagged</Pill> : null },
             ]} />
           </Card>
+          {/* security monitoring is reported separately from interview performance (only shown when there is one) */}
+          <IntegrityReview studentId={Number(id)} compact />
           {data.resume?.analysis && <><h2 className="text-lg font-semibold">Resume analysis</h2><ResumeAnalysisView resume={data.resume} /></>}
         </>
       )}

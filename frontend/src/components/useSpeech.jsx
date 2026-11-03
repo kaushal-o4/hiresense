@@ -105,9 +105,9 @@ export function Subtitles({ subtitle, show }) {
   const [current, ...after] = rest.split(/(?<=\s)/);
   return (
     <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4" aria-live="polite">
-      <p className="max-w-3xl rounded-lg bg-slate-900/90 px-4 py-2 text-center text-base leading-relaxed text-slate-300 shadow-lg">
-        <span className="text-white">{done}</span>
-        <span className="rounded bg-brand-500 px-0.5 text-white">{current}</span>
+      <p className="max-w-3xl rounded-xl border border-snow/10 bg-night-950/80 px-5 py-2.5 text-center text-base leading-relaxed text-slate-600 shadow-pop backdrop-blur-xl">
+        <span className="text-snow">{done}</span>
+        <span className="rounded bg-brand-500/80 px-1 text-snow shadow-[0_0_12px_rgb(99_102_241/0.6)]">{current}</span>
         <span>{after.join("")}</span>
       </p>
     </div>

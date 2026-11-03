@@ -1,9 +1,15 @@
+/*
+ * Admin monitoring in tabs: flagged interviews/assessments (review and revoke points), interview
+ * integrity, AI usage and quality, interview pipeline performance, and application errors.
+ */
+
 import { useState } from "react";
 import { get, post } from "../../api";
 import { SimpleBar } from "../../components/charts";
 import { Button, Card, ErrorBox, Field, Modal, Notice, PageHeader, Pagination, Pill, Spinner, Table, Tabs, fmtDateTime, useApi, useToast } from "../../components/ui";
 import { InterviewReport } from "../student/InterviewSession";
 import { IntegrityReview } from "../shared/IntegrityReview";
+import SecuritySettings from "./SecuritySettings";
 
 function Flagged() {
   const toast = useToast();
@@ -55,13 +61,14 @@ function AIUsage() {
     <div className="space-y-6">
       <Card title="AI service status" actions={<select className="input w-auto py-1" value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="Period"><option value={1}>Last 24 hours</option><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option></select>}>
         <div className="flex flex-wrap gap-6 text-sm">
-          <span>Local model: <b>{s.model}</b> ({s.provider})</span>
-          <span>Ollama: <b className={s.runtime_running ? "text-emerald-700" : "text-red-700"}>{s.runtime_running ? "running" : "not running"}</b></span>
+          <span>Model: <b>{s.model}</b> ({s.provider})</span>
+          <span>{s.provider === "gemini" ? "Gemini API" : "Ollama"}: <b className={s.runtime_running ? "text-emerald-700" : "text-red-700"}>{s.runtime_running ? "running" : "not running"}</b></span>
           <span>Model ready: <b className={s.configured ? "text-emerald-700" : "text-red-700"}>{s.configured ? "yes" : "no"}</b></span>
           <span>Enabled in settings: <b>{s.enabled ? "yes" : "no"}</b></span>
           {s.embeddings && <span>Embeddings: <b>{s.embeddings.model}</b> ({s.embeddings.loaded ? "loaded" : s.embeddings.enabled ? "not loaded yet" : "disabled"})</span>}
         </div>
         {s.setup_hint && <p className="mt-2 text-sm text-red-700">{s.setup_hint}</p>}
+        {s.fallback_for && <p className="mt-2 text-sm text-amber-700">Gemini is not usable ({s.primary_error}) - using the local Ollama model as a fallback.</p>}
         {s.embeddings?.error && <p className="mt-1 text-sm text-red-700">{s.embeddings.error}</p>}
       </Card>
       <Card title="Usage by feature" bodyClass="">
@@ -101,6 +108,76 @@ function Errors() {
 
 const ms = (v) => (v == null ? "—" : v >= 1000 ? `${(v / 1000).toFixed(2)} s` : `${v} ms`);
 
+// AI speed by task: one row per language-model feature, slowest p95 first, with which model answered.
+const AI_TASKS = {
+  interview_question: ["Next interview question", true], answer_scoring: ["Score an answer", true],
+  english_chat: ["English conversation reply", true], answer_feedback: ["Detailed answer tips", false],
+  interview_report: ["Final interview report", false], resume_analysis: ["Resume analysis", false],
+  job_match: ["Job match review", false], assessment_generation: ["Generate assessment", false],
+  code_review: ["Code review", false], english_evaluation: ["English session scores", false],
+  warmup: ["Model warm-up", false],
+};
+const WAIT_TARGET_MS = 4000; // a candidate is waiting on "live" tasks: flag them above this p95
+
+function AiSpeed({ metrics }) {
+  const rows = metrics.filter((m) => /^llm\.[a-z_]+$/.test(m.metric)).map((m) => {
+    const key = m.metric.slice(4);
+    const [label, live] = AI_TASKS[key] || [key.replace(/_/g, " "), false];
+    const tokOut = m.avg_details?.tokens_out;
+    const gen = m.avg_details?.generate_ms;
+    return { ...m, key, label, live, tokOut, tps: tokOut && gen ? Math.round(tokOut / (gen / 1000)) : null,
+      failRate: m.count ? m.failed / m.count : 0 };
+  }).sort((a, b) => (b.p95_ms || 0) - (a.p95_ms || 0));
+  if (!rows.length) return null;
+  const scale = Math.max(...rows.map((r) => r.p95_ms || r.max_ms || 0), 1);
+  const calls = rows.reduce((n, r) => n + r.count, 0);
+  const failed = rows.reduce((n, r) => n + r.failed, 0);
+  const slowLive = rows.filter((r) => r.live && (r.p95_ms || 0) > WAIT_TARGET_MS);
+  const models = rows.reduce((acc, r) => { Object.entries(r.models || {}).forEach(([k, v]) => { acc[k] = (acc[k] || 0) + v; }); return acc; }, {});
+  const fmtModel = (m) => m.replace(/^gemini:/, "");
+  return (
+    <Card title="AI speed by task" bodyClass="">
+      <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 sm:grid-cols-4">
+        {[["AI calls", calls], ["Failed", calls ? `${Math.round((failed / calls) * 100)}%` : "0%"],
+          ["Slow live tasks", slowLive.length], ["Models used", Object.keys(models).length]].map(([k, v]) => (
+          <div key={k} className="bg-white px-5 py-3"><p className="text-xs text-slate-500">{k}</p><p className="num text-xl font-semibold text-slate-900">{v}</p></div>
+        ))}
+      </div>
+      {slowLive.length > 0 && (
+        <div className="border-b border-slate-200 px-5 py-3">
+          <Notice>Candidates wait on {slowLive.map((r) => r.label.toLowerCase()).join(", ")} - p95 is above {WAIT_TARGET_MS / 1000} s. Check the model column: if most calls went to the local model, Gemini was failing over.</Notice>
+        </div>
+      )}
+      <ul className="divide-y divide-slate-100">
+        {rows.map((r) => (
+          <li key={r.metric} className="grid gap-3 px-5 py-3.5 md:grid-cols-[minmax(0,220px)_1fr_auto] md:items-center">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-medium text-slate-900">{r.label}{r.live && <Pill tone="blue">live</Pill>}</p>
+              <p className="num text-xs text-slate-500">{r.count} calls{r.failed ? ` · ${r.failed} failed` : ""}{r.tokOut ? ` · ~${Math.round(r.tokOut)} tokens out` : ""}{r.tps ? ` · ${r.tps} tok/s` : ""}</p>
+            </div>
+            <div className="min-w-0">
+              <div className="relative h-2 rounded-full bg-slate-100" title={`p50 ${ms(r.p50_ms)} · p95 ${ms(r.p95_ms)}`}>
+                <div className={`absolute inset-y-0 left-0 rounded-full ${r.live && (r.p95_ms || 0) > WAIT_TARGET_MS ? "bg-rose-200" : "bg-slate-200"}`} style={{ width: `${((r.p95_ms || 0) / scale) * 100}%` }} />
+                <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand-500 to-violet-500" style={{ width: `${((r.p50_ms || 0) / scale) * 100}%` }} />
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {Object.entries(r.models || {}).sort((a, b) => b[1] - a[1]).map(([m, n]) => (
+                  <span key={m} className={`rounded px-1.5 py-px text-[11px] ${m.startsWith("gemini:") ? "bg-brand-50 text-brand-700" : "bg-slate-100 text-slate-600"}`}>{fmtModel(m)} · {n}</span>
+                ))}
+              </div>
+            </div>
+            <div className="num flex gap-4 text-right text-sm md:w-44 md:justify-end">
+              <span><span className="block text-[11px] text-slate-500">typical</span>{ms(r.p50_ms)}</span>
+              <span><span className="block text-[11px] text-slate-500">p95</span><b className={r.live && (r.p95_ms || 0) > WAIT_TARGET_MS ? "text-rose-700" : "text-slate-900"}>{ms(r.p95_ms)}</b></span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <p className="border-t border-slate-100 px-5 py-3 text-xs text-slate-500">Dark bar: typical (p50) time. Light bar: slow case (p95). "Live" tasks are ones a candidate waits for during an interview or conversation.</p>
+    </Card>
+  );
+}
+
 function Performance() {
   const [hours, setHours] = useState(24);
   const { data, error, loading, reload } = useApi(() => get("/admin/performance", { hours }), [hours]);
@@ -123,6 +200,7 @@ function Performance() {
         </div>}>
         <p className="text-sm text-slate-600">{data.note} Use the p95 column to find the step that makes candidates wait. For the language model, "generate_ms" vs "prompt_ms" vs "load_ms" shows whether writing, reading the prompt or loading the model is slow.</p>
       </Card>
+      <AiSpeed metrics={data.metrics} />
       {groups.map(([title, test]) => {
         const rows = data.metrics.filter(test);
         if (!rows.length) return null;
@@ -148,10 +226,11 @@ export default function Monitoring() {
   return (
     <div>
       <PageHeader title="AI & system monitoring" subtitle="Review suspicious activity, interview integrity signals, AI quality, performance and errors." />
-      <Tabs value={tab} onChange={setTab} tabs={[{ value: "flagged", label: "Flagged activity" }, { value: "integrity", label: "Interview integrity" },
+      <Tabs value={tab} onChange={setTab} tabs={[{ value: "flagged", label: "Flagged activity" }, { value: "integrity", label: "Interview integrity" }, { value: "security", label: "Security settings" },
         { value: "ai", label: "AI usage & quality" }, { value: "perf", label: "Performance" }, { value: "errors", label: "Application errors" }]} />
       {tab === "flagged" && <Flagged />}
       {tab === "integrity" && <IntegrityReview />}
+      {tab === "security" && <SecuritySettings />}
       {tab === "ai" && <AIUsage />}
       {tab === "perf" && <Performance />}
       {tab === "errors" && <Errors />}

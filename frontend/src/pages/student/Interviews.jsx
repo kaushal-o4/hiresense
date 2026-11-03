@@ -1,3 +1,9 @@
+/*
+ * Mock-interview start page and history. Step 1 picks an interviewer (InterviewerPicker), step 2 sets
+ * role, category, text/voice mode, question count and response mode; POST /student/interviews creates the session and
+ * opens InterviewSession (text) or VoiceInterview (voice, /live).
+ */
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mic, Play } from "lucide-react";
@@ -66,8 +72,8 @@ export default function Interviews() {
         {interviewers && <InterviewerPicker interviewers={interviewers} value={form.interviewer} onSelect={select} voiceStatus={voiceStatus} />}
       </Card>
       <Card title={`2. Interview settings${chosen ? ` - with ${chosen.name}` : ""}`}>
-        <form onSubmit={start} className="grid gap-4 md:grid-cols-6">
-          <div className="md:col-span-2">
+        <form onSubmit={start} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="sm:col-span-2">
             <Field label="Job role"><input className="input" required minLength={2} placeholder="e.g. Backend Developer" value={form.job_role} onChange={(e) => setForm({ ...form, job_role: e.target.value })} /></Field>
           </div>
           <Field label="Focus">
@@ -91,10 +97,10 @@ export default function Interviews() {
               <option value="">Default</option><option value="easy">Easy (beginner)</option><option value="medium">Medium</option><option value="hard">Hard</option>
             </select>
           </Field>
-          <div className="md:col-span-3">
+          <div className="sm:col-span-2">
             <Field label="Technical subject (optional)"><input className="input" maxLength={100} placeholder="e.g. DBMS, Python, React" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></Field>
           </div>
-          <fieldset className="md:col-span-6">
+          <fieldset className="sm:col-span-2 lg:col-span-4">
             <legend className="label">Response mode</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {RESPONSE_MODES.map((m) => (
@@ -106,7 +112,7 @@ export default function Interviews() {
               ))}
             </div>
           </fieldset>
-          <div className="md:col-span-6">
+          <div className="sm:col-span-2 lg:col-span-4">
             <Button type="submit" loading={busy}>{form.mode === "voice" ? <Mic size={16} /> : <Play size={16} />} Start interview{chosen ? ` with ${chosen.name}` : ""}</Button>
             {busy && <span className="ml-3 text-xs text-slate-500">{form.mode === "voice" ? "Opening the interview room…" : "Generating your first question with the local AI…"}</span>}
             {form.mode === "voice" && !busy && <span className="ml-3 text-xs text-slate-500">{chosen?.name || "The interviewer"} asks the questions aloud and you answer by speaking. Needs a microphone; speech is processed on this server.</span>}

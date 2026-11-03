@@ -1,3 +1,5 @@
+/* Campus placement drives: register or cancel a registration. Shown as a tab of Opportunities. */
+
 import { CalendarDays, MapPin } from "lucide-react";
 import { del, get, post } from "../../api";
 import { Button, Card, EmptyState, ErrorBox, PageHeader, Pill, Spinner, StatusPill, fmtDateTime, useApi, useToast } from "../../components/ui";

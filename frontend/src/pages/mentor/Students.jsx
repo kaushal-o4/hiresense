@@ -1,3 +1,5 @@
+/* The mentor's assigned students (or all students with the view_all_students permission), with search. */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { get } from "../../api";

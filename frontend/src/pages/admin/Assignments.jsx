@@ -1,3 +1,5 @@
+/* Assign students to mentors and remove assignments (/admin/assignments). */
+
 import { useState } from "react";
 import { del, get, post } from "../../api";
 import { Button, Card, ConfirmButton, ErrorBox, Field, PageHeader, Spinner, Table, fmtDate, useApi, useToast } from "../../components/ui";

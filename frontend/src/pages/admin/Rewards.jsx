@@ -1,3 +1,5 @@
+/* Badge definitions and reward rules (points, daily caps, minimum-quality conditions). */
+
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { get, patch, post, put } from "../../api";
@@ -40,7 +42,7 @@ export default function AdminRewards() {
           { label: "Activity", render: (r) => <div><code className="text-xs">{r.activity_type}</code><p className="text-xs text-slate-500">{r.description}</p></div> },
           { label: "Points", key: "points" }, { label: "Daily cap", key: "daily_cap" },
           { label: "Requirements", render: (r) => <code className="text-xs">{JSON.stringify(r.requirements)}</code> },
-          { label: "Status", render: (r) => <Pill tone={r.active ? "green" : "gray"}>{r.active ? "active" : "off"}</Pill> },
+          { label: "Status", render: (r) => <Pill dot tone={r.active ? "green" : "gray"}>{r.active ? "Active" : "Off"}</Pill> },
           { label: "", render: (r) => <Button size="sm" variant="ghost" onClick={() => setRule({ ...r, requirementsText: JSON.stringify(r.requirements) })}>Edit</Button> }]} />}
       </Card>
       <Card title="Badges" bodyClass="" actions={<Button size="sm" onClick={() => setBadge({ code: "", name: "", description: "", icon: "🏅", criteria_type: "interviews_completed", threshold: 1, points: 50, active: true })}><Plus size={14} /> New badge</Button>}>
@@ -49,7 +51,7 @@ export default function AdminRewards() {
           { label: "Badge", render: (b) => <span className="flex items-center gap-2"><span className="text-xl">{b.icon}</span><span><b>{b.name}</b><br /><span className="text-xs text-slate-500">{b.description}</span></span></span> },
           { label: "Criterion", render: (b) => <span className="text-xs">{b.criteria_type.replace(/_/g, " ")} ≥ {b.threshold}</span> },
           { label: "Points", key: "points" }, { label: "Awarded", key: "awarded" },
-          { label: "Status", render: (b) => <Pill tone={b.active ? "green" : "gray"}>{b.active ? "active" : "off"}</Pill> },
+          { label: "Status", render: (b) => <Pill dot tone={b.active ? "green" : "gray"}>{b.active ? "Active" : "Off"}</Pill> },
           { label: "", render: (b) => <Button size="sm" variant="ghost" onClick={() => setBadge(b)}>Edit</Button> }]} />}
       </Card>
 

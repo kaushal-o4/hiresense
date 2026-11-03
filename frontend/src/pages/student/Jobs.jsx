@@ -1,3 +1,8 @@
+/*
+ * Job openings for students: search and filter, view details and eligibility, and apply
+ * (GET /student/jobs, POST /student/jobs/{id}/apply). Shown as a tab of Opportunities.
+ */
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, Briefcase, MapPin, Search } from "lucide-react";

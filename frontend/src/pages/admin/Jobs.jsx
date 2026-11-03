@@ -1,3 +1,5 @@
+/* All job postings across recruiters, with the option to close one. */
+
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { get, post } from "../../api";

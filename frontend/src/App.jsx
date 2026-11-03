@@ -1,3 +1,5 @@
+/* Top-level route definitions and role-based guards. */
+
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import Layout from "./components/Layout";
@@ -113,6 +115,7 @@ export default function App() {
         <Route path="/recruiter/candidates" element={r("recruiter", <Candidates />)} />
         <Route path="/recruiter/candidates/:id" element={r("recruiter", <CandidateDetail />)} />
         <Route path="/recruiter/assessments" element={r("recruiter", <AssessmentManager />)} />
+        <Route path="/recruiter/security" element={r("recruiter", <IntegrityReviewPage />)} />
 
         <Route path="/mentor" element={r("mentor", <MentorDashboard />)} />
         <Route path="/mentor/students" element={r("mentor", <MentorStudents />)} />

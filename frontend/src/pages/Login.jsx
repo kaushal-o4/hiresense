@@ -1,3 +1,8 @@
+/*
+ * Sign-in page. Calls login() from auth.jsx (POST /auth/login sets the session cookie); App.jsx then routes
+ * the user to their portal's home page.
+ */
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
@@ -40,7 +45,7 @@ export default function Login() {
         <p className="-mt-2 text-right text-sm">
           <Link className="text-brand-600 hover:underline" to="/forgot-password">Forgot password?</Link>
         </p>
-        <Button type="submit" className="w-full" loading={busy} disabled={!form.email || !form.password}>Sign in</Button>
+        <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!form.email || !form.password}>Sign in</Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
         New student or recruiter? <Link className="font-medium text-brand-600 hover:underline" to="/register">Create an account</Link>

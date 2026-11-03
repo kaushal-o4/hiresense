@@ -1,3 +1,8 @@
+/*
+ * Progress overview (GET /student/progress): charts and AI recommendations. SummaryCharts and
+ * RecommendationsCard are also used by the mentor's student view.
+ */
+
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { get, post } from "../../api";
@@ -40,8 +45,8 @@ export function SummaryCharts({ summary, series }) {
     <div className="grid gap-6 lg:grid-cols-2">
       <Card title="Score trend" className="lg:col-span-2"><ProgressChart series={series} /></Card>
       <Card title="Interview score by focus area"><SimpleBar data={cat} dataKey="score" nameKey="name" max={100} /></Card>
-      <Card title="English skills (out of 10)"><SimpleBar data={eng} dataKey="score" nameKey="name" max={10} color="#0ea5e9" /></Card>
-      <Card title="Assessment score by topic"><SimpleBar data={topics} dataKey="score" nameKey="name" max={100} color="#10b981" /></Card>
+      <Card title="English skills (out of 10)"><SimpleBar data={eng} dataKey="score" nameKey="name" max={10} color="#38bdf8" /></Card>
+      <Card title="Assessment score by topic"><SimpleBar data={topics} dataKey="score" nameKey="name" max={100} color="#34d399" /></Card>
       <Card title="Interview types over time">
         <ProgressChart series={series} metrics={["technical_score", "hr_score", "behavioral_score", "communication_score"]} />
       </Card>
@@ -57,7 +62,7 @@ export default function Progress() {
   return (
     <div className="space-y-6">
       <PageHeader title="Performance & progress" subtitle={<span>Overall trend: <StatusPill status={s.trend} /></span>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Interviews" value={s.interviews.completed} hint={`Avg ${s.interviews.average_score ?? "—"} · best ${s.interviews.best_score ?? "—"}`} />
         <StatCard label="English" value={`${s.english.minutes} min`} tone="sky" hint={`Avg score ${s.english.average_score ?? "—"}`} />
         <StatCard label="Assessments" value={s.assessments.taken} tone="green" hint={`${s.assessments.passed} passed · avg ${s.assessments.average_score ?? "—"}%`} />
@@ -66,7 +71,7 @@ export default function Progress() {
       <SummaryCharts summary={s} series={data.series} />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="Weak areas detected">
-          {s.weak_areas.length ? <ul className="space-y-1 text-sm">{s.weak_areas.map((w) => <li key={w}>• {w}</li>)}</ul>
+          {s.weak_areas.length ? <ul className="space-y-1.5">{s.weak_areas.map((w) => <li key={w} className="flex gap-2 text-sm text-slate-700"><span className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-slate-400" aria-hidden />{w}</li>)}</ul>
             : <p className="text-sm text-slate-500">Nothing flagged yet.</p>}
         </Card>
         <RecommendationsCard endpoint="/student/recommendations" />

@@ -1,3 +1,5 @@
+/* Authentication context and session handling. */
+
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { get, post } from "./api";
 

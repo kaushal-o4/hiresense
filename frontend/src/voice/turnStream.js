@@ -27,10 +27,17 @@ export function createSseParser() {
   };
 }
 
-export async function streamTurn(sessionId, body, handlers, { signal } = {}) {
+export function streamTurn(sessionId, body, handlers, opts) {
+  return streamPost(`/api/student/interviews/${sessionId}/turn`, body, handlers, opts);
+}
+
+/** POST `url` and call handlers[eventName](data) for each Server-Sent Event. Resolves after a "done" or "error"
+ *  event; throws ApiError (status 0) if the connection ends without either. */
+export async function streamPost(url, body, handlers,
+  { signal, interruptedMessage = "The connection to the interviewer was interrupted." } = {}) {
   let res;
   try {
-    res = await fetch(`/api/student/interviews/${sessionId}/turn`, {
+    res = await fetch(url, {
       method: "POST", credentials: "include", signal,
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify(body),
@@ -57,5 +64,5 @@ export async function streamTurn(sessionId, body, handlers, { signal } = {}) {
       handlers[event]?.(data);
     }
   }
-  if (!finished) throw new ApiError("The connection to the interviewer was interrupted.", 0);
+  if (!finished) throw new ApiError(interruptedMessage, 0);
 }

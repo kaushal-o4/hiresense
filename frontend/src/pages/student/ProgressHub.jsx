@@ -1,3 +1,5 @@
+/* "My Progress" menu item: Overview, Full report and Practice history as URL tabs. */
+
 import UrlTabs from "../../components/Tabs";
 import PerformanceReport from "./PerformanceReport";
 import PracticeHistory from "./PracticeHistory";

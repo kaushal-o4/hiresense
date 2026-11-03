@@ -1,3 +1,5 @@
+/* Recruiter home: job and applicant counts and charts (GET /recruiter/dashboard). */
+
 import { Link } from "react-router-dom";
 import { Briefcase, CalendarClock, CheckCircle2, Plus, Users } from "lucide-react";
 import { get } from "../../api";
@@ -13,7 +15,7 @@ export default function RecruiterDashboard() {
     <div className="space-y-6">
       <PageHeader title="Recruitment dashboard" subtitle="Your jobs, candidates and hiring progress."
         actions={<Link to="/recruiter/jobs?new=1"><Button><Plus size={16} /> Post a job</Button></Link>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Active jobs" value={data.jobs.published} icon={Briefcase} hint={`${data.jobs.draft} drafts · ${data.jobs.closed} closed`} />
         <StatCard label="Applications" value={data.applications.total} icon={Users} tone="sky" hint={`${bs.applied || 0} awaiting review`} />
         <StatCard label="Shortlisted" value={(bs.shortlisted || 0) + (bs.interview_scheduled || 0)} icon={CalendarClock} tone="amber" hint={`${bs.interview_scheduled || 0} interviews scheduled`} />
@@ -23,13 +25,13 @@ export default function RecruiterDashboard() {
         <MultiBar data={data.per_job.map((j) => ({ ...j, name: j.title.length > 18 ? `${j.title.slice(0, 18)}…` : j.title }))} nameKey="name"
           keys={[{ key: "applications", label: "Applications" }, { key: "shortlisted", label: "Shortlisted" }, { key: "selected", label: "Selected" }]} />
       </Card>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="Recent applications" bodyClass="">
           <Table rows={data.recent_applications} empty="No applications yet"
             columns={[
               { label: "Candidate", render: (a) => <Link className="font-medium text-brand-700 hover:underline" to={`/recruiter/candidates/${a.student_id}`}>{a.student?.full_name}</Link> },
               { label: "Job", render: (a) => <Link className="hover:underline" to={`/recruiter/jobs/${a.job_id}`}>{a.job?.title}</Link> },
-              { label: "Match", render: (a) => a.match?.score ?? "—" },
+              { label: "Match", render: (a) => <span className={`num font-semibold ${a.match?.score >= 75 ? "text-emerald-700" : a.match?.score >= 50 ? "text-amber-700" : "text-slate-700"}`}>{a.match?.score ?? "—"}</span> },
               { label: "Status", render: (a) => <StatusPill status={a.status} /> },
             ]} />
         </Card>

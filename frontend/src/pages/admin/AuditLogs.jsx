@@ -1,3 +1,5 @@
+/* Read-only audit log of admin and security actions, filterable by action. */
+
 import { useState } from "react";
 import { Search } from "lucide-react";
 import { get } from "../../api";

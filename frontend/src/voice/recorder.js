@@ -1,12 +1,24 @@
 // Microphone capture for one answer at a time. The microphone is opened when recording starts and fully
 // released when it stops (the browser's mic indicator turns off between answers). Audio stays in memory and is
-// sent once, as a 16 kHz mono WAV, to this app's own backend for local transcription.
+// sent as 16 kHz mono WAV pieces (live captions while talking, then the rest) to this app's own backend for local
+// transcription.
 
+// Samples are posted in ~21 ms batches (1024 at 48 kHz), not per 128-sample render block: one message per block is
+// ~375 main-thread tasks a second, each updating the level meter, which made the 3D avatar stutter while recording.
 const WORKLET = `
 class PcmCapture extends AudioWorkletProcessor {
+  constructor() { super(); this.buf = new Float32Array(1024); this.n = 0; }
   process(inputs) {
     const ch = inputs[0] && inputs[0][0];
-    if (ch) this.port.postMessage(ch.slice(0));
+    if (!ch) return true;
+    let i = 0;
+    while (i < ch.length) {
+      const take = Math.min(ch.length - i, this.buf.length - this.n);
+      this.buf.set(ch.subarray(i, i + take), this.n);
+      this.n += take;
+      i += take;
+      if (this.n === this.buf.length) { this.port.postMessage(this.buf.slice(0)); this.n = 0; }
+    }
     return true;
   }
 }
@@ -55,7 +67,9 @@ export function rms(chunk) {
  * minAnswerMs: total speech needed before a pause may end the answer, so a pause right after the first words
  * (thinking, a slow start) does not cut the student off.
  */
-export function vadStep(st, level, dtMs, { threshold = 0.012, silenceMs = 3500, noSpeechMs = 12000, minSpeechMs = 300, minAnswerMs = 0 } = {}) {
+export const VAD_THRESHOLD = 0.012;
+
+export function vadStep(st, level, dtMs, { threshold = VAD_THRESHOLD, silenceMs = 3500, noSpeechMs = 12000, minSpeechMs = 300, minAnswerMs = 0 } = {}) {
   st.elapsed += dtMs;
   if (level > threshold) {
     st.speechMs += dtMs;
@@ -84,6 +98,10 @@ export class MicRecorder {
    *       minAnswerMs, onSegment({wav, seconds, index}) - a finished stretch of speech cut at a short natural pause
    *       (segmentPauseMs) once it is at least minSegmentMs long; used for live partial transcripts, so that after
    *       the student stops only the last piece still needs transcribing.
+   *       onInterim({wav, seconds, from, to}) - live captions: the audio after the last segment, handed out every
+   *       interimMs while the student talks (and once more right after they pause), unless interimBusy() says the
+   *       previous one is still being transcribed. If the latest interim reaches the end of the speech, its text is
+   *       the final text of that piece and nothing has to be transcribed after the student stops (see stop()).
    */
   async start(opts = {}) {
     if (this.active) return;
@@ -93,10 +111,13 @@ export class MicRecorder {
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
     } catch (e) {
-      if (e.name === "NotAllowedError") throw new Error("Microphone permission was denied. Allow it in the browser's address bar, or type your answer.");
-      if (e.name === "NotFoundError") throw new Error("No microphone was found. Connect one, or type your answer.");
-      throw new Error(`The microphone could not be started (${e.name}).`);
+      const named = (msg) => Object.assign(new Error(msg), { name: e.name }); // name kept for monitoring (micLost)
+      if (e.name === "NotAllowedError") throw named("Microphone permission was denied. Allow it in the browser's address bar, or type your answer.");
+      if (e.name === "NotFoundError") throw named("No microphone was found. Connect one, or type your answer.");
+      throw named(`The microphone could not be started (${e.name}).`);
     }
+    // unplugged / disabled while answering (opts.onEnded); release() clears it so a normal stop does not count
+    this.stream.getAudioTracks().forEach((t) => { t.onended = () => { if (this.active) opts.onEnded?.(); }; });
     const Ctx = window.AudioContext || window.webkitAudioContext;
     this.ctx = new Ctx();
     const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
@@ -112,18 +133,22 @@ export class MicRecorder {
     const maxMs = (opts.maxSeconds || 180) * 1000;
     const segPause = opts.segmentPauseMs || 600;
     const minSeg = opts.minSegmentMs || 4000;
+    const interimMs = opts.interimMs || 1200;
     let segSpeechMs = 0;
     let fired = false;
+    this.speechTo = 0; // chunk index just after the last loud chunk
+    let interimTo = 0; // chunk index the latest interim clip ended at
     this.node.port.onmessage = (e) => {
       if (!this.active) return;
       const chunk = e.data;
       this.chunks.push(chunk);
       const level = rms(chunk);
-      opts.onLevel?.(level);
       const dt = (chunk.length / this.ctx.sampleRate) * 1000;
+      opts.onLevel?.(level, dt);
       const r = vadStep(vad, level, dt, { silenceMs: opts.silenceMs || 3500, noSpeechMs: opts.noSpeechMs || 12000,
         minAnswerMs: opts.minAnswerMs || 0 });
       if (r === "speech") segSpeechMs += dt;
+      if (level > VAD_THRESHOLD) this.speechTo = this.chunks.length;
       if (r === "no_speech") opts.onNoSpeech?.();
       if (!fired && r === "silence_stop") { fired = true; opts.onSilence?.(); }
       if (!fired && vad.elapsed >= maxMs) { fired = true; opts.onMax?.(); }
@@ -131,11 +156,19 @@ export class MicRecorder {
         const pending = this.chunks.length - this.cutAt;
         const pendingMs = pending * dt;
         if (pendingMs >= minSeg) {
-          const clip = this._clip(this.cutAt, this.chunks.length);
+          const clip = { ...this._clip(this.cutAt, this.chunks.length), from: this.cutAt, to: this.chunks.length };
           this.cutAt = this.chunks.length;
           segSpeechMs = 0;
           opts.onSegment({ ...clip, index: this.segments++ });
         }
+      }
+      // Live caption of the unfinished piece: on a timer while talking, and once at the start of every pause so the
+      // caption covers the speech up to its end before the end-of-answer timeout fires.
+      const unseen = this.speechTo > Math.max(this.cutAt, interimTo); // speech not covered by the latest interim
+      const due = (this.chunks.length - interimTo) * dt >= interimMs || (vad.quietMs >= 300 && unseen);
+      if (!fired && opts.onInterim && vad.started && unseen && due && !opts.interimBusy?.()) {
+        interimTo = this.chunks.length;
+        opts.onInterim({ ...this._clip(this.cutAt, interimTo), from: this.cutAt, to: interimTo });
       }
     };
     src.connect(this.node);
@@ -157,13 +190,16 @@ export class MicRecorder {
   }
 
   /**
-   * Stops recording, releases the microphone and returns {wav, seconds, segments}.
+   * Stops recording, releases the microphone and returns {wav, seconds, segments, from, speechTo}.
    * tailOnly: only the audio after the last segment handed to onSegment (the rest is already being transcribed).
+   * from/speechTo (chunk indexes): an interim clip with the same `from` and `to >= speechTo` already holds all of
+   * this clip's speech (the rest is silence), so its text can be used instead of transcribing the clip again.
    */
   async stop({ tailOnly = false } = {}) {
     if (!this.active) return null;
     this.active = false;
-    const clip = { ...this._clip(tailOnly ? this.cutAt : 0, this.chunks.length), segments: this.segments };
+    const from = tailOnly ? this.cutAt : 0;
+    const clip = { ...this._clip(from, this.chunks.length), segments: this.segments, from, speechTo: this.speechTo };
     this.release();
     return clip;
   }
@@ -176,6 +212,7 @@ export class MicRecorder {
 
   release() {
     this.node?.port && (this.node.port.onmessage = null);
+    this.stream?.getAudioTracks().forEach((t) => { t.onended = null; });
     this.stream?.getTracks().forEach((t) => t.stop());
     this.ctx?.close();
     this.stream = null;

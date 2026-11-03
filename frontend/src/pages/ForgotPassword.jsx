@@ -1,3 +1,5 @@
+/* Request a password-reset link by email (POST /auth/forgot-password). */
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { post } from "../api";
@@ -35,7 +37,7 @@ export default function ForgotPassword() {
             <input className="input" type="email" autoComplete="email" required value={email} autoFocus
               onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <Button type="submit" className="w-full" loading={busy} disabled={!email.trim()}>Send reset link</Button>
+          <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!email.trim()}>Send reset link</Button>
         </form>
       )}
       <p className="mt-6 text-center text-sm text-slate-600">

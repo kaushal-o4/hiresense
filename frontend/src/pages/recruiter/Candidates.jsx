@@ -1,3 +1,5 @@
+/* Candidate search for recruiters: filter students by skill, branch, CGPA, graduation year and interview score, optionally ranked against one of the recruiter's jobs. */
+
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search } from "lucide-react";

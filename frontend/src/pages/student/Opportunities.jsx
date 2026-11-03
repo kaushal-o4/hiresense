@@ -1,3 +1,5 @@
+/* "Jobs & Drives" menu item: the Jobs and Drives pages as URL tabs. */
+
 import UrlTabs from "../../components/Tabs";
 import StudentDrives from "./Drives";
 import Jobs from "./Jobs";

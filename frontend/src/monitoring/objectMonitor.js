@@ -53,22 +53,90 @@ export class ObjectTracker {
   flush() { return this._msg(this.inner.flush()); }
 }
 
+const MODEL = "/models/efficientdet_lite0.tflite";
+const OPTIONS = { maxResults: 5, scoreThreshold: 0.35, categoryAllowlist: Object.keys(OBJECT_CLASSES) };
+const FRAME_WIDTH = 320; // the model's input size: smaller frames are cheaper to copy to the worker
+
+// Each detection takes ~70-85 ms (measured in the browser E2E). On the page's own thread that froze the 3D interviewer
+// for 4-5 frames every second, so it runs in a Web Worker (public/mediapipe/object-worker.js). Browsers without
+// workers + ImageBitmap use the same detector on the page thread.
+function workerDetector() {
+  return new Promise((resolve, reject) => {
+    const w = new Worker("/mediapipe/object-worker.js");
+    const pending = new Map();
+    let next = 0;
+    w.onmessage = ({ data: m }) => {
+      if (m.type === "ready") {
+        resolve({
+          async detect(video, t) {
+            const h = Math.round(FRAME_WIDTH * (video.videoHeight / video.videoWidth));
+            const frame = await createImageBitmap(video, { resizeWidth: FRAME_WIDTH, resizeHeight: h, resizeQuality: "low" });
+            const id = ++next;
+            return new Promise((res, rej) => {
+              const timer = setTimeout(() => { pending.delete(id); rej(new Error("object detection timed out")); }, 5000);
+              pending.set(id, { res: (r) => { clearTimeout(timer); res(r); }, rej: (er) => { clearTimeout(timer); rej(er); } });
+              w.postMessage({ type: "detect", id, frame, t }, [frame]);
+            });
+          },
+        });
+      } else if (m.type === "error") {
+        w.terminate();
+        reject(new Error(m.message));
+      } else if (m.type === "result") {
+        const p = pending.get(m.id);
+        pending.delete(m.id);
+        if (m.error) p?.rej(new Error(m.error));
+        else p?.res({ detections: m.detections });
+      }
+    };
+    w.onerror = (e) => { w.terminate(); reject(new Error(e.message || "object detection worker failed")); };
+    w.postMessage({ type: "init", model: MODEL, options: OPTIONS });
+  });
+}
+
+async function pageDetector() {
+  const { FilesetResolver, ObjectDetector } = await import("@mediapipe/tasks-vision");
+  const fileset = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
+  const make = (delegate) => ObjectDetector.createFromOptions(fileset, {
+    baseOptions: { modelAssetPath: MODEL, delegate }, runningMode: "VIDEO", ...OPTIONS,
+  });
+  let d;
+  try { d = await make("GPU"); } catch { d = await make("CPU"); }
+  return { detect: async (video, t) => d.detectForVideo(video, t) };
+}
+
 let detectorPromise = null;
 
+/** -> {detect(video, t): Promise<ObjectDetectorResult>} */
 async function loadDetector() {
   if (!detectorPromise) {
-    detectorPromise = (async () => {
-      const { FilesetResolver, ObjectDetector } = await import("@mediapipe/tasks-vision");
-      const fileset = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
-      const make = (delegate) => ObjectDetector.createFromOptions(fileset, {
-        baseOptions: { modelAssetPath: "/models/efficientdet_lite0.tflite", delegate },
-        runningMode: "VIDEO", maxResults: 5, scoreThreshold: 0.35, categoryAllowlist: Object.keys(OBJECT_CLASSES),
-      });
-      try { return await make("GPU"); } catch { return make("CPU"); }
-    })();
+    detectorPromise = (typeof Worker !== "undefined" && typeof createImageBitmap === "function"
+      ? workerDetector().catch(() => pageDetector())
+      : pageDetector());
     detectorPromise.catch(() => { detectorPromise = null; });
   }
   return detectorPromise;
+}
+
+/**
+ * Load the detector and run one warm-up detection during the setup check. Measured in the browser E2E: loading
+ * and the first detection (GPU shader compile) blocked the page for ~5 s right when the interview started, which
+ * delayed the interviewer's first audio from ~1 s to ~6 s. Done here, the interview start stays instant.
+ */
+export async function preloadObjectDetector(video) {
+  try {
+    const d = await loadDetector();
+    if (video && video.readyState < 2) { // camera just started: wait (max 3 s) for the first frame
+      await new Promise((resolve) => {
+        const t = setTimeout(resolve, 3000);
+        video.addEventListener("loadeddata", () => { clearTimeout(t); resolve(); }, { once: true });
+      });
+    }
+    if (video?.readyState >= 2 && video.videoWidth) await d.detect(video, performance.now());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Runs the detector on a <video> about once a second and reports {objects, t} per analysed frame. */
@@ -86,20 +154,23 @@ export class ObjectMonitor {
     this.video = video;
     this.detector = await loadDetector();
     this.running = true;
-    const tick = () => {
-      if (!this.running) return;
-      this._analyse();
-      this.timer = setTimeout(tick, this.interval);
+    const run = (this.run = (this.run || 0) + 1); // a stop() + start() must not leave the old loop running
+    const tick = async () => {
+      if (!this.running || run !== this.run) return;
+      await this._analyse(); // one detection at a time: the next starts a full interval after this one ends
+      if (this.running && run === this.run) this.timer = setTimeout(tick, this.interval);
     };
     tick();
   }
 
-  _analyse() {
+  async _analyse() {
     const v = this.video;
     if (!v || v.readyState < 2 || !v.videoWidth) return;
     const t = performance.now();
     try {
-      const objects = observeObjects(this.detector.detectForVideo(v, t));
+      const result = await this.detector.detect(v, t);
+      if (!this.running) return;
+      const objects = observeObjects(result);
       this.failures = 0;
       this.onFrame?.({ objects, t });
     } catch (e) {

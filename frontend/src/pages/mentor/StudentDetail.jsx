@@ -1,3 +1,8 @@
+/*
+ * Everything a mentor needs for one student, in tabs: overview, interviews and English sessions,
+ * resume, improvement plans and goals, feedback and private notes, and follow-up sessions.
+ */
+
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Plus, Trash2 } from "lucide-react";
@@ -69,7 +74,7 @@ export default function MentorStudentDetail() {
     <div className="space-y-6">
       <PageHeader title={s.student.full_name} subtitle={<span className="flex flex-wrap items-center gap-2">{s.student.email} · {s.student.branch || "—"} · CGPA {s.student.cgpa ?? "—"} <StatusPill status={s.trend} /></span>}
         actions={<Button variant="secondary" onClick={() => setSessionModal({ scheduled_at: "", agenda: "", meeting_link: "" })}>Schedule session</Button>} />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Interview avg" value={s.interviews.average_score ?? "—"} hint={`${s.interviews.completed} completed`} />
         <StatCard label="English" value={`${s.english.minutes} min`} tone="sky" hint={`avg ${s.english.average_score ?? "—"}`} />
         <StatCard label="Assessments" value={s.assessments.average_score != null ? `${s.assessments.average_score}%` : "—"} tone="green" hint={`${s.assessments.passed}/${s.assessments.taken} passed`} />
@@ -81,8 +86,8 @@ export default function MentorStudentDetail() {
 
       {tab === "overview" && (
         <div className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card title="Weak areas">{s.weak_areas.length ? <ul className="space-y-1 text-sm">{s.weak_areas.map((w) => <li key={w}>• {w}</li>)}</ul> : <p className="text-sm text-slate-500">None detected yet.</p>}</Card>
+          <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+            <Card title="Weak areas">{s.weak_areas.length ? <ul className="space-y-1.5">{s.weak_areas.map((w) => <li key={w} className="flex gap-2 text-sm text-slate-700"><span className="mt-[8px] h-1 w-1 shrink-0 rounded-full bg-slate-400" aria-hidden />{w}</li>)}</ul> : <p className="text-sm text-slate-500">None detected yet.</p>}</Card>
             <RecommendationsCard endpoint={`/mentor/students/${id}/recommendations`} />
           </div>
           <SummaryCharts summary={s} series={data.series} />
@@ -151,7 +156,7 @@ export default function MentorStudentDetail() {
       )}
 
       {tab === "feedback" && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
           <Card title="Add feedback or a private note">
             <form className="space-y-3" onSubmit={async (e) => { e.preventDefault(); if (await run(() => post(`/mentor/students/${id}/feedback`, fb), fb.kind === "feedback" ? "Feedback sent to the student" : "Note saved")) setFb({ ...fb, content: "" }); }}>
               <div className="grid grid-cols-2 gap-3">

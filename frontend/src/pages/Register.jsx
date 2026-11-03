@@ -1,3 +1,8 @@
+/*
+ * Self-registration for students and recruiters (POST /auth/register/{role}). Recruiter accounts stay
+ * pending until an admin approves them.
+ */
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { post } from "../api";
@@ -97,7 +102,7 @@ export default function Register() {
             <span>Share my profile with recruiters on HireSense (you can change this anytime in Settings).</span>
           </label>
         )}
-        <Button type="submit" className="w-full" loading={busy}>Create account</Button>
+        <Button type="submit" size="lg" className="w-full" loading={busy}>Create account</Button>
       </form>
       <p className="mt-6 text-center text-sm text-slate-600">
         Already registered? <Link className="font-medium text-brand-600 hover:underline" to="/login">Sign in</Link>

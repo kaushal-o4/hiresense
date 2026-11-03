@@ -1,3 +1,5 @@
+/* Panel showing what Aria remembers in an English conversation (used by EnglishSession and EnglishAvatarSession). */
+
 import { Brain } from "lucide-react";
 import { Card, Pill } from "./ui";
 

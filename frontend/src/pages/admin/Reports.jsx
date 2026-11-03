@@ -1,3 +1,5 @@
+/* Placement report table and CSV export (/admin/reports/placements). */
+
 import { Download } from "lucide-react";
 import { download, get } from "../../api";
 import { Button, Card, ErrorBox, PageHeader, Spinner, StatCard, StatusPill, Table, fmtDateTime, useApi, useToast } from "../../components/ui";

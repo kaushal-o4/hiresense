@@ -1,3 +1,5 @@
+/* HireSense frontend API client and request helpers. */
+
 // Thin fetch wrapper. Auth is an httpOnly cookie set by the backend, so no token is stored in JS.
 
 export class ApiError extends Error {

@@ -1,3 +1,5 @@
+/* URL-backed page tabs (?tab=...), used by the merged "My Progress" and "Jobs & Drives" pages. */
+
 import { useSearchParams } from "react-router-dom";
 
 /**
@@ -14,7 +16,7 @@ export default function UrlTabs({ tabs, label }) {
         {tabs.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={t.id === active.id} onClick={() => select(t.id)}
             className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition ${t.id === active.id
-              ? "border-brand-600 text-brand-700" : "border-transparent text-slate-500 hover:text-slate-800"}`}>
+              ? "border-slate-900 text-slate-900" : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"}`}>
             {t.label}
           </button>
         ))}

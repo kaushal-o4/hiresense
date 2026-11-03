@@ -1,3 +1,8 @@
+/*
+ * Full notification list for any role: mark as read, mark all read, delete (/notifications endpoints).
+ * The header bell in components/Layout.jsx shows the latest few.
+ */
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2 } from "lucide-react";

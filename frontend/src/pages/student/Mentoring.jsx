@@ -1,3 +1,5 @@
+/* The student's view of mentoring: assigned mentor, feedback, improvement plans and goals, sessions. */
+
 import { Link } from "react-router-dom";
 import { CheckCircle2, ExternalLink, GraduationCap } from "lucide-react";
 import { get, post } from "../../api";

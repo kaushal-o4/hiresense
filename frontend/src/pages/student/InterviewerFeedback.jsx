@@ -41,16 +41,16 @@ export default function InterviewerFeedback({ session, persona, voice: voiceProp
   };
 
   return (
-    <div className="grid overflow-hidden rounded-2xl border border-slate-200 bg-white md:grid-cols-[280px_1fr]">
+    <div className="card grid overflow-hidden md:grid-cols-[260px_1fr]">
       <Suspense fallback={<div className="h-56 bg-slate-200" />}>
         <Avatar3D getVisemes={getVisemes} mode={speaking ? "feedback" : "idle"} interviewer={persona.id} modelUrl={persona.ui.model}
           hdModelUrl={persona.ui.hd_model} label={`${persona.name}, giving feedback`} className="h-56 w-full md:h-full md:min-h-[14rem]" />
       </Suspense>
-      <div className="flex flex-col gap-3 p-5">
-        <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: persona.ui.accent }}>{persona.name} · {persona.title}</p>
+      <div className="flex flex-col justify-center gap-4 p-6">
+        <p className="text-sm"><span className="font-semibold text-slate-900">{persona.name}</span> <span className="text-slate-500">· {persona.title}</span></p>
         {remarks ? (
           <>
-            <blockquote className="border-l-4 pl-3 text-slate-700" style={{ borderColor: persona.ui.accent }}>{remarks}</blockquote>
+            <blockquote className="max-w-2xl text-[17px] leading-relaxed text-slate-800">&ldquo;{remarks}&rdquo;</blockquote>
             <div><Button variant="secondary" loading={busy} onClick={play}>{speaking ? <><Square size={14} /> Stop</> : <><Volume2 size={14} /> Hear {persona.name}'s feedback</>}</Button></div>
           </>
         ) : (

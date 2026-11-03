@@ -1,7 +1,10 @@
+/* Recruiter job postings: create, edit, publish, close and delete. JobForm is the create/edit form. */
+
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { del, get, post, put } from "../../api";
+import { chipClass } from "../shared/chips";
 import {
   Button, Card, ConfirmButton, ErrorBox, Field, Modal, PageHeader, Pagination, Spinner, StatusPill, Table, TagInput,
   fmtDate, fromLocalInput, toLocalInput, useApi, useToast,
@@ -83,9 +86,9 @@ export default function RecruiterJobs() {
   return (
     <div className="space-y-6">
       <PageHeader title="Job postings" actions={<Button onClick={() => { setEditing(null); setFormOpen(true); }}><Plus size={16} /> Post a job</Button>} />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {["", "published", "draft", "closed"].map((s) => (
-          <button key={s || "all"} onClick={() => { setStatus(s); setPage(1); }} className={`rounded-full px-3 py-1 text-sm ${status === s ? "bg-brand-600 text-white" : "bg-white ring-1 ring-slate-200"}`}>{s || "All"}</button>
+          <button key={s || "all"} onClick={() => { setStatus(s); setPage(1); }} aria-pressed={status === s} className={chipClass(status === s)}>{s || "All"}</button>
         ))}
       </div>
       <Card bodyClass="">

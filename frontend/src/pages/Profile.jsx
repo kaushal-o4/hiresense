@@ -1,3 +1,8 @@
+/*
+ * Role-specific profile editor (student education/career/projects, recruiter company, mentor details),
+ * saved with PUT /profile. A student's skills and target role here feed interviews and job matching.
+ */
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BadgeCheck, Plus, Trash2 } from "lucide-react";
@@ -143,7 +148,7 @@ export default function Profile() {
       {user.role === "recruiter" && <RecruiterFields p={p} setP={setP} />}
       {user.role === "mentor" && <MentorFields p={p} setP={setP} />}
       <div className="flex items-center justify-between">
-        <Link to="/settings" className="text-sm text-brand-600 hover:underline">Password, language & privacy settings →</Link>
+        <Link to="/settings" className="text-sm text-brand-600 hover:underline">Password, language & privacy settings</Link>
         <Button onClick={save} loading={busy}>Save changes</Button>
       </div>
     </div>

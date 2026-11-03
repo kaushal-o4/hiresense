@@ -1,7 +1,10 @@
+/* The mentor's follow-up sessions: schedule, edit status and agenda, delete. */
+
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { del, get, patch, post } from "../../api";
+import { chipClass } from "../shared/chips";
 import {
   Button, Card, ConfirmButton, ErrorBox, Field, Modal, PageHeader, Spinner, StatusPill, Table, fmtDateTime,
   fromLocalInput, toLocalInput, useApi, useToast,
@@ -37,9 +40,9 @@ export default function MentorSessions() {
   return (
     <div className="space-y-6">
       <PageHeader title="Follow-up sessions" actions={<Button onClick={() => setModal({ student_id: "", scheduled_at: "", agenda: "", meeting_link: "" })}><Plus size={16} /> Schedule session</Button>} />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {["", "scheduled", "completed", "cancelled"].map((s) => (
-          <button key={s || "all"} onClick={() => setStatus(s)} className={`rounded-full px-3 py-1 text-sm ${status === s ? "bg-brand-600 text-white" : "bg-white ring-1 ring-slate-200"}`}>{s || "All"}</button>
+          <button key={s || "all"} onClick={() => setStatus(s)} aria-pressed={status === s} className={chipClass(status === s)}>{s || "All"}</button>
         ))}
       </div>
       <Card bodyClass="">

@@ -1,8 +1,14 @@
+/*
+ * Student assessments: list available tests, take a timed attempt (start/submit), see results and
+ * request AI review of code answers. Grading happens on the server; codeRunner only lets students self-check.
+ */
+
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ClipboardCheck, Code2, Play, RefreshCw, Timer } from "lucide-react";
 import { get, post } from "../../api";
 import { runJavaScript } from "../../components/codeRunner";
+import { chipClass } from "../shared/chips";
 import {
   Button, Card, EmptyState, ErrorBox, Modal, Notice, PageHeader, Pill, Spinner, StatusPill, Table, Tabs, fmtDateTime,
   useApi, useToast,
@@ -74,13 +80,13 @@ export function ReviewList({ review }) {
             </>
           ) : (
             <div className="mt-2 space-y-2 text-sm">
-              <pre className="max-h-48 overflow-auto rounded bg-slate-900 p-3 text-xs text-slate-100">{q.your_answer || "(no code submitted)"}</pre>
+              <pre className="max-h-48 overflow-auto rounded bg-night-950 p-3 text-xs text-slate-800 ring-1 ring-inset ring-slate-200">{q.your_answer || "(no code submitted)"}</pre>
               {q.result.status === "pending" ? <Notice>Awaiting AI review: {q.result.feedback}</Notice> : (
                 <>
                   <p><b>{q.result.marks}/{q.result.max_marks} marks</b> {q.result.method === "ai_review" && <Pill tone="brand" className="ml-1">AI-reviewed · code not executed</Pill>}</p>
                   <p className="text-slate-600">{q.result.feedback}</p>
                   {q.result.verdicts?.length > 0 && <ul className="text-xs">{q.result.verdicts.map((v) => <li key={v.case}>{v.likely_passes ? "✓" : "✗"} Test {v.case}: {v.reason}</li>)}</ul>}
-                  {q.result.improved_solution && <details><summary className="cursor-pointer text-brand-600">Reference solution</summary><pre className="mt-1 overflow-auto rounded bg-slate-900 p-3 text-xs text-slate-100">{q.result.improved_solution}</pre></details>}
+                  {q.result.improved_solution && <details><summary className="cursor-pointer text-brand-600">Reference solution</summary><pre className="mt-1 overflow-auto rounded bg-night-950 p-3 text-xs text-slate-800 ring-1 ring-inset ring-slate-200">{q.result.improved_solution}</pre></details>}
                 </>
               )}
             </div>
@@ -95,8 +101,8 @@ function ResultHeader({ r, total }) {
   if (r.evaluation_status === "pending") return <Notice>MCQs are graded; coding answers are awaiting AI review, so the final score isn't available yet.</Notice>;
   return (
     <div className="mb-6 flex flex-wrap items-center gap-4">
-      <p className="text-4xl font-bold text-brand-700">{r.score}%</p>
-      <Pill tone={r.passed ? "green" : "red"}>{r.passed ? "Passed" : "Not passed"}</Pill>
+      <p className={`num text-4xl font-semibold tracking-tight ${r.passed ? "text-emerald-700" : "text-rose-700"}`}>{r.score}%</p>
+      <Pill dot tone={r.passed ? "green" : "red"}>{r.passed ? "Passed" : "Not passed"}</Pill>
       <span className="text-sm text-slate-500">{r.marks_obtained}/{r.max_marks ?? total} marks · pass mark {r.pass_percent}%</span>
       {r.flagged && <Pill tone="amber">flagged: {r.flag_reason}</Pill>}
     </div>
@@ -117,7 +123,7 @@ function TakeAssessment({ attempt, onDone }) {
     try {
       const res = await post(`/student/assessments/results/${attempt.result_id}/submit`, { answers });
       setResult(res);
-      if (res.new_badges?.length) toast(`🏅 New badge: ${res.new_badges.join(", ")}`);
+      if (res.new_badges?.length) toast(`New badge: ${res.new_badges.join(", ")}`);
     } catch (e) { toast(e.message, "error"); } finally { setBusy(false); }
   };
 
@@ -201,7 +207,7 @@ export default function StudentAssessments() {
         <>
           <div className="mb-4 flex flex-wrap gap-2">
             {CATEGORIES.map(([v, l]) => (
-              <button key={v || "all"} onClick={() => setCategory(v)} className={`rounded-full px-3 py-1 text-sm ${category === v ? "bg-brand-600 text-white" : "bg-white ring-1 ring-slate-200"}`}>{l}</button>
+              <button key={v || "all"} onClick={() => setCategory(v)} aria-pressed={category === v} className={chipClass(category === v)}>{l}</button>
             ))}
           </div>
           {available.loading && <Spinner />}

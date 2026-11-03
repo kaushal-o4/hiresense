@@ -1,7 +1,13 @@
+/*
+ * Applicants for one job: rule-based match, on-demand AI match review, side-by-side comparison and
+ * status changes (shortlist, schedule interview, select, reject) that notify the student.
+ */
+
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Scale, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Scale, Sparkles } from "lucide-react";
 import { get, patch, post } from "../../api";
+import { chipClass } from "../shared/chips";
 import {
   Button, Card, ErrorBox, Field, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, fromLocalInput,
   useApi, useToast,
@@ -49,8 +55,8 @@ function MatchPanel({ match }) {
       )}
       {(match.strengths?.length > 0 || match.concerns?.length > 0) && (
         <div className="mt-2 grid gap-2 sm:grid-cols-2 text-xs">
-          <div><p className="font-semibold text-emerald-700">Strengths</p><ul className="list-disc pl-4">{match.strengths?.map((s, i) => <li key={i}>{s}</li>)}</ul></div>
-          <div><p className="font-semibold text-red-700">Concerns</p><ul className="list-disc pl-4">{match.concerns?.map((s, i) => <li key={i}>{s}</li>)}</ul></div>
+          <div><p className="eyebrow mb-1.5">Strengths</p><ul className="space-y-1">{match.strengths?.map((s, i) => <li key={i} className="flex gap-1.5 text-slate-700"><CheckCircle2 size={13} className="mt-px shrink-0 text-emerald-600" />{s}</li>)}</ul></div>
+          <div><p className="eyebrow mb-1.5">Concerns</p><ul className="space-y-1">{match.concerns?.map((s, i) => <li key={i} className="flex gap-1.5 text-slate-700"><AlertTriangle size={13} className="mt-px shrink-0 text-amber-600" />{s}</li>)}</ul></div>
         </div>
       )}
     </div>
@@ -114,7 +120,7 @@ export default function RecruiterJobDetail() {
       </Card>
       <div className="flex flex-wrap gap-2">
         {["", ...STATUSES, "withdrawn"].map((s) => (
-          <button key={s || "all"} onClick={() => setFilter(s)} className={`rounded-full px-3 py-1 text-sm ${filter === s ? "bg-brand-600 text-white" : "bg-white ring-1 ring-slate-200"}`}>{s ? s.replace(/_/g, " ") : "All"}</button>
+          <button key={s || "all"} onClick={() => setFilter(s)} aria-pressed={filter === s} className={chipClass(filter === s)}>{s ? s.replace(/_/g, " ") : "All"}</button>
         ))}
       </div>
       <Notice tone="blue">AI recommendations are advisory. Review the evidence and make the final decision yourself. Select 2-5 candidates to compare side by side.</Notice>

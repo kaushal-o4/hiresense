@@ -1,3 +1,8 @@
+/*
+ * User management: list and filter, create staff accounts, approve recruiters, change role/status,
+ * delete (/admin/users endpoints).
+ */
+
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Plus, Search } from "lucide-react";

@@ -20,12 +20,22 @@ import { Blinker, Gaze, HeadMotion, Micro } from "./motion";
 export const AVATAR_URL = "/avatars/interviewer.glb";
 
 // Rendering presets (names/labels: avatarStates.AVATAR_QUALITY). "balanced" is the default: soft shadows and
-// skin shading at ~30 fps.
+// skin shading at 60 fps (30 fps looked choppy in head and lip motion; the laptop's Intel GPU, which Chrome renders
+// on, holds 60 with p95 18 ms). frameMs is a whole number of 60 Hz display frames, so frames are evenly spaced.
 const QUALITY = {
-  high: { pixelRatio: 2, antialias: true, shadows: 2048, skin: true, frameMs: 22, anisotropy: 8 },
-  balanced: { pixelRatio: 1.25, antialias: true, shadows: 1024, skin: true, frameMs: 32, anisotropy: 4 },
-  performance: { pixelRatio: 1, antialias: false, shadows: 0, skin: false, frameMs: 42, anisotropy: 2 },
+  high: { pixelRatio: 2, antialias: true, shadows: 2048, skin: true, frameMs: 1000 / 60, anisotropy: 8 },
+  balanced: { pixelRatio: 1.25, antialias: true, shadows: 1024, skin: true, frameMs: 1000 / 60, anisotropy: 4 },
+  performance: { pixelRatio: 1, antialias: false, shadows: 0, skin: false, frameMs: 1000 / 30, anisotropy: 2 },
 };
+// The shadow map is redrawn every SHADOW_EVERY frames: the head moves a few millimetres in that time, which is not
+// visible in a soft shadow, and it removes a whole extra render pass from most frames.
+const SHADOW_EVERY = 3;
+// Adaptive quality: when frames keep arriving late (measured over ADAPT_WINDOW_MS; the GPU may be shared with the
+// local AI model) the frame rate drops to an even 30 fps first, then the resolution steps down, and finally shadows
+// are turned off. Never steps back up mid-session.
+const ADAPT_WINDOW_MS = 2500;
+const ADAPT_SLOW = 1.4; // average frame gap > 1.4x the target = too slow
+const MIN_PIXEL_RATIO = 0.75;
 
 // Bone names across rigs (Rocketbox "Bip01_*", MetaHuman / UE5 skeleton, Mixamo-style).
 const BONES = {
@@ -131,6 +141,8 @@ function upgradeMaterials(root, q, maxAniso) {
 }
 
 const smooth = (cur, target, rate, dt) => cur + (target - cur) * (1 - Math.exp(-rate * dt));
+const tmpQ = new THREE.Quaternion(); // reused every frame (no per-frame garbage -> no GC pauses)
+const tmpE = new THREE.Euler();
 const findBone = (bones, key) => BONES[key].map((n) => bones[n]).find(Boolean) || null;
 
 export default function Avatar3D({
@@ -160,15 +172,17 @@ export default function Avatar3D({
       return undefined;
     }
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const frameMs = lite ? 48 : q.frameMs;
+    let frameMs = lite ? 1000 / 20 : q.frameMs;
     const look = LOOK[whoRef.current] || LOOK.aria;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, q.pixelRatio));
+    let pixelRatio = Math.min(window.devicePixelRatio, q.pixelRatio);
+    renderer.setPixelRatio(pixelRatio);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = look.exposure;
     if (q.shadows) {
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.autoUpdate = false; // redrawn every SHADOW_EVERY frames (see the loop)
     }
     el.appendChild(renderer.domElement);
     renderer.domElement.style.width = "100%";
@@ -281,6 +295,7 @@ export default function Avatar3D({
         rig: st.rig.kind, morphs: morphNames.size, visemes: st.rig.visemeCount, arkit: st.rig.arkitCount,
         // test hooks (used by tests_e2e): current viseme weights, a pose helper, forced channel weights
         visemeWeights: () => ({ ...st.vis }), poseArm, force: (map) => { st.force = map; },
+        adaptive: () => ({ fps: Math.round(1000 / frameMs), pixelRatio, shadows: renderer.shadowMap.enabled, steps: adapt.steps }),
         camera: (dy, dist) => { camera.position.set(head.x, eyes.y - 0.02 + dy, head.z + dist); camera.lookAt(target); },
         // orbit around the body (yaw in radians, 0 = front) to check the pose from the side
         orbit: (yaw, dy, dist) => {
@@ -311,18 +326,56 @@ export default function Avatar3D({
     };
     const turn = (k, [x, y, z]) => {
       const b = st[k];
-      if (b) b.quaternion.copy(st.rest[k]).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(x, y, z)));
+      if (b) b.quaternion.copy(st.rest[k]).multiply(tmpQ.setFromEuler(tmpE.set(x, y, z)));
+    };
+
+    // adaptive quality (see ADAPT_*): sum of frame gaps in the current window
+    const adapt = { start: 0, frames: 0, gaps: 0, steps: 0 };
+    const stepDown = () => {
+      if (frameMs < 1000 / 30 - 1) frameMs = 1000 / 30;
+      else if (pixelRatio > MIN_PIXEL_RATIO + 0.01) {
+        pixelRatio = Math.max(MIN_PIXEL_RATIO, Math.round(pixelRatio * 0.8 * 100) / 100);
+        renderer.setPixelRatio(pixelRatio);
+        resize();
+      } else if (renderer.shadowMap.enabled) {
+        renderer.shadowMap.enabled = false;
+        scene.traverse((o) => {
+          if (!o.isMesh) return;
+          o.castShadow = false;
+          o.receiveShadow = false;
+          (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.needsUpdate = true; });
+        });
+      } else return;
+      adapt.steps += 1;
+      console.info(`[avatar] frames too slow; lowered quality (${Math.round(1000 / frameMs)} fps, pixel ratio ${pixelRatio}, shadows ${renderer.shadowMap.enabled ? "on" : "off"})`);
     };
 
     let last = performance.now();
+    let frameNo = 0;
     let raf;
     const loop = (now) => {
       raf = requestAnimationFrame(loop);
-      // ~30 fps is smooth for a talking head and leaves CPU/GPU time for the local speech and AI models.
-      if (now - last < frameMs) return;
-      if (document.hidden || !st.visible) { last = now; return; } // hidden: don't burn CPU/GPU
-      const dt = Math.min(0.05, (now - last) / 1000);
+      // Frames are capped at the preset rate (frameMs) to leave CPU/GPU time for the local speech and AI models. rAF
+      // timestamps jitter by a few ms, so a frame that is due "almost now" is drawn now: a strict threshold skipped
+      // it to the next display frame and made the spacing uneven (visible judder).
+      if (now - last < frameMs - 4) return;
+      if (document.hidden || !st.visible) { last = now; adapt.start = 0; return; } // hidden: don't burn CPU/GPU
+      const gap = now - last;
+      const dt = Math.min(0.05, gap / 1000);
       last = now;
+      if (st.rig && !lite) {
+        if (!adapt.start) adapt.start = now + 3000; // let shaders compile and the model settle first
+        else if (now >= adapt.start) {
+          adapt.frames += 1;
+          adapt.gaps += gap;
+          if (now - adapt.start >= ADAPT_WINDOW_MS) {
+            if (adapt.gaps / adapt.frames > frameMs * ADAPT_SLOW) stepDown();
+            adapt.start = now;
+            adapt.frames = 0;
+            adapt.gaps = 0;
+          }
+        }
+      }
       const t = now / 1000;
       if (st.rig) {
         const m = modeRef.current;
@@ -367,6 +420,8 @@ export default function Avatar3D({
         turn("spine", reduced ? [hm.spine[0] * 0.3, 0, 0] : hm.spine);
         if (st.force) for (const [c, w] of Object.entries(st.force)) setMorph(st.rig.names[c] || c, w); // test hook only
       }
+      if (renderer.shadowMap.enabled && frameNo % SHADOW_EVERY === 0) renderer.shadowMap.needsUpdate = true;
+      frameNo += 1;
       renderer.render(scene, camera);
     };
     raf = requestAnimationFrame(loop);
@@ -398,7 +453,7 @@ export default function Avatar3D({
       <div className="pointer-events-none absolute inset-0 opacity-70" aria-hidden="true"
         style={{ background: "radial-gradient(circle at 12% 62%, rgba(255,214,160,.10) 0 3%, transparent 6%), radial-gradient(circle at 90% 70%, rgba(255,230,190,.08) 0 4%, transparent 8%), linear-gradient(0deg, rgba(0,0,0,.35) 0 18%, transparent 40%)", filter: "blur(8px)" }} />
       <div ref={host} className="absolute inset-0" role="img" aria-label={`${label}, ${mode}`} />
-      {status === "loading" && <p className="absolute inset-x-0 bottom-1/2 text-center text-sm text-slate-300">Loading…</p>}
+      {status === "loading" && <p className="absolute inset-x-0 bottom-1/2 text-center text-sm text-slate-600">Loading…</p>}
     </div>
   );
 }

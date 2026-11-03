@@ -102,3 +102,21 @@ export async function checkNetwork() {
     return { ok: false, ms: null };
   }
 }
+
+/**
+ * What this browser supports for the interview and its monitoring. Each entry: {ok, label, detail}. `required`
+ * entries block the start (camera access when the camera is required); the rest only limit optional checks.
+ */
+export function browserSupport(win = window) {
+  const nav = win.navigator || {};
+  const doc = win.document || {};
+  const has = (x) => !!x;
+  return {
+    media: { ok: has(nav.mediaDevices?.getUserMedia), label: "Camera and microphone access", required: true },
+    wasm: { ok: typeof win.WebAssembly === "object", label: "On-device face analysis (WebAssembly)" },
+    audio: { ok: has(win.AudioContext || win.webkitAudioContext) && has(win.AudioWorkletNode), label: "Microphone level analysis" },
+    visibility: { ok: "hidden" in doc && "onvisibilitychange" in doc, label: "Tab focus changes (Page Visibility)" },
+    fullscreen: { ok: has(doc.documentElement?.requestFullscreen), label: "Full screen" },
+    secure: { ok: win.isSecureContext !== false, label: "Secure connection (needed for camera access)", required: true },
+  };
+}

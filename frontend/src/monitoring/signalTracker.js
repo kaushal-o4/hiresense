@@ -14,12 +14,26 @@ export const DEFAULT_THRESHOLDS = {
   attention_away: { warnMs: 10000, minRecordMs: 8000, endMs: 1500 },
   low_light: { warnMs: 4000, minRecordMs: 10000, endMs: 3000 },
   camera_obstructed: { warnMs: 3000, minRecordMs: 4000, endMs: 1500 },
+  face_partial: { warnMs: 8000, minRecordMs: 10000, endMs: 2000 },
 };
 
+/** Thresholds from the admin security settings (GET /api/monitoring/policy -> thresholds); missing values = defaults. */
+export function thresholdsFrom(t) {
+  if (!t) return DEFAULT_THRESHOLDS;
+  const d = DEFAULT_THRESHOLDS;
+  return {
+    ...d,
+    face_absent: { ...d.face_absent, warnMs: t.face_absent_warn_ms ?? d.face_absent.warnMs, minRecordMs: t.face_absent_record_ms ?? d.face_absent.minRecordMs },
+    multiple_faces: { ...d.multiple_faces, warnMs: t.multiple_faces_warn_ms ?? d.multiple_faces.warnMs, minRecordMs: t.multiple_faces_record_ms ?? d.multiple_faces.minRecordMs },
+    attention_away: { ...d.attention_away, warnMs: t.gaze_warn_ms ?? d.attention_away.warnMs, minRecordMs: t.gaze_record_ms ?? d.attention_away.minRecordMs },
+  };
+}
+
 export const WARNINGS = {
-  face_absent: "Your face is not clearly visible. Please adjust your camera.",
-  multiple_faces: "More than one face appears to be visible. Please ensure your interview setup meets the assessment requirements.",
-  attention_away: "Your attention appears to have shifted away from the screen. Please return when you are ready.",
+  face_absent: "We cannot clearly detect your face. Please adjust your position or camera.",
+  multiple_faces: "More than one face appears in the camera frame. Please ensure your interview setup follows the stated interview rules.",
+  attention_away: "Please keep your attention on the interview screen. Brief natural movements are acceptable.",
+  face_partial: "Part of your face is outside the camera frame. Please move toward the center.",
   low_light: "Camera visibility is temporarily low. Please check your lighting.",
   camera_obstructed: "The camera view seems blocked or very dark. Please check your camera.",
 };
@@ -39,7 +53,7 @@ export class SignalTracker {
    * attention when no single face is visible) - null frames neither extend nor end an episode.
    * Returns {events: [...], warnings: [{type, message}], cleared: [type]}.
    */
-  update(tMs, obs) {
+  update(tMs, obs, meta = {}) {
     const out = { events: [], warnings: [], cleared: [] };
     for (const type of Object.keys(this.th)) {
       if (!this.enabled[type]) continue;
@@ -48,10 +62,11 @@ export class SignalTracker {
       const th = this.th[type];
       let e = this.ep[type];
       if (v) {
-        if (!e) e = this.ep[type] = { start: tMs, lastTrue: tMs, frames: 0, trueFrames: 0, warned: false };
+        if (!e) e = this.ep[type] = { start: tMs, lastTrue: tMs, frames: 0, trueFrames: 0, warned: false, meta: {} };
         e.frames += 1;
         e.trueFrames += 1;
         e.lastTrue = tMs;
+        this._meta(type, e, meta[type]);
         if (!e.warned && tMs - e.start >= th.warnMs && e.trueFrames / e.frames >= MIN_WARN_AGREEMENT) {
           e.warned = true;
           out.warnings.push({ type, message: WARNINGS[type] });
@@ -70,9 +85,30 @@ export class SignalTracker {
     const duration = e.lastTrue - e.start;
     if (e.warned) out.cleared.push(type);
     if (duration >= this.th[type].minRecordMs) {
-      out.events.push({ event_type: type, t_ms: Math.round(e.start), duration_ms: Math.round(duration),
-        confidence: Math.round((e.trueFrames / Math.max(1, e.frames)) * 1000) / 1000 });
+      const ev = { event_type: type, t_ms: Math.round(e.start), duration_ms: Math.round(duration),
+        confidence: Math.round((e.trueFrames / Math.max(1, e.frames)) * 1000) / 1000 };
+      const details = this._details(type, e.meta);
+      if (details) ev.details = details;
+      out.events.push(ev);
     }
+  }
+
+  // per-episode facts: the largest number of faces seen, what turned away (head / eyes), which edge cut the face
+  _meta(type, e, v) {
+    if (v === null || v === undefined) return;
+    if (type === "multiple_faces") e.meta.max_faces = Math.max(e.meta.max_faces || 0, v);
+    else if (type === "attention_away") (e.meta.causes ||= new Set()).add(v);
+    else if (type === "face_partial") e.meta.edge ||= v;
+  }
+
+  _details(type, m) {
+    if (type === "multiple_faces" && m.max_faces) return { max_faces: m.max_faces };
+    if (type === "face_partial" && m.edge) return { edge: m.edge };
+    if (type === "attention_away" && m.causes?.size) {
+      const c = m.causes;
+      return { cause: c.has("head+eyes") || (c.has("head") && c.has("eyes")) ? "head+eyes" : c.has("head") ? "head" : "eyes" };
+    }
+    return null;
   }
 
   /** End every open episode (interview finished, monitoring stopped). */
@@ -83,9 +119,34 @@ export class SignalTracker {
   }
 }
 
+/**
+ * Repeated gaze deviations: each recorded "attention_away" episode is counted; `count` of them inside `windowS`
+ * seconds produce ONE "attention_repeated" event, then counting starts again (no event per frame or per glance).
+ */
+export class RepeatTracker {
+  constructor({ count = 5, windowS = 120 } = {}) {
+    this.count = count;
+    this.windowMs = windowS * 1000;
+    this.times = [];
+  }
+
+  /** An attention_away event was recorded; returns an attention_repeated event or null. */
+  add(ev) {
+    const t = ev.t_ms;
+    this.times = this.times.filter((x) => t - x <= this.windowMs);
+    this.times.push(t);
+    if (this.times.length < this.count) return null;
+    const out = { event_type: "attention_repeated", t_ms: Math.round(this.times[0]),
+      duration_ms: Math.round(t + (ev.duration_ms || 0) - this.times[0]), confidence: 1,
+      details: { count: this.times.length, window_s: Math.round(this.windowMs / 1000) } };
+    this.times = [];
+    return out;
+  }
+}
+
 /** Browser focus (tab hidden / window blurred). Returns an event when focus comes back. */
 export class FocusTracker {
-  constructor() { this.awaySince = null; }
+  constructor(minMs = 500) { this.awaySince = null; this.minMs = minMs; }
 
   away(tMs) { if (this.awaySince === null) this.awaySince = tMs; }
 
@@ -93,6 +154,6 @@ export class FocusTracker {
     if (this.awaySince === null) return null;
     const ev = { event_type: "focus_change", t_ms: Math.round(this.awaySince), duration_ms: Math.round(tMs - this.awaySince) };
     this.awaySince = null;
-    return ev.duration_ms >= 500 ? ev : null; // sub-second blurs (permission prompts, clicks) are not recorded
+    return ev.duration_ms >= this.minMs ? ev : null; // sub-second blurs (permission prompts, clicks) are not recorded
   }
 }

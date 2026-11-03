@@ -1,3 +1,5 @@
+/* Set a new password from an emailed reset link (POST /auth/reset-password with the token from the URL). */
+
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { post } from "../api";
@@ -34,7 +36,7 @@ export default function ResetPassword() {
       ) : done ? (
         <div className="space-y-4">
           <Notice tone="sky">{done}</Notice>
-          <Link className="flex w-full items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700" to="/login">Sign in</Link>
+          <Link className="flex w-full items-center justify-center h-11 rounded-xl px-4 text-[15px] font-medium bg-gradient-to-r from-brand-500 to-violet-500 text-snow shadow-glow hover:brightness-110" to="/login">Sign in</Link>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4" noValidate>
@@ -47,7 +49,7 @@ export default function ResetPassword() {
             <input className="input" type="password" autoComplete="new-password" required value={pw.confirm}
               onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
           </Field>
-          <Button type="submit" className="w-full" loading={busy} disabled={!pw.password || !pw.confirm}>Save new password</Button>
+          <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!pw.password || !pw.confirm}>Save new password</Button>
           {error && /expired|invalid/i.test(error) && (
             <p className="text-center text-sm"><Link className="text-brand-600 hover:underline" to="/forgot-password">Request a new link</Link></p>
           )}

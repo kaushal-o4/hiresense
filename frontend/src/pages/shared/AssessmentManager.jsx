@@ -1,3 +1,8 @@
+/*
+ * Create, edit, AI-draft and see results of assessments. Used by recruiters (job-specific tests)
+ * and admins, at /recruiter/assessments and /admin/assessments.
+ */
+
 import { useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
 import { del, get, post, put } from "../../api";
@@ -127,7 +132,7 @@ export default function AssessmentManager() {
               { label: "Topic", key: "topic" },
               { label: "Questions", key: "question_count" },
               { label: "Job", render: (a) => a.job_id ? jobs.data?.items.find((j) => j.id === a.job_id)?.title || `#${a.job_id}` : "All students" },
-              { label: "Status", render: (a) => <Pill tone={a.active ? "green" : "gray"}>{a.active ? "active" : "inactive"}</Pill> },
+              { label: "Status", render: (a) => <Pill dot tone={a.active ? "green" : "gray"}>{a.active ? "Active" : "Inactive"}</Pill> },
               { label: "Created", render: (a) => fmtDateTime(a.created_at) },
               { label: "", render: (a) => (
                 <div className="flex gap-1">

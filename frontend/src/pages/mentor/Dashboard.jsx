@@ -1,3 +1,5 @@
+/* Mentor home: assigned students, who is struggling, upcoming sessions (GET /mentor/dashboard). */
+
 import { Link } from "react-router-dom";
 import { CalendarClock, CheckCircle2, GraduationCap, TrendingDown, TrendingUp } from "lucide-react";
 import { get } from "../../api";
@@ -11,7 +13,7 @@ export default function MentorDashboard() {
   return (
     <div className="space-y-6">
       <PageHeader title="Mentor dashboard" subtitle="Your students' progress, weaknesses and follow-ups." />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Assigned students" value={data.assigned_students} icon={GraduationCap} />
         <StatCard label="Improving" value={data.trends.improving} icon={TrendingUp} tone="green" hint={`${data.trends.stable} stable`} />
         <StatCard label="Struggling" value={data.trends.struggling} icon={TrendingDown} tone="red" hint={`${data.trends.no_data} with no activity yet`} />

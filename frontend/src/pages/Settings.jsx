@@ -1,3 +1,8 @@
+/*
+ * Account settings for every role: speech language and voice preferences, privacy, change password
+ * and delete account (/settings, /auth/change-password, DELETE /auth/me).
+ */
+
 import { useState } from "react";
 import { Volume2 } from "lucide-react";
 import { api, get, post, put } from "../api";
@@ -13,8 +18,8 @@ const LANGS = [
 function Toggle({ checked, onChange, label }) {
   return (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition ${checked ? "bg-brand-600" : "bg-slate-300"}`}>
-      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? "left-5" : "left-0.5"}`} />
+      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-brand-500" : "bg-slate-300"}`}>
+      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-snow shadow transition ${checked ? "left-5" : "left-0.5"}`} />
     </button>
   );
 }
