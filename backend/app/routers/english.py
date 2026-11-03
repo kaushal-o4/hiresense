@@ -1,21 +1,32 @@
 """AI English communication practice (student portal)."""
+import json
+import logging
+import queue
+import threading
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from fastapi.responses import StreamingResponse
+from ..odm import select
+from ..odm import Session
 
+from .. import database
 from ..database import get_db
 from ..deps import require_student
 from ..models import EnglishMessage, EnglishSession, User
 from ..schemas import EnglishMessageIn, EnglishStart
 from ..serializers import english_out
-from ..services import ai, english_companion
+from ..services import ai, english_companion, english_profile, speech_stream
 from ..services.common import paginate
 from ..services.insights import record_progress
 from ..services.rewards import after_activity, award_points, rule_requirements, streak_lengths
 
 router = APIRouter(prefix="/api/student/english", tags=["english"])
+logger = logging.getLogger("hiresense.english")
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
 MAX_GAP_SECONDS = 120  # longer pauses are not counted as active practice
 MIN_WORDS_FOR_ACTIVE = 3
@@ -121,6 +132,27 @@ def stats(user: User = Depends(require_student), db: Session = Depends(get_db)):
             "recent_scores": scored[-5:]}
 
 
+@router.get("/profile")
+def learning_profile(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """The student's recurring-mistake patterns (rule-based, from corrections already given)."""
+    return english_profile.public_profile(db, user.id)
+
+
+@router.post("/profile/{pattern_id}/dismiss")
+def dismiss_pattern(pattern_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    if not english_profile.dismiss(db, user.id, pattern_id):
+        raise HTTPException(404, "Pattern not found")
+    db.commit()
+    return english_profile.public_profile(db, user.id)
+
+
+@router.delete("/profile")
+def clear_profile(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    english_profile.clear(db, user.id)
+    db.commit()
+    return english_profile.public_profile(db, user.id)
+
+
 @router.get("")
 def list_sessions(page: int = 1, page_size: int = 10, user: User = Depends(require_student),
                   db: Session = Depends(get_db)):
@@ -137,6 +169,11 @@ def get_session(session_id: int, user: User = Depends(require_student), db: Sess
 @router.post("/{session_id}/message")
 def send_message(session_id: int, body: EnglishMessageIn, user: User = Depends(require_student),
                  db: Session = Depends(get_db)):
+    return _send_message(db, user, session_id, body)
+
+
+def _send_message(db: Session, user: User, session_id: int, body: EnglishMessageIn, on_delta=None) -> dict:
+    """The whole message round trip, shared by the plain and the streaming endpoint so they behave identically."""
     session = _get(db, user, session_id)
     if session.status != "in_progress":
         raise HTTPException(400, "This practice session has ended")
@@ -148,7 +185,9 @@ def send_message(session_id: int, body: EnglishMessageIn, user: User = Depends(r
         reply = ai.english_reply(db, user.id, topic=session.topic, history=history,
                                  style=session.style or "free_talk",
                                  learning_mode=session.learning_mode or english_companion.DEFAULT_MODE,
-                                 memory=session.memory)
+                                 memory=session.memory, on_delta=on_delta,
+                                 focus=english_profile.focus_lines(db, user.id)
+                                 if session.learning_mode == "english_learning" else None)
     except ai.AIUnavailable as exc:
         raise HTTPException(exc.status_code, exc.message)
     if reply.get("memory"):
@@ -157,8 +196,75 @@ def send_message(session_id: int, body: EnglishMessageIn, user: User = Depends(r
                                            speech_confidence=body.speech_confidence,
                                            corrections=reply["corrections"]))
     session.messages.append(_ai_message(reply))
+    english_profile.record_corrections(db, user.id, session.id, reply["corrections"])
     db.commit()
     return session_out(session)
+
+
+_streaming: set[int] = set()
+_streaming_lock = threading.Lock()
+
+
+@router.post("/{session_id}/message/stream")
+def send_message_stream(session_id: int, body: EnglishMessageIn, user: User = Depends(require_student),
+                        db: Session = Depends(get_db)):
+    """Same as POST .../message, but the reply text is sent while the model writes it (Server-Sent Events):
+
+      event: delta  {"text": "..."}   the reply so far (cumulative; it can get shorter if the model starts over,
+                                      so the client always replaces what it shows)
+      event: done   {"session": {...}} the saved session; its last AI message is the authoritative reply (it may
+                                      differ from the streamed draft after the repeat/correction checks)
+      event: error  {"detail": "...", "status": 503}
+
+    A streamed reply is a draft until `done`: do not speak it or treat it as saved. If the connection drops, the
+    server still finishes and saves the turn; reload the session to see it."""
+    _get(db, user, session_id)  # fail fast with a normal HTTP error (404 for another student's session)
+    with _streaming_lock:
+        if session_id in _streaming:
+            raise HTTPException(409, "A reply is already being written for this session.")
+        _streaming.add(session_id)
+    events: queue.Queue = queue.Queue()
+    user_id = user.id
+
+    def work():
+        last = ""
+
+        def on_delta(buf: str) -> None:
+            nonlocal last
+            got = speech_stream.partial_json_string(buf, "reply")
+            if got and got[0] != last:
+                last = got[0]
+                events.put(_sse("delta", {"text": last}))
+
+        own = database.SessionLocal()
+        try:
+            u = own.get(User, user_id)
+            events.put(_sse("done", {"session": _send_message(own, u, session_id, body, on_delta=on_delta)}))
+        except HTTPException as exc:
+            events.put(_sse("error", {"detail": exc.detail, "status": exc.status_code}))
+        except Exception:  # noqa: BLE001
+            logger.exception("english stream failed")
+            events.put(_sse("error", {"detail": "Something went wrong. Please try again.", "status": 500}))
+        finally:
+            own.close()
+            with _streaming_lock:
+                _streaming.discard(session_id)
+            events.put(None)
+
+    threading.Thread(target=work, daemon=True, name=f"english-stream-{session_id}").start()
+
+    def stream():
+        while True:
+            try:
+                item = events.get(timeout=10)
+            except queue.Empty:
+                yield ": keep-alive\n\n"
+                continue
+            if item is None:
+                return
+            yield item
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
 
 @router.post("/{session_id}/end")

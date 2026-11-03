@@ -6,8 +6,8 @@ if AI is unavailable the attempt stays "pending" until it can be evaluated - no 
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
+from ..odm import or_, select
+from ..odm import Session
 
 from ..database import get_db
 from ..deps import client_ip, require_roles, require_student

@@ -133,6 +133,9 @@ def main():
         assert s["model"] == "/avatars/victor.glb" and s["who"] == "victor", s
         assert page.evaluate("window.__gum.length") == 0, "mic must not open before consent"
         say("[ok] Victor's own 3D model loaded; mic not opened before consent")
+        agree = page.get_by_label("I have read what is monitored")  # monitoring notice (security module)
+        if agree.count():
+            agree.check()
         page.get_by_role("button", name=re.compile("start the interview with Victor")).click()
         wait_status(page, "Interviewer speaking", 180)
         i0 = len(log)
@@ -226,6 +229,9 @@ def main():
         wait_status(page, "Ready", 120)
         page.wait_for_function("window.__avatar3d && window.__avatar3d.status === 'ready'", timeout=120000)
         assert page.evaluate(SAMPLE)["model"] == "/avatars/marcus.glb"
+        agree = page.get_by_label("I have read what is monitored")  # monitoring notice (security module)
+        if agree.count():
+            agree.check()
         page.get_by_role("button", name=re.compile("start the interview with Marcus")).click()
         wait_status(page, "Recording your answer", 300)
         n0 = page.evaluate("window.__audio.length")

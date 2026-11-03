@@ -1,0 +1,147 @@
+{
+  "provider": "gemini",
+  "runs": 2,
+  "features": {
+    "resume_analysis": {
+      "latency": {
+        "n": 2,
+        "p50_ms": 6486,
+        "max_ms": 9232
+      },
+      "answered_by": [
+        "fail:502",
+        "gemini"
+      ],
+      "avg_tokens_out": 1232,
+      "avg_tokens_in": 691,
+      "invalid_outputs": 2,
+      "quality": [
+        {
+          "skills": 14,
+          "projects": 2,
+          "internships": 1,
+          "removed_unsupported": 2,
+          "questions": 8,
+          "missing_skills": 5
+        }
+      ]
+    },
+    "answer_scoring": {
+      "latency": {
+        "n": 8,
+        "p50_ms": 1376,
+        "max_ms": 2846
+      },
+      "answered_by": [
+        "gemini",
+        "gemini",
+        "gemini",
+        "gemini",
+        "gemini",
+        "gemini",
+        "gemini",
+        "gemini"
+      ],
+      "avg_tokens_out": 49,
+      "avg_tokens_in": 453,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "label": "strong",
+          "score": 98.0,
+          "in_band": true
+        },
+        {
+          "label": "partial",
+          "score": 54.5,
+          "in_band": true
+        },
+        {
+          "label": "incorrect",
+          "score": 40.0,
+          "in_band": true
+        },
+        {
+          "label": "irrelevant",
+          "score": 0.0,
+          "in_band": true
+        },
+        {
+          "label": "strong",
+          "score": 100.0,
+          "in_band": true
+        },
+        {
+          "label": "partial",
+          "score": 53.0,
+          "in_band": true
+        },
+        {
+          "label": "incorrect",
+          "score": 12.5,
+          "in_band": true
+        },
+        {
+          "label": "irrelevant",
+          "score": 7.5,
+          "in_band": true
+        }
+      ],
+      "in_band_rate": 1.0
+    },
+    "answer_feedback": {
+      "latency": {
+        "n": 2,
+        "p50_ms": 2286,
+        "max_ms": 2572
+      },
+      "answered_by": [
+        "gemini",
+        "gemini"
+      ],
+      "avg_tokens_out": 382,
+      "avg_tokens_in": 430,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "improvements": 3,
+          "sample_words": 96
+        },
+        {
+          "improvements": 3,
+          "sample_words": 70
+        }
+      ]
+    },
+    "interview_report": {
+      "latency": {
+        "n": 2,
+        "p50_ms": 2289,
+        "max_ms": 2400
+      },
+      "answered_by": [
+        "gemini",
+        "gemini"
+      ],
+      "avg_tokens_out": 392,
+      "avg_tokens_in": 537,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "summary_words": 61,
+          "strengths": 3,
+          "weaknesses": 3,
+          "suggestions": 4,
+          "closing_words": 42
+        },
+        {
+          "summary_words": 57,
+          "strengths": 2,
+          "weaknesses": 3,
+          "suggestions": 4,
+          "closing_words": 57
+        }
+      ]
+    }
+  }
+}

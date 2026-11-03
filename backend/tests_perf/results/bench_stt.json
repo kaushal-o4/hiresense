@@ -1,0 +1,74 @@
+[
+  {
+    "engine": "transformers:openai/whisper-base.en",
+    "clip": "short_3s",
+    "audio_s": 3.02,
+    "best_s": 1.148,
+    "median_s": 1.17,
+    "wer": 0.111
+  },
+  {
+    "engine": "transformers:openai/whisper-base.en",
+    "clip": "medium_8s",
+    "audio_s": 8.87,
+    "best_s": 2.308,
+    "median_s": 2.338,
+    "wer": 0.091
+  },
+  {
+    "engine": "transformers:openai/whisper-base.en",
+    "clip": "segment_15s",
+    "audio_s": 15.97,
+    "best_s": 4.169,
+    "median_s": 4.902,
+    "wer": 0.0
+  },
+  {
+    "engine": "faster:base.en",
+    "clip": "short_3s",
+    "audio_s": 3.02,
+    "best_s": 0.622,
+    "median_s": 0.637,
+    "wer": 0.111
+  },
+  {
+    "engine": "faster:base.en",
+    "clip": "medium_8s",
+    "audio_s": 8.87,
+    "best_s": 0.661,
+    "median_s": 0.675,
+    "wer": 0.182
+  },
+  {
+    "engine": "faster:base.en",
+    "clip": "segment_15s",
+    "audio_s": 15.97,
+    "best_s": 0.797,
+    "median_s": 0.8,
+    "wer": 0.0
+  },
+  {
+    "engine": "faster:small.en",
+    "clip": "short_3s",
+    "audio_s": 3.02,
+    "best_s": 1.923,
+    "median_s": 1.954,
+    "wer": 0.111
+  },
+  {
+    "engine": "faster:small.en",
+    "clip": "medium_8s",
+    "audio_s": 8.87,
+    "best_s": 2.02,
+    "median_s": 2.085,
+    "wer": 0.182
+  },
+  {
+    "engine": "faster:small.en",
+    "clip": "segment_15s",
+    "audio_s": 15.97,
+    "best_s": 2.302,
+    "median_s": 2.352,
+    "wer": 0.0
+  }
+]

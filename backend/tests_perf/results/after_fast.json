@@ -1,0 +1,98 @@
+{
+  "label": "after-fast",
+  "model": "qwen3:4b",
+  "num_ctx": 8192,
+  "runs": 6,
+  "stages": {
+    "llm_question_first_call_ms": 4711,
+    "llm_question_ms": {
+      "n": 6,
+      "p50_ms": 4138,
+      "p95_ms": 4495,
+      "mean_ms": 4063,
+      "min_ms": 3493,
+      "max_ms": 4531
+    },
+    "llm_score_ms": {
+      "n": 6,
+      "p50_ms": 3278,
+      "p95_ms": 3383,
+      "mean_ms": 3284,
+      "min_ms": 3189,
+      "max_ms": 3393
+    },
+    "server_answer_to_next_question_ms": {
+      "n": 6,
+      "p50_ms": 7380,
+      "p95_ms": 7743,
+      "mean_ms": 7347,
+      "min_ms": 6886,
+      "max_ms": 7743
+    },
+    "llm_question_first_sentence_ms": {
+      "n": 6,
+      "p50_ms": 2815,
+      "p95_ms": 3112,
+      "mean_ms": 2738,
+      "min_ms": 2323,
+      "max_ms": 3148
+    },
+    "server_answer_to_first_sentence_ms": {
+      "n": 6,
+      "p50_ms": 6057,
+      "p95_ms": 6359,
+      "mean_ms": 6022,
+      "min_ms": 5588,
+      "max_ms": 6360
+    },
+    "tts_whole_question_ms": {
+      "n": 3,
+      "p50_ms": 5344,
+      "p95_ms": 6024,
+      "mean_ms": 5569,
+      "min_ms": 5264,
+      "max_ms": 6100
+    },
+    "tts_first_sentence_ms": {
+      "n": 3,
+      "p50_ms": 1182,
+      "p95_ms": 1263,
+      "mean_ms": 1209,
+      "min_ms": 1174,
+      "max_ms": 1272
+    },
+    "tts_audio_seconds": 12.145,
+    "stt_ms": {
+      "n": 3,
+      "p50_ms": 4392,
+      "p95_ms": 4533,
+      "mean_ms": 4444,
+      "min_ms": 4391,
+      "max_ms": 4549
+    },
+    "stt_audio_seconds": 25.69
+  },
+  "ollama_breakdown": {
+    "cold": {
+      "queue_ms": 0,
+      "load_ms": 47,
+      "prompt_ms": 679,
+      "generate_ms": 2996,
+      "first_token_ms": 1702
+    },
+    "question": {
+      "queue_ms": 0,
+      "load_ms": 41,
+      "prompt_ms": 579,
+      "generate_ms": 3356,
+      "first_token_ms": 703
+    },
+    "score": {
+      "queue_ms": 0,
+      "load_ms": 44,
+      "prompt_ms": 380,
+      "generate_ms": 2730,
+      "first_token_ms": 541
+    }
+  }
+}

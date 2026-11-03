@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 def _strong_password(v: str) -> str:
@@ -167,6 +167,7 @@ class MonitoringFeatures(BaseModel):
     paste: bool = False  # long pastes into typed answers (never the text)
     screen: bool = False  # full screen exits and extra displays
     objects: bool = False  # phone / notes in the camera view (on-device object detection; needs camera)
+    audio: bool = False  # possible additional voice while answering (on-device speech + mouth movement; needs camera)
 
 
 class MonitoringConsentIn(BaseModel):
@@ -179,14 +180,46 @@ class IntegrityEventIn(BaseModel):
     event_type: Literal["face_absent", "multiple_faces", "attention_away", "camera_interrupted", "camera_obstructed",
                         "low_light", "monitoring_interrupted", "focus_change", "permission_revoked",
                         "monitoring_unavailable", "paste_detected", "paste_long", "fullscreen_exit",
-                        "second_display", "phone_in_view", "notes_in_view"]
+                        "second_display", "phone_in_view", "notes_in_view", "face_partial",
+                        "attention_repeated", "background_speech", "microphone_disconnected",
+                        "network_interruption", "interview_paused"]
     t_ms: int = Field(ge=0, le=6 * 3600 * 1000)  # interview-relative time
     duration_ms: int | None = Field(default=None, ge=0, le=6 * 3600 * 1000)
     confidence: float | None = Field(default=None, ge=0, le=1)
+    # idempotency key: a re-sent event (retry after a network error, page closing) is stored only once
+    client_event_id: str | None = Field(default=None, min_length=8, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
+    details: dict[str, int | str] | None = Field(default=None, max_length=6)  # whitelisted in integrity.clean_details
 
 
 class IntegrityEventsIn(BaseModel):
     events: list[IntegrityEventIn] = Field(max_length=50)
+
+
+_MS = Field(ge=0, le=86_400_000)
+
+
+class AttentionIn(BaseModel):
+    """Cumulative time totals of ONE monitor run (browser). No frames, landmarks or coordinates."""
+    epoch: str = Field(min_length=6, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
+    window_ms: int = Field(ge=5_000, le=300_000)
+    toward_ms: int = _MS
+    away_ms: int = _MS
+    unobserved_ms: int = _MS
+    paused_ms: int = _MS
+    calibrating_ms: int = _MS
+    calibrated: bool | None = None  # False = calibration failed or was skipped: absolute limits were used
+    by_reason: dict[Literal["face_not_visible", "low_confidence", "unavailable", "gap"], int] = Field(max_length=4)
+    # [bucket index (10 s each), toward_ms, away_ms, unobserved_ms]
+    buckets: list[tuple[int, int, int, int]] = Field(max_length=720)
+
+    @model_validator(mode="after")
+    def _plausible(self):
+        if any(v < 0 or v > 86_400_000 for v in self.by_reason.values()):
+            raise ValueError("by_reason out of range")
+        for idx, t, a, u in self.buckets:
+            if idx < 0 or idx > 8_640 or min(t, a, u) < 0 or t + a + u > 11_000:
+                raise ValueError("bucket out of range")
+        return self
 
 
 class ExplanationIn(BaseModel):
@@ -194,7 +227,7 @@ class ExplanationIn(BaseModel):
 
 
 class IntegrityReviewIn(BaseModel):
-    review_status: Literal["pending", "no_concern", "concern_noted", "dismissed"]
+    review_status: Literal["pending", "no_concern", "concern_noted", "dismissed", "false_positive", "needs_review"]
     reviewer_notes: str | None = Field(default=None, max_length=2000)
 
 

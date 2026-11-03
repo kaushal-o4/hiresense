@@ -79,7 +79,7 @@ def mock_llm(monkeypatch):
     state = SimpleNamespace(calls=[], responses=[])
 
     def chat_json(system, prompt, schema, *, max_tokens=None, temperature=None, priority="interactive",
-                  on_delta=None):
+                  on_delta=None, model=None):
         state.calls.append({"system": system, "prompt": prompt, "schema": schema, "priority": priority})
         item = state.responses.pop(0) if state.responses else None
         if isinstance(item, Exception):
@@ -410,7 +410,7 @@ def test_ollama_runner_crash_is_retried_once(monkeypatch):
                      '"eval_count": 4, "eval_duration": 2000000}']
             resp = httpx.Response(200, content="\n".join(lines).encode())
         return _Ctx(resp)
-    monkeypatch.setattr(local_llm.httpx, "stream", fake_stream)
+    monkeypatch.setattr(local_llm, "_http", lambda: SimpleNamespace(stream=fake_stream))
     seen = []
     r = local_llm.chat_json("sys", "prompt", {"type": "object"}, on_delta=seen.append)
     assert r.content == '{"a": 1}' and len(calls) == 2
@@ -441,7 +441,7 @@ def test_background_generation_gives_way_to_interactive(monkeypatch):
 
     def fake_stream(method, url, json=None, timeout=None):
         return _Ctx(httpx.Response(200, content="\n".join(lines).encode()))
-    monkeypatch.setattr(local_llm.httpx, "stream", fake_stream)
+    monkeypatch.setattr(local_llm, "_http", lambda: SimpleNamespace(stream=fake_stream))
     def candidate_arrives(_text):  # an interactive request queues up while the background one is generating
         gate.waiting_interactive = 1
     with pytest.raises(local_llm.LLMError) as e:
@@ -450,6 +450,19 @@ def test_background_generation_gives_way_to_interactive(monkeypatch):
     assert gate.running == 0  # slot released
     gate.waiting_interactive = 0
     assert local_llm.chat_json("s", "p", {}, priority="background").content == "x" * 50
+
+
+def test_interactive_hold_keeps_background_generation_out():
+    """While a turn is speaking/transcribing (CPU-heavy), background generations neither start nor continue."""
+    from app.services import local_llm
+    gate = local_llm.PriorityGate(1)
+    gate.hold(+1)
+    assert not gate.acquire(False, 0.2)  # background waits for the hold to end
+    assert gate.acquire(True, 0.2)  # interactive LLM calls are not affected
+    assert gate.interactive_waiting()  # a running background stream would stop now
+    gate.release()
+    gate.hold(-1)
+    assert gate.acquire(False, 0.2)
 
 
 def test_priority_gate_serves_interactive_first():

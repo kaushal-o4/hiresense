@@ -7,28 +7,21 @@ Tests skip themselves (with the reason) when a model is not available. They are 
 """
 import os
 
-os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["MONGODB_DB"] = "hiresense_integration_test"
 
 import pytest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app import database, seed as seed_module
 from app.config import get_settings
-from app.database import Base
 
 get_settings.cache_clear()
 
 
 @pytest.fixture(scope="session")
 def db():
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-    database.SessionLocal = factory
-    seed_module.SessionLocal = factory
-    seed_module.seed(demo=False)
+    database.init_db()
+    database.clear_database()  # a throwaway MongoDB database (MONGODB_DB set above), never the app's own
+    seed_module.seed()
+    factory = database.SessionLocal
     s = factory()
     yield s
     s.close()

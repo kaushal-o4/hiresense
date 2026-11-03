@@ -80,8 +80,14 @@ def test_semantic_and_concept_checks():
     broken = lambda text, prev: 1 / 0  # noqa: E731  embeddings failing never blocks the interview
     assert not ie.is_duplicate("How did you test it?", ["Why Django?"], similarity=broken)[0]
     m = {"topic": "Hospital Resources Management System", "aspect": "testing"}
-    assert ie.is_duplicate("What tests did you write?", ["How was the bed module verified?"], meta=m,
-                           previous_meta=[dict(m)]) == (True, "same_concept")
+    # same topic + aspect AND fairly similar meaning -> a repeat
+    mid = lambda text, prev: [0.66 for _ in prev]  # noqa: E731
+    assert ie.is_duplicate("Which tests did you write for the allocation?", ["How did you test bed allocation?"],
+                           meta=m, previous_meta=[dict(m)], similarity=mid) == (True, "same_concept")
+    # regression (real-model eval): same labels but different questions must NOT be rejected
+    assert not ie.is_duplicate("How did you test concurrent bookings?", ["How did you test the login page?"],
+                               meta=m, previous_meta=[dict(m)], similarity=lambda t, p: [0.35 for _ in p])[0]
+    assert "internal_numbering" in ie.validate_question("Your answer for Q3 mentioned AI. Which model?", 30)
     assert not ie.is_duplicate("Can you repeat?", ["Can you repeat?"], allow_repeat=True)[0]
 
 
@@ -117,6 +123,34 @@ def test_fallback_is_grounded_and_never_repeats():
     # nothing invented: with no projects, technical fallbacks are generic scenarios
     none = ie.fallback_question(ie.candidate_context(None), [], role="Dev", category="technical", aspect_order=order)
     assert none["aspect"] == "scenario"
+
+
+def test_topic_is_derived_from_the_resume_not_generated():
+    ctx = ie.candidate_context(ANALYSIS)
+    project = "Hospital Resources Management System"
+    # regression (real-model eval): these two were the same question but the model labelled them differently
+    assert ie.derive_topic("In your bed allocation module, what specific part did you code to check bed "
+                           "availability?", ctx) == project
+    assert ie.derive_topic("In your hospital system, what part did you write to check if beds were free?", ctx) == project
+    assert ie.derive_topic("What did you clean in the data at WebNova?", ctx) == "WebNova"
+    assert ie.derive_topic("Why would you pick Django over Flask?", ctx) == "Django"
+    assert ie.derive_topic("Tell me about a time you disagreed with someone.", ctx) is None
+
+
+def test_greeting_with_comma_is_removed():
+    from app.services.ai import strip_greeting
+    assert strip_greeting("Hi there, what's one thing a Python developer must understand about web apps?") == \
+        "what's one thing a Python developer must understand about web apps?"
+    # regression (live interview): "Hi Priya, how did you decide ..." - greeting + name
+    assert strip_greeting("Hi Priya, how did you decide which alerts to build first?") == \
+        "how did you decide which alerts to build first?"
+
+
+def test_candidate_name_is_not_given_to_the_question_writer():
+    ctx = ie.candidate_context({**ANALYSIS, "full_name": "Priya Nair",
+                                "candidate_summary": "Priya Nair is a CS graduate. Priya's project is a home-lab SIEM."})
+    assert "priya" not in ie.context_block(ctx).lower() and "nair" not in ie.context_block(ctx).lower()
+    assert ctx["summary"].startswith("The candidate is a CS graduate")
 
 
 def test_history_block_compacts_old_turns():

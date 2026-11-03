@@ -128,7 +128,7 @@ with sync_playwright() as p:
     ok("nothing captured before the student asks", page.evaluate("window.__tracks.length") == 0)
     body = page.inner_text("body")
     ok("disclosure explains processing, storage, retention, access, withdrawal",
-       all(s.lower() in body.lower() for s in ("in your browser", "Never stored", "deleted automatically after", "Recruiters do not receive", "Stop monitoring")))
+       all(s.lower() in body.lower() for s in ("in your browser", "Never stored", "deleted automatically after", "recruiters of jobs you have applied to", "Stop monitoring")))
     boxes = page.locator("section[aria-labelledby=mon-title] input[type=checkbox]")
     required = page.evaluate("async () => (await (await fetch('/api/monitoring/policy')).json()).camera_required")
     labels = [boxes.nth(i).evaluate("e => e.closest('label').innerText.split('\\n')[0]") for i in range(boxes.count())]
@@ -161,6 +161,9 @@ with sync_playwright() as p:
        "Camera available" in guide and ("center of the camera" in guide or "visible" in guide), guide.split("\n")[-1][:100])
 
     t_start = time.time()
+    agree = page.get_by_label("I have read what is monitored")  # monitoring notice (security module)
+    if agree.count():
+        agree.check()
     page.get_by_role("button", name=re.compile("start the interview")).click()
     wait_status(page, "Interviewer speaking", 120)
     page.wait_for_function("window.__audio.length > 0", timeout=120000)
@@ -187,12 +190,13 @@ with sync_playwright() as p:
     results["timings"]["start_to_listening_ms"] = round((time.time() - t_start) * 1000)
     q1_audio = page.evaluate("window.__audio")
     ok("first turn: greeting + question audio ordered, no overlap", not audio_overlaps(q1_audio), f"{len(q1_audio)} audio segments")
+    ok("first question is actually spoken (not only the greeting)", len(q1_audio) >= 2, f"{len(q1_audio)} audio segments")
     ok("microphone is not open while the interviewer speaks",
        True)  # enforced by the state machine; the recording badge appears only in LISTENING (checked by older E2E)
 
     # face-not-visible warning (the fake camera shows a test pattern without a face)
     try:
-        page.get_by_text("Your face is not clearly visible").wait_for(timeout=25000)
+        page.get_by_text("We cannot clearly detect your face").wait_for(timeout=25000)
         ok("neutral warning after a persistent missing face", True)
     except Exception:  # noqa: BLE001
         ok("neutral warning after a persistent missing face", False, "warning not shown within 25 s")
@@ -284,11 +288,18 @@ with sync_playwright() as p:
        "face_absent" in types and "focus_change" in types and "monitoring_withdrawn" in types, str(types))
     ok("server-side severity, never 'high' for these signals", all(e["severity"] in ("info", "low", "medium") for e in ev["events"]))
 
-    # recruiter cannot see monitoring; admin dashboard has timings
+    # a recruiter sees only completed interviews of their own applicants (security module, README 2g) - not this
+    # one (the demo student did not apply to them here); admin dashboard has timings
+    student_id = api(page, "GET", "/auth/me")["data"]["user"]["id"]  # before the recruiter signs in (shared cookies)
     page2 = ctx.new_page()
     page2.goto(BASE + "/login")
     login(page2, "recruiter@demo.hiresense", "Demo@12345")
-    ok("recruiter gets 403 for monitoring", api(page2, "GET", "/monitoring/sessions")["status"] == 403)
+    rec_view = api(page2, "GET", "/monitoring/sessions")
+    applied = (api(page2, "GET", f"/recruiter/candidates/{student_id}")["data"] or {}).get("full_access", False)
+    visible = rec_view["status"] == 200 and any(i["id"] == sid for i in rec_view["data"]["items"])
+    detail = api(page2, "GET", f"/monitoring/sessions/{sid}")["status"]
+    ok("recruiter sees this interview's monitoring only if the student applied to their job",
+       visible == applied and detail == (200 if applied else 404), f"applied={applied} visible={visible} detail={detail}")
     admin_pw = os.environ.get("HS_E2E_ADMIN_PASSWORD")
     if admin_pw:
         page3 = browser.new_context().new_page()

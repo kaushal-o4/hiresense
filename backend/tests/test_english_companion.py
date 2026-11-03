@@ -181,7 +181,7 @@ def test_learning_mode_speaks_a_gentle_correction_and_continues(client, llm):
                                "corrected": "Yesterday, I went to college and met my friend",
                                "explanation": "Use the past tense for yesterday."}]))
     reply = s["messages"][-1]["content"]
-    assert 'A more natural way to say that is: "Yesterday, I went to college and met my friend"' in reply
+    assert 'A more natural way to say that is: "Yesterday, I went to college and met my friend." ' in reply
     assert reply.endswith("What did you and your friend do there?")
     # the same correction is not given twice
     s = say(client, llm, s, "Yesterday I go to college and meet my friend again.",
@@ -189,6 +189,31 @@ def test_learning_mode_speaks_a_gentle_correction_and_continues(client, llm):
                  corrections=[{"original": "Yesterday I go to college and meet my friend",
                                "corrected": "Yesterday, I went to college and met my friend", "explanation": "x"}]))
     assert s["messages"][-2]["corrections"] == [] and "natural way" not in s["messages"][-1]["content"]
+
+
+def test_bad_corrections_from_the_real_model_are_dropped():
+    """Regressions from the real-model eval: a British spelling 'corrected', and a long rewrite of 'one match'."""
+    from app.services.ai import clean_english_reply
+    out = clean_english_reply(turn("Nice!", corrections=[
+        {"original": "I practise it every evening", "corrected": "I practice it every evening", "explanation": "x"},
+        {"original": "one match", "corrected": "you mentioned a match with close final overs", "explanation": "x"},
+        {"original": "my favourite colour", "corrected": "my favorite color", "explanation": "x"},
+        {"original": "he give me", "corrected": "he gave me", "explanation": "Past tense."}]),
+        "I practise it every evening and um yes one match, my favourite colour, he give me")
+    assert [c["corrected"] for c in out["corrections"]] == ["he gave me"]
+
+
+def test_repeated_reply_opener_is_dropped():
+    from app.services.ai import drop_repeated_opener
+    earlier = ["I love that you mentioned video games! What kind do you play?"]
+    assert drop_repeated_opener("I love that you mentioned movies! Which film did you watch most recently?", earlier) \
+        == "Which film did you watch most recently?"
+    keep = "I love that! Why?"  # too little would be left: keep it
+    assert drop_repeated_opener(keep, earlier) == keep
+    assert drop_repeated_opener("Movies are fun. Which film did you watch recently at home?", earlier).startswith("Movies")
+    # regression (real-model eval, confidence mode): the student's "um" was echoed back
+    assert drop_repeated_opener("Um yes one match? Which match was it?", []) == "Yes one match? Which match was it?"
+    assert drop_repeated_opener("Umbrellas are useful. Why?", []).startswith("Umbrellas")
 
 
 def test_companion_config_endpoint(client):
@@ -209,3 +234,68 @@ def test_old_sessions_without_memory_still_work(client, llm, db):
     assert s["learning_mode"] == "free_conversation" and s["memory"]["current_topic"] == "Your hobbies and weekends"
     db.expire_all()
     assert db.get(EnglishSession, s["id"]).memory["student_turns"] == 1
+
+
+# ----------------------------------------------------------------------------- streamed replies
+
+def parse_sse(text):
+    events = []
+    for block in text.replace("\r\n", "\n").split("\n\n"):
+        name, data = "message", []
+        for line in block.split("\n"):
+            if line.startswith("event:"):
+                name = line[6:].strip()
+            elif line.startswith("data:"):
+                data.append(line[5:].strip())
+        if data:
+            events.append((name, json.loads("\n".join(data))))
+    return events
+
+
+def test_streamed_reply_sends_growing_text_then_the_saved_session(client, llm, monkeypatch):
+    from app.services import local_llm
+    c = client
+    register_student(c)
+    s = start(c, llm)
+    reply = "That sounds fun! Which game did you play last?"
+    full = json.dumps(turn(reply))
+
+    def streaming(system, prompt, schema, *, on_delta=None, **kw):
+        for i in range(10, len(full) + 10, 10):  # the way Ollama delivers it: a few characters at a time
+            if on_delta:
+                on_delta(full[:i])
+        return local_llm.LLMResult(content=full, prompt_tokens=1, output_tokens=1, latency_ms=1)
+
+    monkeypatch.setattr(local_llm, "chat_json", streaming)
+    r = c.post(f"/api/student/english/{s['id']}/message/stream", json={"content": "I played games yesterday."})
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
+    events = parse_sse(r.text)
+    names = [n for n, _ in events]
+    assert names[-1] == "done" and names.count("done") == 1 and "error" not in names
+    texts = [d["text"] for n, d in events if n == "delta"]
+    assert texts and all(reply.startswith(t) for t in texts) and texts[-1] == reply
+    msgs = events[-1][1]["session"]["messages"]
+    assert msgs[-1]["content"] == reply and msgs[-2]["content"] == "I played games yesterday."
+    # the same turn is saved exactly once and can be reloaded
+    assert len(c.get(f"/api/student/english/{s['id']}").json()["messages"]) == len(msgs)
+
+
+def test_streamed_reply_reports_model_failure_without_saving(client, llm):
+    from app.services import ai
+    c = client
+    register_student(c)
+    s = start(c, llm)
+    llm.responses.append(ai.local_llm.LLMError("Ollama is not running.", kind="not_running"))
+    r = c.post(f"/api/student/english/{s['id']}/message/stream", json={"content": "Hello there my friend."})
+    events = parse_sse(r.text)
+    assert [n for n, _ in events] == ["error"] and events[0][1]["status"] == 503
+    assert len(c.get(f"/api/student/english/{s['id']}").json()["messages"]) == 1  # only Aria's opening
+
+
+def test_streamed_reply_is_private_to_the_owner(client, new_client, llm):
+    register_student(client)
+    s = start(client, llm)
+    other = new_client()
+    register_student(other, email="other@test.dev")
+    r = other.post(f"/api/student/english/{s['id']}/message/stream", json={"content": "Hello there my friend."})
+    assert r.status_code == 404

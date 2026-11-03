@@ -1,16 +1,13 @@
 """Tests for the extended feature set: English learning, coding tests, readiness, challenges,
 recruiter communication/assignments, mentor tools and admin management."""
+import io
+import zipfile
 from datetime import datetime, timedelta, timezone
 
+from bson import json_util
+
+from app.config import get_settings
 from conftest import admin_login, login, register_student
-from app.services.english_learning import score_pronunciation
-
-
-def _backdate_exercise(db, exercise_id, seconds):
-    from app.models import PracticeExercise
-    x = db.get(PracticeExercise, exercise_id)
-    x.created_at = datetime.now(timezone.utc) - timedelta(seconds=seconds)
-    db.commit()
 
 
 def _recruiter(admin, new_client, email="r@corp.dev"):
@@ -21,59 +18,31 @@ def _recruiter(admin, new_client, email="r@corp.dev"):
     return rec
 
 
-def test_pronunciation_scoring_unit():
-    perfect = score_pronunciation("I enjoy working in a team.", "i enjoy working in a team", 0.9)
-    assert perfect["word_accuracy"] == 100 and perfect["practice_words"] == []
-    partial = score_pronunciation("I enjoy working in a team.", "i enjoy walking in team", None)
-    assert partial["word_accuracy"] < 100
-    statuses = {w["word"]: w["status"] for w in partial["words"]}
-    assert statuses["working"] == "mispronounced" and statuses["a"] == "missed"
-
-
-def test_pronunciation_drill_verified_time_points_and_challenge(client, db):
+def test_speaking_drills_are_not_available_to_students(client):
+    """The pronunciation/speaking drill feature was removed from the student portal (2026-10-11)."""
     register_student(client)
-    x = client.post("/api/student/exercises", json={"kind": "pronunciation", "level": "easy"}).json()
-    _backdate_exercise(db, x["id"], 600)  # 10 minutes ago -> capped at 90s
-    r = client.post(f"/api/student/exercises/{x['id']}/submit", json={"transcript": x["prompt"], "speech_confidence": 0.9})
-    assert r.status_code == 200, r.text
-    ex = r.json()["exercise"]
-    assert ex["details"]["word_accuracy"] == 100 and ex["active_seconds"] == 90
-    assert client.post(f"/api/student/exercises/{x['id']}/submit", json={"transcript": "again"}).status_code == 400
-    # Empty/too-short attempts earn no verified time
-    y = client.post("/api/student/exercises", json={"kind": "pronunciation"}).json()
-    _backdate_exercise(db, y["id"], 60)
-    assert client.post(f"/api/student/exercises/{y['id']}/submit", json={"transcript": "uh"}).json()["exercise"]["active_seconds"] == 0
-    rewards = client.get("/api/student/rewards").json()
-    assert any(t["activity_type"] == "english_exercise" for t in rewards["transactions"])
-    ch = {c["title"]: c for c in client.get("/api/student/challenges").json()["challenges"]}
-    assert ch["Pronunciation warm-up"]["progress"] == 2 and not ch["Pronunciation warm-up"]["completed"]
+    assert client.post("/api/student/exercises", json={"kind": "pronunciation"}).status_code in (404, 405)
+    titles = {c["title"] for c in client.get("/api/student/challenges").json()["challenges"]}
+    assert "Pronunciation warm-up" not in titles
 
 
 def test_challenge_completes_once_per_period(client, db):
-    register_student(client)
-    for _ in range(6):
-        x = client.post("/api/student/exercises", json={"kind": "pronunciation"}).json()
-        _backdate_exercise(db, x["id"], 30)
-        client.post(f"/api/student/exercises/{x['id']}/submit", json={"transcript": x["prompt"]})
+    from app.models import Challenge, EnglishSession
+    sid = register_student(client)["id"]
+    db.add(Challenge(title="Two chats", description="", metric="english_sessions", target=2, period="daily", points=10))
+    now = datetime.now(timezone.utc)
+    for _ in range(4):
+        db.add(EnglishSession(student_id=sid, topic="t", mode="text", status="completed", active_seconds=120,
+                              ended_at=now))
+    db.commit()
+    from app.services.rewards import evaluate_challenges
+    for _ in range(2):  # evaluated after two activities: must not award twice
+        evaluate_challenges(db, sid)
+        db.commit()
     ch = {c["title"]: c for c in client.get("/api/student/challenges").json()["challenges"]}
-    assert ch["Pronunciation warm-up"]["completed"] is True
+    assert ch["Two chats"]["completed"] is True
     txs = client.get("/api/student/rewards").json()["transactions"]
     assert sum(1 for t in txs if t["activity_type"] == "challenge") == 1
-
-
-def test_speaking_exercise_needs_ai(client, db, monkeypatch):
-    register_student(client)
-    x = client.post("/api/student/exercises", json={"kind": "speaking"}).json()
-    r = client.post(f"/api/student/exercises/{x['id']}/submit", json={"transcript": "I am a computer science student"}).json()
-    assert r["exercise"]["evaluation_status"] == "unavailable" and r["exercise"]["score"] is None and r["evaluation_error"]
-
-    from app.services import ai
-    monkeypatch.setattr(ai, "speaking_feedback", lambda db, uid, **kw: {
-        "grammar": 8, "vocabulary": 6, "fluency": 7, "sentence_formation": 7, "relevance": 9, "feedback": "Good",
-        "corrections": [], "sample_answer": "Sample"})
-    y = client.post("/api/student/exercises", json={"kind": "speaking"}).json()
-    r = client.post(f"/api/student/exercises/{y['id']}/submit", json={"transcript": "I enjoy building web apps with my team"}).json()
-    assert r["exercise"]["score"] == 74.0 and r["exercise"]["details"]["sample_answer"] == "Sample"
 
 
 CODING_TEST = {"title": "Coding warm-up", "topic": "Python", "category": "coding", "pass_percent": 50, "questions": [
@@ -238,7 +207,11 @@ def test_admin_announcements_drives_challenges_verification(client, new_client):
     dash = admin.get("/api/admin/dashboard").json()
     assert sum(dash["readiness"]["levels"].values()) == 1
     assert admin.get("/api/admin/ai-reports").status_code == 200
-    assert admin.get("/api/admin/backup").status_code == 400  # in-memory test DB can't be backed up
+    backup = admin.get("/api/admin/backup")
+    assert backup.status_code == 200 and backup.headers["content-type"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(backup.content)) as zf:
+        users = json_util.loads(zf.read("users.json"))
+    assert {u["email"] for u in users} >= {get_settings().admin_email}
     assert client.get("/api/admin/announcements").status_code == 403
 
 

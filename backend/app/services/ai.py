@@ -19,13 +19,13 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from typing import Literal, TypeVar
 
-from pydantic import BaseModel, ValidationError
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from pydantic import BaseModel, ValidationError, field_validator
+from ..odm import func, select
+from ..odm import Session
 
 from ..config import get_settings
 from ..models import AIUsageLog
-from . import local_llm, perf
+from . import local_llm, model_router, perf
 from .common import get_setting
 from .skills import TextIndex
 
@@ -56,6 +56,10 @@ def fence(tag: str, text: str) -> str:
 
 
 def ai_status(db: Session) -> dict:
+    """Whether AI features can be used right now: the provider (Gemini, or Ollama with the model pulled) ready, and AI enabled both
+    in .env and in admin settings. Also reports the embedding model's status. Shown in the UI and used to pick
+    AI vs question-bank questions.
+    """
     settings = get_settings()
     rt = local_llm.runtime_status()
     from . import embeddings  # local import: optional heavy dependency
@@ -63,7 +67,8 @@ def ai_status(db: Session) -> dict:
     configured = rt["running"] and rt["model_ready"]
     return {"configured": configured, "enabled": enabled, "available": configured and enabled,
             "provider": rt["provider"], "model": rt["model"], "runtime_running": rt["running"],
-            "setup_hint": rt["error"], "embeddings": embeddings.status()}
+            "setup_hint": rt["error"], "fallback_for": rt.get("fallback_for"),
+            "primary_error": rt.get("primary_error"), "embeddings": embeddings.status()}
 
 
 def _log(db: Session, user_id: int | None, feature: str, status: str, error: str | None = None,
@@ -78,6 +83,13 @@ def _log(db: Session, user_id: int | None, feature: str, status: str, error: str
 def _structured_call(db: Session, user_id: int | None, feature: str, system: str, prompt: str,
                      output_model: type[T], max_tokens: int | None = None, temperature: float | None = None,
                      priority: str = "interactive", on_delta=None) -> T:
+    """The single gateway for every language-model call in this module.
+
+    Checks the admin switch and the per-user daily limit, commits pending DB changes (never hold a transaction
+    while the model runs), asks the local model for JSON matching `output_model`'s schema, validates it (one retry
+    on invalid JSON) and logs usage to AIUsageLog and timings to perf. Raises AIUnavailable with a user-friendly
+    message on any failure.
+    """
     settings = get_settings()
     if not settings.ai_enabled or not get_setting(db, "ai_features_enabled"):
         _log(db, user_id, feature, "unavailable", "AI features disabled")
@@ -90,8 +102,7 @@ def _structured_call(db: Session, user_id: int | None, feature: str, system: str
             _log(db, user_id, feature, "rate_limited", f"daily limit {settings.ai_daily_limit_per_user} reached")
             raise AIUnavailable("You have reached today's AI usage limit. Please try again tomorrow.", 429)
 
-    # Never hold a database transaction open while waiting (seconds to minutes) for the model: with SQLite that
-    # blocks other requests' writes and can fail with "database is locked". Pending changes are saved first.
+    # Save pending changes before waiting (seconds to minutes) for the model, so other requests see them meanwhile.
     db.commit()
     schema = output_model.model_json_schema()
     full_system = (system + "\n\n" + UNTRUSTED_NOTE +
@@ -100,7 +111,8 @@ def _structured_call(db: Session, user_id: int | None, feature: str, system: str
         t0 = time.perf_counter()
         try:
             result = local_llm.chat_json(full_system, prompt, schema, max_tokens=max_tokens, temperature=temperature,
-                                         priority=priority, on_delta=on_delta)
+                                         priority=priority, on_delta=on_delta,
+                                         model=model_router.configured_model(feature))
         except local_llm.LLMError as exc:
             status = "unavailable" if exc.kind in ("not_running", "model_missing") else "error"
             if exc.kind != "preempted":  # a paused background job is not a failure; it is retried later
@@ -121,7 +133,7 @@ def _structured_call(db: Session, user_id: int | None, feature: str, system: str
         _log(db, user_id, feature, "success", None, result.latency_ms, result)
         perf.record(f"llm.{feature}", result.latency_ms, True, attempt=attempt, **details)
         return parsed
-    raise AIUnavailable("The local AI returned data in an unexpected format. Please try again.", 502)
+    raise AIUnavailable("The AI returned data in an unexpected format. Please try again.", 502)
 
 
 def _clamp(v: float, lo: float, hi: float) -> float:
@@ -170,6 +182,18 @@ class ResumeExperience(BaseModel):
 class ResumeSkillItem(BaseModel):
     name: str
     category: SkillCategory
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _known_category(cls, v):
+        # Hosted models sometimes invent a category ("language", "devops"); one odd label must not discard the
+        # whole analysis (it is display-only), so map it instead of failing validation.
+        v = str(v or "").strip().lower().replace(" ", "_").replace("-", "_")
+        aliases = {"language": "programming_language", "languages": "programming_language", "library": "framework",
+                   "libraries": "framework", "frameworks": "framework", "tools": "tool", "devops": "tool",
+                   "databases": "database", "db": "database", "cloud_platform": "cloud"}
+        v = aliases.get(v, v)
+        return v if v in SkillCategory.__args__ else "other"
 
 
 class ResumeExtraction(BaseModel):
@@ -304,6 +328,10 @@ def validate_resume_extraction(ext: ResumeExtraction, resume_text: str) -> dict:
 
 
 def analyze_resume(db: Session, user_id: int, resume_text: str, target_role: str | None) -> dict:
+    """AI resume analysis: extract skills, education, projects, experience and certifications that are
+    actually in the resume text, then validate them against the text (removing invented items) and compute the
+    completeness score. Raises AIUnavailable if the text is too short or the model is unavailable.
+    """
     settings = get_settings()
     text = (resume_text or "").strip()
     if len(text.split()) < 8:
@@ -318,25 +346,26 @@ def analyze_resume(db: Session, user_id: int, resume_text: str, target_role: str
     prompt = (
         f"Target role: {target_role or 'not specified - suggest for the most suitable entry-level role'}\n\n"
         f"{fence('resume', text)}\n\n"
-        "Fill every field:\n"
+        "Fill every field. Be brief: each list item is a short phrase or ONE short sentence.\n"
         "- full_name: the candidate's name exactly as written, or \"\".\n"
-        "- candidate_summary: 2-3 factual sentences about the candidate.\n"
-        "- education: each degree/school with institution, degree, field, year, score (\"\" if absent).\n"
-        "- technical_skills: technologies, languages, tools and domains explicitly named, with a category.\n"
-        "- soft_skills: only those the resume states or clearly demonstrates (e.g. 'led a team of 4').\n"
-        "- projects: name, 1-2 sentence description, technologies used.\n"
-        "- work_experience: paid jobs (not internships). internships: internships only.\n"
+        "- candidate_summary: 2 factual sentences about the candidate.\n"
+        "- education: up to 4 degrees/schools with institution, degree, field, year, score (\"\" if absent).\n"
+        "- technical_skills: up to 25 technologies, languages, tools and domains explicitly named (short names "
+        "such as 'React', never sentences), with a category.\n"
+        "- soft_skills: up to 5, only those the resume states or clearly demonstrates (e.g. 'led a team of 4').\n"
+        "- projects: up to 5; name, a description of at most 30 words, technologies used.\n"
+        "- work_experience: paid jobs (not internships). internships: internships only. summary at most 25 words.\n"
         "- certifications: exactly as written.\n"
         "- strengths: 3-5 concrete strengths supported by the resume.\n"
-        "- missing_information: resume sections or details that are missing or unclear (e.g. no dates, "
+        "- missing_information: up to 6 resume sections or details that are missing or unclear (e.g. no dates, "
         "no measurable results, no contact links).\n"
-        "- missing_skills: skills commonly expected for the target role that do not appear in the resume.\n"
-        "- improvement_areas: specific, actionable resume improvements.\n"
-        "- recommended_topics: technical topics to revise for interviews, based on the resume and target role.\n"
+        "- missing_skills: up to 6 skills commonly expected for the target role that do not appear in the resume.\n"
+        "- improvement_areas: up to 6 specific, actionable resume improvements.\n"
+        "- recommended_topics: up to 8 technical topics to revise for interviews, based on the resume and role.\n"
         f"- suggested_interview_questions: {n_questions} interview questions about this candidate's actual "
-        "projects, skills and experience."
+        "projects, skills and experience, one sentence each."
     )
-    ext = _structured_call(db, user_id, "resume_analysis", system, prompt, ResumeExtraction, max_tokens=4096)
+    ext = _structured_call(db, user_id, "resume_analysis", system, prompt, ResumeExtraction, max_tokens=2500)
     data = validate_resume_extraction(ext, text)
     data["analysis_method"] = "local_llm"
     data["model"] = settings.ollama_model
@@ -350,11 +379,27 @@ def analyze_resume(db: Session, user_id: int, resume_text: str, target_role: str
 QuestionType = Literal["technical", "hr", "behavioral", "communication", "project"]
 
 
+Aspect = Literal["overview", "objective", "personal_contribution", "architecture", "decision", "error_handling",
+                 "testing", "scaling", "limitations", "result", "lessons", "concept", "scenario", "teamwork",
+                 "conflict", "feedback", "adaptability", "motivation", "learning"]
+
+
 class NextQuestion(BaseModel):
+    # Field order matters: the reply is streamed and spoken from `question` onwards, so the short metadata used for
+    # coverage and duplicate checks comes AFTER it (it is generated while the first sentence is being spoken).
+    # Only ONE short enum is added (~5 output tokens): every output token costs ~55 ms on the test laptop. The topic
+    # is derived from the resume in code (interview_engine.derive_topic), not generated.
     preface: str
     question: str
     question_type: QuestionType
     is_followup: bool
+    aspect: Aspect = "overview"
+
+    @classmethod
+    def model_json_schema(cls, *args, **kwargs):
+        schema = super().model_json_schema(*args, **kwargs)
+        schema["required"] = list(schema["properties"])  # defaults only keep older/mocked replies valid
+        return schema
 
 
 DIFFICULTY_GUIDE = {
@@ -374,7 +419,11 @@ def _strictness(db: Session) -> str:
 
 
 _GREETING = re.compile(
-    r"^(?:(?:hi|hello|hey|good (?:morning|afternoon|evening|day)|welcome)\b[^.!?]*[.!?]\s*"
+    # "Hi there, what's ..." (regression from the real-model eval): greeting + comma directly before the question
+    # also "Hi Priya, how did you ..." (live interview, 2026-10-11): greeting + a name + comma before the question
+    r"^(?:(?:hi|hello|hey)(?: there| [a-z]+)?,\s*(?=(?:what|how|why|which|who|when|where|can|could|would|tell|describe|"
+    r"walk|explain|in|do|did|have|is|are|let'?s)\b)"
+    r"|(?:hi|hello|hey|good (?:morning|afternoon|evening|day)|welcome)\b[^.!?]*[.!?]\s*"
     r"|(?:i'?m|i am|my name is) [A-Z][a-z]+\b[^.!?]*[.!?]\s*)+", re.IGNORECASE)
 
 
@@ -416,15 +465,24 @@ def next_interview_question(db: Session, user_id: int, *, job_role: str, categor
                             difficulty: str = "medium", subject: str | None = None,
                             projects: list[str] | None = None, topics: list[str] | None = None,
                             struggling: bool = False, avoid: list[str] | None = None,
-                            interviewer: str = "aria", response_mode: str = "fast", on_delta=None) -> dict:
-    """on_delta(json_text_so_far) streams the reply (the router turns it into spoken sentences)."""
+                            interviewer: str = "aria", response_mode: str = "fast", on_delta=None,
+                            candidate_facts: str | None = None, signals: list[dict] | None = None,
+                            coverage: dict | None = None, stage: str | None = None) -> dict:
+    """on_delta(json_text_so_far) streams the reply (the router turns it into spoken sentences).
+
+    candidate_facts / signals / coverage / stage come from services/interview_engine.py: the resume facts the
+    question may rely on, what the last answer left unclear, which topics were already explored, and where in the
+    interview we are."""
     from . import interviewers
     p = interviewers.get(interviewer)
     coaching = response_mode == "coaching"
     hints = p.gives_hints or coaching  # coaching mode was chosen by the student: hints for every interviewer
     system = (f"{p.persona_prompt}\nYou are interviewing a final-year student or fresh graduate. Ask exactly one "
               f"clear question at a time, answerable verbally in 1-3 minutes.\nQuestion strategy: "
-              f"{p.question_strategy}\n{interviewers.BOUNDARIES}")
+              f"{p.question_strategy}\n{p.behaviour_prompt()}\n{interviewers.BOUNDARIES}\n"
+              "React to what the candidate actually said. Only refer to experience in the candidate facts or the "
+              "answers; if something is missing or unclear, ask about it instead of assuming. Imperfect English or "
+              "hesitation is not a lack of knowledge. No stock phrases ('Great answer!', 'Excellent!').")
     transcript = _transcript(history, coaching)
     focus = {"mixed": "rotate across technical, project, behavioral and hr questions",
              "technical": "technical questions; you may also ask about the candidate's projects (type 'project')"}
@@ -446,32 +504,51 @@ def next_interview_question(db: Session, user_id: int, *, job_role: str, categor
     else:
         guidance = ("Leave 'preface' empty. " + p.followup_policy + " When you do not follow up, ask a new question "
                     "grounded in the candidate's skills, projects and the role.")
-    length = ("one or two short sentences, about 25 words at most" if not coaching
-              else "at most 2 short sentences and about 35 words")
+    words = min(p.max_question_words, 25) if not coaching else p.max_question_words
+    length = (f"one or two short sentences, about {words} words at most" if not coaching
+              else f"at most 2 short sentences and about {words} words")
+    facts = candidate_facts or (
+        f"Summary: {resume_summary or 'not available'}\n"
+        f"Skills: {', '.join(skills[:25]) or 'not available'}\n"
+        f"Projects: {', '.join((projects or [])[:6]) or 'not available'}\n"
+        f"Topics worth checking: {', '.join((topics or [])[:10]) or 'not available'}")
+    analysis = ""
+    if signals:
+        # the personality decides which gap to pursue first when the last answer had several
+        ranked = sorted(signals, key=lambda s: (p.followup_preference.index(s["followup_kind"])
+                                                if s["followup_kind"] in p.followup_preference else 99))
+        analysis = ("The last answer left open (pick ONE, or move on):\n"
+                    + "\n".join(f"- {s['hint']}" for s in ranked[:2]) + "\n")
+    plan = ""
+    if coverage and (coverage.get("covered") or coverage.get("open")):
+        plan = ((f"Already explored: {'; '.join(coverage['covered'][-6:])}\n" if coverage.get("covered") else "")
+                + ("Not yet explored: " + " | ".join(coverage["open"][:2]) + "\n" if coverage.get("open") else ""))
     prompt = (
         f"Role: {job_role}\n"
         f"Interview focus: {category} - {focus.get(category, category + ' questions')}\n"
         f"Technical subject requested by the student: {subject or 'none - choose from their skills'}\n"
-        f"This is question {position} of {total}.\n"
+        f"This is question {position} of {total}" + (f" ({stage})" if stage else "") + ".\n"
         f"Required difficulty: {difficulty} - {DIFFICULTY_GUIDE.get(difficulty, DIFFICULTY_GUIDE['medium'])}\n"
-        f"Candidate summary: {resume_summary or 'not available'}\n"
-        f"Candidate skills: {', '.join(skills[:25]) or 'not available'}\n"
-        f"Candidate projects: {', '.join((projects or [])[:6]) or 'not available'}\n"
-        f"Topics to prepare: {', '.join((topics or [])[:10]) or 'not available'}\n\n"
+        f"Candidate facts (from the resume - the only experience you may refer to):\n{facts}\n\n"
         f"Transcript so far:\n{transcript}\n\n"
+        f"{analysis}{plan}"
         f"{guidance}\n"
         f"The question will be spoken aloud by {p.name}, so phrase it the way {p.name} talks, in {p.name}'s style: "
         f"natural spoken English, {length}, no lists, no brackets, no "
         "markdown. Never greet the candidate, use their name or introduce yourself - the greeting is spoken "
         "separately, so go straight to the question. After the first question you may start with a brief natural "
         "transition in your style, but do not praise a weak answer.\n"
-        "Never repeat or rephrase an earlier question."
-        + ("\nDo NOT ask anything similar to: " + " | ".join(avoid) if avoid else "")
+        "Never repeat or rephrase an earlier question; a follow-up must explore a DIFFERENT side of the topic "
+        "(e.g. their own contribution, a decision, error handling, testing, a limitation or the result).\n"
+        "Set aspect to the side of the topic the question explores."
+        + ("\nDo NOT ask anything similar to: " + " | ".join(avoid) + ". Choose a different topic or aspect."
+           if avoid else "")
     )
     # Output tokens are the slow part (~20/s locally): keep the limit close to what a short question needs.
     nq = _structured_call(db, user_id, "interview_question", system, prompt, NextQuestion,
                           max_tokens=450 if coaching else 300, on_delta=on_delta).model_dump()
-    nq["question"] = strip_greeting(" ".join(nq["question"].split()))[:1000]
+    from .interview_engine import strip_robotic
+    nq["question"] = strip_robotic(strip_greeting(" ".join(nq["question"].split())))[:1000]
     keep_preface = (struggling and hints) or (coaching and bool(history))
     nq["preface"] = _speakable(" ".join(nq["preface"].split()))[:600] if keep_preface else ""
     if not nq["question"].strip():
@@ -585,10 +662,15 @@ EVALUATOR_SYSTEM = ("You are a fair, rigorous interview evaluator. Score honestl
 
 def score_answer(db: Session, user_id: int, *, job_role: str, question: str, question_type: str,
                  answer: str, rubric: list[dict], difficulty: str = "medium", interviewer: str = "aria") -> dict:
-    # `interviewer` only sets how quickly the NEXT question gets harder/easier; the scores never depend on it.
+    """FAST step (scores only, ~60 output tokens): used to choose the next question right away.
+
+    The model scores relevance, correctness, completeness, clarity and communication (0-10); rule-based checks
+    (`apply_answer_rules`) then cap scores for off-topic or very short answers. The 0-100 `score` is the
+    rubric-weighted average. `interviewer` only sets how quickly the NEXT question gets harder/easier; the scores
+    never depend on it.
+    """
     from . import interviewers
     persona = interviewers.get(interviewer)
-    """FAST step (scores only, ~60 output tokens): used to choose the next question right away."""
     criteria = "\n".join(f"- {c['name']} (weight {c.get('weight', 0)}): {c.get('description', '')}" for c in rubric)
     prompt = (
         f"Role: {job_role}\nQuestion type: {question_type}\nQuestion difficulty: {difficulty}\n"
@@ -642,7 +724,8 @@ def answer_feedback(db: Session, user_id: int, *, job_role: str, question: str, 
     background priority so it gives way whenever the candidate is waiting for the interviewer."""
     scores = ", ".join(f"{k} {scored[k]}/10" for k in CRITERIA)
     prompt = (
-        f"Role: {job_role}\nQuestion type: {question_type}\nQuestion: {question}\n{fence('answer', answer)}\n\n"
+        f"Role: {job_role}\nQuestion type: {question_type}\nQuestion: {question}\n"
+        f"{fence('answer', (answer or '')[:1500])}\n\n"
         f"The answer has already been scored: {scores}. Do not re-score it.\n"
         "Give 1-3 strengths (empty only if there are none), the missing_concepts a strong answer would include "
         "(at least one unless the answer is complete), 2-4 specific improvements (never empty), 2-3 sentences of "
@@ -684,21 +767,26 @@ class InterviewReport(BaseModel):
 
 def interview_report(db: Session, user_id: int, *, job_role: str, category: str, qa: list[dict],
                      interviewer: str = "aria") -> dict:
+    """Final interview report from all questions, answers and scores: summary, strengths, weaknesses,
+    improvement suggestions, recommended practice, and short closing remarks in the interviewer's voice.
+    """
     from . import interviewers
     p = interviewers.get(interviewer)
     system = ("You are a senior placement coach writing a concise, honest post-interview report for a student. "
               "Give actionable feedback about the answers only - never psychological conclusions or guesses about "
               "personality, intelligence or emotions. Keep technical knowledge separate from English fluency.")
     body = "\n\n".join(
-        f"Q{i + 1} [{x['type']}]: {x['question']}\n{fence('answer', x['answer'])}\nScore: {x.get('score')}/100"
+        f"Q{i + 1} [{x['type']}]: {x['question']}\n{fence('answer', (x['answer'] or '')[:ANSWER_CHARS_IN_PROMPT])}"
+        f"\nScore: {x.get('score')}/100"
         for i, x in enumerate(qa))
     prompt = (f"Role: {job_role}\nFocus: {category}\n\n{body}\n\n"
-              "Write a 3-5 sentence summary, 2-5 strengths, 2-5 weaknesses, 3-6 concrete improvement suggestions "
-              "and 2-4 recommended practice activities (e.g. 'Practise 3 SQL join questions'). Base everything "
-              "on the answers above.\n"
+              "Write a 2-4 sentence summary, 2-4 strengths, 2-4 weaknesses, 3-5 concrete improvement suggestions "
+              "and 2-3 recommended practice activities (e.g. 'Practise 3 SQL join questions'). Each list item is ONE "
+              "specific sentence naming the question or topic it refers to. Base everything on the answers above.\n"
               f"Also write closing_remarks: 2-3 short spoken sentences (plain text, under 60 words) that {p.name}, "
               f"the interviewer, says to the candidate at the end. Tone: {p.feedback_style}")
-    out = _structured_call(db, user_id, "interview_report", system, prompt, InterviewReport).model_dump()
+    out = _structured_call(db, user_id, "interview_report", system, prompt, InterviewReport,
+                           max_tokens=900).model_dump()
     out["closing_remarks"] = _speakable(out["closing_remarks"])[:600]
     out["interviewer"] = p.id
     return out
@@ -750,7 +838,7 @@ ENGLISH_RULES = (
     "- Prefer questions that invite opinions, comparisons, stories or imagination. Do not ask a bare 'Why?', "
     "'Anything else?' or 'Tell me more' without adding something specific.\n"
     "- Vary how you acknowledge answers and keep it natural; do not start every turn with praise such as 'Great!' "
-    "or 'Excellent!'.\n"
+    "or 'Excellent!'. Never quote the student's mistakes or filler words ('um', 'uh') back to them.\n"
     "- If the student mentions a game, film, player, show or anything you are not sure about, ask them about it "
     "instead of inventing facts.\n"
     "- If the student asks you to repeat or explain the question, say your previous question again in simpler words.\n"
@@ -813,14 +901,28 @@ def _speakable(s: str) -> str:
     return " ".join(_EMOJI.sub(" ", s or "").split())
 
 
+_UK_US = ((r"\bpractis", "practic"), (r"is(e|es|ed|ing|ation)\b", r"iz\1"), (r"(?<=[a-z]{2})our", "or"), (r"tre\b", "ter"),
+          (r"ogue\b", "og"), (r"lled\b", "led"), (r"lling\b", "ling"))
+
+
+def _spelling_neutral(s: str) -> str:
+    """Words only, with British and American spellings mapped together (both are correct)."""
+    w = _words(s)
+    for pat, rep in _UK_US:
+        w = re.sub(pat, rep, w)
+    return w
+
+
 def clean_english_reply(raw: dict, latest_student: str | None) -> dict:
     """Keep the model's output within the contract the UI relies on."""
     said = _norm(latest_student or "")
     corrections = []
     for c in raw.get("corrections") or []:
         orig, fixed = (c.get("original") or "").strip(), (c.get("corrected") or "").strip()
-        # Drop invented quotes and no-op / punctuation-only "fixes": only correct what the student actually said.
-        if said and orig and fixed and _words(orig) != _words(fixed) and _norm(orig) in said:
+        # Drop invented quotes, no-op / punctuation-only / British-vs-American spelling "fixes" (the real-model eval
+        # 'corrected' the correct British verb "practise"), and rewrites far longer than what was said.
+        if (said and orig and fixed and _spelling_neutral(orig) != _spelling_neutral(fixed)
+                and _norm(orig) in said and len(fixed.split()) <= 2 * len(orig.split()) + 3):
             corrections.append({"original": orig, "corrected": fixed, "explanation": (c.get("explanation") or "").strip()})
     mode = (raw.get("avatar_mode") or "").strip().lower()
     return {
@@ -873,6 +975,25 @@ def _mentions_topic(reply: str, topic: str) -> bool:
     return not stems or any(w.startswith(s) or (len(w) >= 4 and s.startswith(w)) for s in stems for w in words)
 
 
+def _opener(text: str) -> str:
+    return " ".join(_words(text).split()[:3])
+
+
+_LEADING_FILLER = re.compile(r"^(?:u+h*m+|u+h+|e+r+m*)\b[,.!?]?\s*", re.IGNORECASE)
+
+
+def drop_repeated_opener(reply: str, earlier: list[str]) -> str:
+    """Real-model eval: replies kept starting 'I love that you mentioned...' / 'That's such a cool detail...'. If the
+    first sentence opens like one of the last replies, drop it (when enough of the reply is left). A leading 'Um'
+    echoed from the student ('Um yes one match? ...') is removed too - it can sound like mockery."""
+    reply = _LEADING_FILLER.sub("", reply.strip())
+    reply = reply[:1].upper() + reply[1:]
+    parts = re.split(r"(?<=[.!?])\s+", reply.strip(), maxsplit=1)
+    if len(parts) == 2 and len(parts[1].split()) >= 6 and _opener(parts[0]) in {_opener(e) for e in earlier if e}:
+        return parts[1]
+    return reply
+
+
 def apply_correction_policy(out: dict, *, learning_mode: str, memory: dict) -> dict:
     """Learning-mode rules enforced in code: how many corrections, how often, and whether one is spoken."""
     from . import english_companion as ec
@@ -883,15 +1004,15 @@ def apply_correction_policy(out: dict, *, learning_mode: str, memory: dict) -> d
         fixes = []
     out = {**out, "corrections": fixes[:m.max_corrections]}
     if m.spoken_correction and out["corrections"]:
-        first = out["corrections"][0]["corrected"]
+        first = out["corrections"][0]["corrected"].strip().rstrip(".!?,;")
         if _words(first) not in _words(out["reply"]):  # the model forgot to say it: add it, briefly
-            out["reply"] = f"A more natural way to say that is: \"{first}\". {out['reply']}"
+            out["reply"] = f"A more natural way to say that is: \"{first}.\" {out['reply']}"
     return out
 
 
 def english_reply(db: Session, user_id: int, *, topic: str, history: list[dict], style: str = "free_talk",
                   learning_mode: str = "free_conversation", memory: dict | None = None,
-                  synthetic_opening: bool = False) -> dict:
+                  synthetic_opening: bool = False, on_delta=None, focus: list[str] | None = None) -> dict:
     """Aria's next turn plus the updated conversation memory (`out["memory"]`).
 
     The model gets a compact memory (topics, interests, details, questions already asked, corrections given) and
@@ -910,8 +1031,11 @@ def english_reply(db: Session, user_id: int, *, topic: str, history: list[dict],
         (fence("student_message", m["content"]) if m["sender"] == "student" else f"Aria: {m['content']}")
         for m in (recent[:-1] if latest else recent))
     asked = "\n".join(f"- {q}" for q in earlier_ai[-4:])
+    openers = sorted({" ".join(t.split()[:4]) for t in earlier_ai[-3:] if t})
     prompt = (f"Starting topic chosen by the student: {topic}\n\nConversation memory:\n{ec.memory_for_prompt(mem)}\n\n"
-              f"Recent conversation:\n{convo or '(none)'}\n\n"
+              + (f"Do not start your reply the way your recent replies started ({' / '.join(openers)}...).\n\n"
+                 if openers else "")
+              + f"Recent conversation:\n{convo or '(none)'}\n\n"
               + (f"Things you (Aria) already said - do NOT repeat them or ask the same questions again:\n{asked}\n\n"
                  if asked else "")
               + (f"The student's LATEST message - respond to exactly this:\n{fence('student_message', latest)}\n\n"
@@ -919,11 +1043,15 @@ def english_reply(db: Session, user_id: int, *, topic: str, history: list[dict],
               + (f"The student wants to talk about {switched_to} now. Switch to {switched_to} immediately: acknowledge "
                  f"it in a few words and ask an interesting first question about {switched_to}. Do not go back to "
                  "the previous topic.\n\n" if switched_to else "")
+              + (f"The student keeps making mistakes with: {'; '.join(focus)}. When it fits naturally, favour a "
+                 "correction or a short model sentence in that area; never lecture, and do not mention this note.\n\n"
+                 if focus else "")
               + "Write Aria's next turn.")
     out = raw = None
     for attempt in (1, 2):
         raw = _structured_call(db, user_id, "english_chat", system, prompt, EnglishReply, max_tokens=800,
-                               temperature=CHAT_TEMPERATURE + 0.2 * (attempt - 1)).model_dump()
+                               temperature=CHAT_TEMPERATURE + 0.2 * (attempt - 1),
+                               on_delta=on_delta).model_dump()
         out = clean_english_reply(raw, latest)
         q = ec.closing_question(out["reply"])
         if not out["reply"]:
@@ -943,6 +1071,7 @@ def english_reply(db: Session, user_id: int, *, topic: str, history: list[dict],
         raise AIUnavailable("The local AI returned an empty reply. Please try again.", 502)
     if synthetic_opening:
         out["corrections"] = []
+    out["reply"] = drop_repeated_opener(out["reply"], earlier_ai[-3:])
     out = apply_correction_policy(out, learning_mode=learning_mode, memory=mem)
     out["memory"] = ec.update_memory(
         mem, topic=topic, learning_mode=learning_mode, student_text=student_text, switched_to=switched_to,
@@ -964,6 +1093,9 @@ class EnglishEvaluation(BaseModel):
 
 
 def english_evaluate(db: Session, user_id: int, *, topic: str, student_messages: list[str]) -> dict:
+    """Score a finished English conversation (grammar, vocabulary, fluency, sentence formation, 0-10) from
+    the student's own messages only, with a short summary, strengths and suggestions.
+    """
     system = ("You assess spoken/written English of college students for workplace communication. Score honestly "
               "on a 0-10 integer scale. Very short sessions should be scored conservatively. Never consider "
               "accent or personal characteristics.")

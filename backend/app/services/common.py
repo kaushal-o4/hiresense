@@ -1,8 +1,8 @@
 """Small shared helpers: audit logging, notifications, pagination, platform settings."""
 from typing import Any
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from ..odm import func, select
+from ..odm import Session
 
 from ..models import AuditLog, Notification, PlatformSetting
 
@@ -19,8 +19,10 @@ DEFAULT_SETTINGS: dict[str, tuple[Any, str]] = {
     "evaluation_strictness": ("standard", "How strictly the AI scores interview and coding answers"),
     "resume_question_count": (8, "Number of personalised interview questions generated from a resume"),
     "monitoring_enabled": (True, "Offer disclosed, opt-in camera/browser integrity monitoring in live interviews"),
-    "monitoring_camera_required": (False, "Live interviews require the camera (students who cannot or will not "
-                                          "enable it are told so instead of starting)"),
+    # On by default (product decision 2026-10-11); admins can switch it off for practice-only use.
+    "monitoring_camera_required": (True, "Live interviews require the camera with face visibility and multiple-face "
+                                         "checks (students who cannot or will not enable it are told so instead of "
+                                         "starting)"),
     "monitoring_retention_days": (90, "Days integrity events are kept before automatic deletion"),
 }
 

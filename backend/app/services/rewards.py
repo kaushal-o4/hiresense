@@ -8,8 +8,8 @@ Anti-gaming rules:
 """
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from ..odm import func, select
+from ..odm import Session
 
 from ..models import (
     AssessmentResult, Badge, Challenge, ChallengeCompletion, EnglishSession, ImprovementPlan, InterviewSession,

@@ -5,13 +5,13 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from ..odm import select
+from ..odm import Session
 
 from ..config import get_settings
 from ..database import get_db
 from ..deps import get_current_user, require_student
-from sqlalchemy import func
+from ..odm import func
 
 from ..models import (
     AssessmentResult, Badge, Challenge, ChallengeCompletion, DriveRegistration, ImprovementPlan, InterviewSession,
@@ -458,7 +458,7 @@ def rewards(user: User = Depends(require_student), db: Session = Depends(get_db)
 
 @router.get("/leaderboard")
 def leaderboard(user: User = Depends(require_student), db: Session = Depends(get_db)):
-    from sqlalchemy import func
+    from ..odm import func
     rows = db.execute(select(User.id, User.full_name, func.sum(PointTransaction.points).label("pts"))
                       .join(PointTransaction, PointTransaction.student_id == User.id)
                       .where(PointTransaction.revoked.is_(False), User.status == "active")

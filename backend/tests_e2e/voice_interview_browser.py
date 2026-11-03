@@ -121,6 +121,9 @@ with sync_playwright() as p:
     say("[ok] avatar loaded, consent screen shown, mic NOT opened before start")
 
     t0 = time.time()
+    agree = page.get_by_label("I have read what is monitored")  # monitoring notice (security module)
+    if agree.count():
+        agree.check()
     page.get_by_role("button", name=re.compile("start the interview")).click()
     wait_status(page, "Interviewer speaking", 120)
     say(f"[ok] speaking after {time.time() - t0:.1f}s (TTS)")

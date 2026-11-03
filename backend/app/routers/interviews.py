@@ -11,8 +11,8 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from ..odm import func, select
+from ..odm import Session
 
 from .. import database
 from ..config import get_settings
@@ -24,7 +24,7 @@ from ..models import (
 )
 from ..schemas import AnswerIn, InterviewStart, TurnIn
 from ..serializers import interview_out
-from ..services import ai, interviewers, perf, question_classifier, speech_stream, tts
+from ..services import ai, interview_engine, interviewers, local_llm, perf, question_classifier, speech_stream, tts
 from ..services.common import get_setting, notify, paginate
 from ..services.insights import current_resume, record_progress
 from ..services.report_metrics import report_metrics
@@ -47,15 +47,19 @@ DEFAULT_RUBRIC = [
     {"name": "Communication", "weight": 0.2, "description": "Professional, confident, concise language"},
 ]
 QUESTION_TYPES = {"technical", "hr", "behavioral", "communication", "project"}
+LIVE_QUESTION_ATTEMPTS = 2  # first try + 1 retry: the candidate is listening and waiting
+TEXT_QUESTION_ATTEMPTS = 3
 
 
 def _rubric(db: Session, applies_to: str) -> list[dict]:
+    """Criteria used to score answers: the newest active admin rubric for `applies_to`, or DEFAULT_RUBRIC."""
     r = db.scalar(select(EvaluationRubric).where(EvaluationRubric.applies_to == applies_to,
                                                  EvaluationRubric.active.is_(True)).order_by(EvaluationRubric.id.desc()))
     return r.criteria if r and r.criteria else DEFAULT_RUBRIC
 
 
 def _get_session(db: Session, user: User, session_id: int) -> InterviewSession:
+    """Load an interview that belongs to this student; 404 otherwise (also hides other students' interviews)."""
     s = db.get(InterviewSession, session_id)
     if not s or s.student_id != user.id:
         raise HTTPException(404, "Interview not found")
@@ -63,6 +67,9 @@ def _get_session(db: Session, user: User, session_id: int) -> InterviewSession:
 
 
 def _bank_question(db: Session, session: InterviewSession, level: str) -> tuple[str, str] | None:
+    """Pick an unused question from the admin question bank, preferring the wanted difficulty and the
+    student's job role. Returns (question text, question type) or None when the bank has nothing suitable left.
+    """
     used = [q.text for q in session.questions]
     stmt = select(BankQuestion).join(InterviewCategory).where(BankQuestion.active.is_(True),
                                                               InterviewCategory.active.is_(True))
@@ -140,38 +147,94 @@ def _add_next_question(db: Session, user: User, session: InterviewSession, strea
                       projects=[p.get("name", "") for p in analysis.get("projects", [])],
                       topics=analysis.get("recommended_topics", []), struggling=struggling,
                       interviewer=session.interviewer or interviewers.DEFAULT)
+        persona = interviewers.get(session.interviewer)
+        ctx = interview_engine.candidate_context(analysis, list(profile.skills or []) if profile else [])
+        prev_meta = [q.meta or {} for q in session.questions]
+        for h, m in zip(history, prev_meta):
+            h["meta"] = m
+        last_answer = session.questions[-1].answer.text if session.questions and session.questions[-1].answer \
+            else None
+        signals = interview_engine.answer_signals(last_answer) if last_answer is not None else []
+        allow_repeat = any(s["code"] == "repeat_request" for s in signals)
+        kwargs.update(candidate_facts=interview_engine.context_block(ctx), signals=signals,
+                      coverage=interview_engine.coverage(history, ctx, persona.aspect_order, session.category,
+                                                         session.subject),
+                      stage=interview_engine.stage(position, session.planned_questions))
         if session.response_mode == "coaching":
             kwargs["response_mode"] = "coaching"
         if stream is not None:
             kwargs["on_delta"] = stream.on_delta
+        # Live interviews: one retry (each attempt keeps the candidate waiting ~4 s); text mode: a few more.
+        attempts = LIVE_QUESTION_ATTEMPTS if stream is not None else TEXT_QUESTION_ATTEMPTS
+        avoid: list[str] = []
+        rejected: list[str] = []
         try:
-            nq = ai.next_interview_question(db, user.id, **kwargs)
-            if is_repeat(nq["question"], previous):
-                if stream is not None:
+            for attempt in range(attempts):
+                if attempt and stream is not None:
                     stream.retract()  # it may already have been spoken: take it back before asking again
-                nq = ai.next_interview_question(db, user.id, **kwargs, avoid=[nq["question"]])
-            if not is_repeat(nq["question"], previous):
-                qtype = nq["question_type"] if nq["question_type"] in QUESTION_TYPES else "technical"
-                session.questions.append(InterviewQuestion(
-                    position=position, text=nq["question"].strip(), question_type=qtype,
-                    is_followup=bool(nq["is_followup"]), difficulty=level, preface=nq.get("preface") or None,
-                    meta={"source": "ai", "classifier": question_classifier.predict(nq["question"])}))
-                return
+                nq = ai.next_interview_question(db, user.id, **kwargs, **({"avoid": avoid} if avoid else {}))
+                text = nq["question"].strip()
+                nq["topic"] = interview_engine.derive_topic(text, ctx) or nq.get("topic")
+                # A clarifying follow-up may stay on the previous question's topic/aspect.
+                concept_meta = prev_meta[:-1] if nq.get("is_followup") else prev_meta
+                dup, reason = interview_engine.is_duplicate(
+                    text, previous, meta=nq, previous_meta=concept_meta, allow_repeat=allow_repeat,
+                    similarity=interview_engine.embedding_similarity)
+                problems = interview_engine.validate_question(text, persona.max_question_words + 15)
+                if not dup and not problems:
+                    qtype = nq["question_type"] if nq["question_type"] in QUESTION_TYPES else "technical"
+                    session.questions.append(InterviewQuestion(
+                        position=position, text=text, question_type=qtype,
+                        is_followup=bool(nq["is_followup"]), difficulty=level, preface=nq.get("preface") or None,
+                        meta={"source": "ai", "classifier": question_classifier.predict(text),
+                              "topic": nq.get("topic") or None, "aspect": nq.get("aspect"),
+                              "signals": [s["code"] for s in signals],
+                              "attempts": attempt + 1, **({"rejected": rejected} if rejected else {})}))
+                    return
+                rejected.append(reason or problems[0])
+                avoid.append(text)
+            # Never log the question text (it may quote the candidate): reason codes only.
+            logger.info("interview %s: %d generated question(s) rejected (%s); using a fallback", session.id,
+                        len(rejected), ",".join(rejected))
         except ai.AIUnavailable:
             # A one-off failure only affects this question (it is labelled as a bank question). Switch the whole
             # interview to the question bank only when the AI is really unavailable (not running / disabled).
             if not ai.ai_status(db)["available"]:
                 session.question_source = "question_bank"
-    picked = _bank_question(db, session, level)
+        if stream is not None:
+            stream.retract()
+        # Fallback 1: a template question about the candidate's own resume that has not been covered yet.
+        fb = interview_engine.fallback_question(ctx, history, role=session.job_role, category=session.category,
+                                                aspect_order=persona.aspect_order, include_general=False)
+        if fb:
+            session.questions.append(InterviewQuestion(
+                position=position, text=fb["question"], question_type=fb["question_type"], difficulty=level,
+                meta={"source": "fallback_template", "topic": fb["topic"], "aspect": fb["aspect"],
+                      **({"rejected": rejected} if rejected else {})}))
+            return
+    picked, source = _bank_question(db, session, level), "question_bank"
+    if not picked:  # Fallback 3: general role questions, so an interview can never get stuck
+        fb = interview_engine.fallback_question(
+            interview_engine.candidate_context(None), [{"question": q.text, "meta": q.meta} for q in session.questions],
+            role=session.job_role, category=session.category, aspect_order=(), include_general=True)
+        if fb:
+            picked, source = (fb["question"], fb["question_type"]), "fallback_template"
     if not picked:
         raise HTTPException(503, "The AI service is unavailable and the question bank has no more questions for "
                                  "this category. Please try again later.")
     session.questions.append(InterviewQuestion(position=position, text=picked[0], question_type=picked[1],
-                                               difficulty=level, meta={"source": "question_bank"}))
+                                               difficulty=level, meta={"source": source}))
 
 
 @router.post("", status_code=201)
 def start_interview(body: InterviewStart, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """Create a new interview session (POST /api/student/interviews).
+
+    Limits: at most `max_interview_questions` questions and 3 interviews in progress. Questions come from the AI
+    when it is available, otherwise from the question bank (the response then carries a `notice`). Text interviews
+    get their first question immediately; live voice interviews with `defer_first_question` get it written in a
+    background thread while the student goes through the setup screen.
+    """
     max_q = int(get_setting(db, "max_interview_questions") or 10)
     if body.question_count > max_q:
         raise HTTPException(400, f"An interview can have at most {max_q} questions")
@@ -217,6 +280,7 @@ def start_interview(body: InterviewStart, user: User = Depends(require_student),
 @router.get("")
 def list_interviews(page: int = 1, page_size: int = 10, status: str | None = None,
                     user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """The student's own interviews, newest first, paginated (optionally filtered by status)."""
     stmt = select(InterviewSession).where(InterviewSession.student_id == user.id)
     if status:
         stmt = stmt.where(InterviewSession.status == status)
@@ -226,6 +290,7 @@ def list_interviews(page: int = 1, page_size: int = 10, status: str | None = Non
 
 @router.get("/{session_id}")
 def get_interview(session_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """One interview with its questions, answers, scores and report."""
     return interview_out(_get_session(db, user, session_id), detail=True, own=True)
 
 
@@ -318,6 +383,9 @@ def _feedback_in_background(answer_id: int, user_id: int) -> None:
 
 
 def _check_suspicious(session: InterviewSession, q: InterviewQuestion, body: AnswerIn) -> None:
+    """Flag the session for admin review (never auto-penalise) when an answer looks pasted: a long answer
+    submitted within 5 seconds, or an answer identical to another one in the same interview.
+    """
     words = len(body.answer.split())
     reasons = []
     if body.response_seconds is not None and body.response_seconds < 5 and words > 60:
@@ -334,6 +402,12 @@ def _check_suspicious(session: InterviewSession, q: InterviewQuestion, body: Ans
 @router.post("/{session_id}/answer")
 def submit_answer(session_id: int, body: AnswerIn, background: BackgroundTasks, user: User = Depends(require_student),
                   db: Session = Depends(get_db)):
+    """Text-mode answer (POST .../answer).
+
+    Saves the answer, scores it with the fast AI step (the score decides the next question's difficulty), adds the
+    next question unless the planned number is reached, and schedules the detailed feedback as a background task.
+    Returns the updated session, any evaluation error, and whether the interview is ready to complete.
+    """
     t0 = time.perf_counter()
     session = _get_session(db, user, session_id)
     if session.status != "in_progress":
@@ -369,6 +443,9 @@ def _check_current(session: InterviewSession, question_id: int, duplicate_status
 
 
 def _save_answer(session: InterviewSession, current: InterviewQuestion, body: AnswerIn) -> None:
+    """Attach the student's answer to the current question, with observable facts (word count, speaking time,
+    whether it was cut off at the time limit) used later by the report, then run the paste/copy checks.
+    """
     observed = {"words": len(body.answer.split()), "interrupted": body.interrupted}
     if body.speech_seconds:
         observed["speech_seconds"] = round(body.speech_seconds, 1)
@@ -396,6 +473,9 @@ TURN_LOCK_STALE_S = 300
 
 
 def _lock_turn(session_id: int) -> bool:
+    """Mark a live-interview turn as running. False if one is already running for this interview (so double
+    submissions get 409); a lock older than TURN_LOCK_STALE_S is treated as abandoned.
+    """
     with _turn_locks_guard:
         held = _turn_locks.get(session_id)
         if held and time.monotonic() - held < TURN_LOCK_STALE_S:
@@ -405,6 +485,7 @@ def _lock_turn(session_id: int) -> bool:
 
 
 def _unlock_turn(session_id: int) -> None:
+    """Release the turn lock taken by `_lock_turn()`."""
     with _turn_locks_guard:
         _turn_locks.pop(session_id, None)
 
@@ -413,6 +494,9 @@ _prefetch: dict[int, threading.Event] = {}
 
 
 def _start_prefetch(session_id: int, user_id: int) -> None:
+    """Write the first question of a live interview in a background thread, so it is usually ready when the
+    student presses Start. The turn endpoint waits on the returned event (or creates the question itself on failure).
+    """
     done = threading.Event()
     _prefetch[session_id] = done
 
@@ -470,6 +554,17 @@ class _Speaker:
     def say(self, sentence: str) -> None:
         if self.first_text_ms is None:
             self.first_text_ms = round((time.perf_counter() - self.t0) * 1000)
+        if self.index == 0 and self.worker:
+            # Speech synthesis time grows with length (a 116-character sentence took ~5 s on the test laptop), so a
+            # long FIRST sentence is spoken in two parts split at a natural comma: the first sound comes sooner.
+            head, tail = speech_stream.split_first_clause(sentence)
+            if tail:
+                self._say_piece(head)
+                self._say_piece(tail)
+                return
+        self._say_piece(sentence)
+
+    def _say_piece(self, sentence: str) -> None:
         i = self.index
         self.index += 1
         self.emit("sentence", {"index": i, "gen": self.gen, "text": sentence})
@@ -517,6 +612,12 @@ class _Speaker:
 
 
 def _turn_work(session_id: int, user_id: int, body: TurnIn, emit, t0: float) -> None:
+    """Body of one live-interview turn, run in a worker thread; results are sent to the browser via `emit`.
+
+    Order: save + fast-score the answer (if any) -> write the next question, speaking it sentence by sentence as it
+    is generated -> schedule detailed feedback in the background -> `done` event with the session and timings.
+    Errors become an `error` event; the answer is kept so the student can try again.
+    """
     db = database.SessionLocal()
     speaker = _Speaker(emit, body.tts, t0)
     timings: dict = {}
@@ -610,7 +711,10 @@ def interview_turn(session_id: int, body: TurnIn, user: User = Depends(require_s
 
     def work():
         try:
-            _turn_work(session_id, user.id, body, emit, t0)
+            # The candidate is waiting for this whole turn (scoring, question, every spoken sentence): background
+            # feedback generation must not compete for the CPU meanwhile.
+            with local_llm.interactive_hold():
+                _turn_work(session_id, user.id, body, emit, t0)
         finally:
             _unlock_turn(session_id)
             events.put(None)
@@ -646,6 +750,10 @@ def ensure_next_question(session_id: int, user: User = Depends(require_student),
 
 
 def _finalize_scores_and_report(db: Session, user: User, session: InterviewSession) -> str | None:
+    """Compute the overall score (average of the scored answers) and ask the AI for the final
+    report; the deterministic metrics from report_metrics.py are always stored. Returns an error message when the
+    report could not be written (report_status "unavailable"), else None.
+    """
     answered = [q for q in session.questions if q.answer]
     scored = [q.answer.score for q in answered if q.answer.score is not None]
     session.overall_score = round(sum(scored) / len(scored), 1) if scored else None
@@ -716,6 +824,9 @@ def _post_completion(db: Session, user: User, session: InterviewSession) -> list
 
 @router.post("/{session_id}/complete")
 def complete_interview(session_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """Finish an interview (POST .../complete): drop the unanswered trailing question, compute the overall
+    score and report, then record progress, award points/badges and alert mentors when needed.
+    """
     session = _get_session(db, user, session_id)
     if session.status != "in_progress":
         raise HTTPException(400, "This interview is already finished")
@@ -737,6 +848,9 @@ def complete_interview(session_id: int, user: User = Depends(require_student), d
 
 @router.post("/{session_id}/retry-evaluation")
 def retry_evaluation(session_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """Re-run whatever AI work is missing: feedback for answers that only have scores, full evaluation for
+    unscored answers, then the final report. 503 with the reason if the AI is still unavailable.
+    """
     session = _get_session(db, user, session_id)
     rubric = _rubric(db, "interview")
     had_score = session.overall_score is not None
@@ -765,6 +879,7 @@ def retry_evaluation(session_id: int, user: User = Depends(require_student), db:
 
 @router.delete("/{session_id}")
 def abandon_interview(session_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """Mark an in-progress interview as abandoned (it stays in the history but is never scored)."""
     session = _get_session(db, user, session_id)
     if session.status != "in_progress":
         raise HTTPException(400, "Only in-progress interviews can be abandoned")

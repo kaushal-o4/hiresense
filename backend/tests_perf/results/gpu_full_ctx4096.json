@@ -1,0 +1,98 @@
+{
+  "label": "gpu_full_ctx4096",
+  "model": "qwen3:4b",
+  "num_ctx": 4096,
+  "runs": 4,
+  "stages": {
+    "llm_question_first_call_ms": 4482,
+    "llm_question_ms": {
+      "n": 4,
+      "p50_ms": 3262,
+      "p95_ms": 3590,
+      "mean_ms": 3259,
+      "min_ms": 2870,
+      "max_ms": 3642
+    },
+    "llm_score_ms": {
+      "n": 4,
+      "p50_ms": 2390,
+      "p95_ms": 2511,
+      "mean_ms": 2400,
+      "min_ms": 2301,
+      "max_ms": 2522
+    },
+    "server_answer_to_next_question_ms": {
+      "n": 4,
+      "p50_ms": 5576,
+      "p95_ms": 6019,
+      "mean_ms": 5659,
+      "min_ms": 5391,
+      "max_ms": 6094
+    },
+    "llm_question_first_sentence_ms": {
+      "n": 4,
+      "p50_ms": 1640,
+      "p95_ms": 1763,
+      "mean_ms": 1562,
+      "min_ms": 1194,
+      "max_ms": 1775
+    },
+    "server_answer_to_first_sentence_ms": {
+      "n": 4,
+      "p50_ms": 3954,
+      "p95_ms": 4193,
+      "mean_ms": 3963,
+      "min_ms": 3716,
+      "max_ms": 4227
+    },
+    "tts_whole_question_ms": {
+      "n": 3,
+      "p50_ms": 3651,
+      "p95_ms": 3801,
+      "mean_ms": 3689,
+      "min_ms": 3598,
+      "max_ms": 3818
+    },
+    "tts_first_sentence_ms": {
+      "n": 3,
+      "p50_ms": 806,
+      "p95_ms": 823,
+      "mean_ms": 791,
+      "min_ms": 743,
+      "max_ms": 825
+    },
+    "tts_audio_seconds": 12.145,
+    "stt_ms": {
+      "n": 3,
+      "p50_ms": 3326,
+      "p95_ms": 3465,
+      "mean_ms": 3350,
+      "min_ms": 3242,
+      "max_ms": 3481
+    },
+    "stt_audio_seconds": 25.69
+  },
+  "ollama_breakdown": {
+    "cold": {
+      "queue_ms": 0,
+      "load_ms": 22,
+      "prompt_ms": 763,
+      "generate_ms": 2558,
+      "first_token_ms": 1898
+    },
+    "question": {
+      "queue_ms": 0,
+      "load_ms": 26,
+      "prompt_ms": 424,
+      "generate_ms": 2579,
+      "first_token_ms": 650
+    },
+    "score": {
+      "queue_ms": 0,
+      "load_ms": 21,
+      "prompt_ms": 271,
+      "generate_ms": 1915,
+      "first_token_ms": 481
+    }
+  }
+}

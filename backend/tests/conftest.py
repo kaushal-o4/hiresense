@@ -7,10 +7,13 @@ import tempfile
 # installs the deterministic FAKE embedding below. Real-model checks live in tests_integration/.
 os.environ["OLLAMA_BASE_URL"] = "http://127.0.0.1:9"
 os.environ["OLLAMA_MODEL"] = "test-model:latest"
+os.environ["LOCAL_AI_PROVIDER"] = "ollama"  # never call the hosted Gemini API from tests
+os.environ["GEMINI_API_KEY"] = ""
 os.environ["EMBEDDING_PROVIDER"] = "none"
 os.environ["TTS_ENABLED"] = "false"
 os.environ["STT_ENABLED"] = "false"
-os.environ["DATABASE_URL"] = "sqlite://"
+# A separate MongoDB database on the local server, emptied before every test (never the app's "hiresense").
+os.environ["MONGODB_DB"] = os.environ.get("HS_TEST_MONGODB_DB", "hiresense_test")
 os.environ["SMTP_HOST"] = ""  # never send real email from tests
 os.environ["ADMIN_PASSWORD"] = "Test-Admin-Pass-9"  # fixed, test-only (the real seed generates a random one)
 # Uploaded test resumes go to a throwaway folder, never backend/uploads (the test DB is in memory, so files
@@ -21,13 +24,9 @@ atexit.register(shutil.rmtree, _UPLOADS, ignore_errors=True)
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-
 from app import database, seed as seed_module
 from app.config import get_settings
-from app.database import Base, get_db
+from app.database import get_db
 from app.main import app
 
 get_settings.cache_clear()
@@ -35,33 +34,68 @@ get_settings.cache_clear()
 
 @pytest.fixture(autouse=True)
 def _isolated_uploads(tmp_path, monkeypatch):
-    """Each test gets its own upload folder (the in-memory DB restarts user ids at 1 for every test)."""
+    """Each test gets its own upload folder (the emptied test DB restarts user ids at 1 for every test)."""
     folder = tmp_path / "uploads"
     monkeypatch.setattr(get_settings(), "upload_dir", str(folder))
     return folder
 
 
+APP_THREADS = ("prefetch-", "turn-", "feedback-", "english-stream-")
+
+
+def join_app_threads(prefix: tuple[str, ...] = APP_THREADS, timeout: float = 10) -> None:
+    """Wait for the app's background threads (first-question prefetch, streamed turns, background feedback), so a
+    thread still running from one step (or test) cannot write into the next one's data."""
+    import threading
+    for t in list(threading.enumerate()):
+        if t.name.startswith(prefix):
+            t.join(timeout=timeout)
+
+
+@pytest.fixture(autouse=True)
+def _join_app_threads():
+    yield
+    join_app_threads()
+
+
+@pytest.fixture(autouse=True)
+def _prefetch_runs_inline(monkeypatch):
+    """Run the first-question prefetch synchronously inside the request that starts the interview, so tests that
+    check the first question exists right after the start response are deterministic."""
+    import threading
+    import types
+
+    from app.routers import interviews
+
+    class _Thread(threading.Thread):
+        def start(self):
+            if str(self.name).startswith("prefetch-"):
+                self.run()
+            else:
+                super().start()
+
+    shim = types.SimpleNamespace(**{k: getattr(threading, k) for k in dir(threading) if not k.startswith("__")})
+    shim.Thread = _Thread
+    monkeypatch.setattr(interviews, "threading", shim)
+
+
 @pytest.fixture(autouse=True)
 def _reset_ai_caches():
-    from app.services import local_llm
+    from app.services import gemini_llm, local_llm
+    from app.routers import monitoring
     local_llm._status_cache.update(at=0.0, value=None)
+    gemini_llm._status_cache.update(at=0.0, value=None)
+    monitoring._rate.clear()  # per-interview rate limit; ids restart at 1 in every test's fresh database
     yield
 
 
 @pytest.fixture()
-def db_session_factory(monkeypatch):
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-
-    @event.listens_for(engine, "connect")
-    def _fk_on(dbapi_conn, _):  # same as the app's engine (database.py): enforce foreign keys and ON DELETE rules
-        dbapi_conn.execute("PRAGMA foreign_keys=ON")
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-    monkeypatch.setattr(database, "SessionLocal", factory)
-    monkeypatch.setattr(seed_module, "SessionLocal", factory)
-    seed_module.seed(demo=False)
-    yield factory
-    engine.dispose()
+def db_session_factory():
+    """An emptied MongoDB test database with the standard seed (admin account, badges, question bank, ...)."""
+    database.init_db()
+    database.clear_database()
+    seed_module.seed()
+    yield database.SessionLocal
 
 
 @pytest.fixture()

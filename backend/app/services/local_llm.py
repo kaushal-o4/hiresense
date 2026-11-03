@@ -1,4 +1,4 @@
-"""Client for the local language model (Ollama).
+"""Client for the language model: local Ollama, or Google Gemini via services/gemini_llm.py.
 
 Ollama runs the model as a separate process on this computer and keeps it loaded in memory between
 requests (`keep_alive`), so nothing here loads model weights. This module only:
@@ -21,6 +21,7 @@ import logging
 import re
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -55,15 +56,42 @@ _status_cache: dict = {"at": 0.0, "value": None}
 _status_lock = threading.Lock()
 _STATUS_TTL = 20.0  # seconds
 
+_client: httpx.Client | None = None
+_client_lock = threading.Lock()
+
+
+def _base_url() -> str:
+    """Ollama's URL with "localhost" replaced by 127.0.0.1. Measured on the test laptop (Windows): "localhost"
+    resolves to IPv6 ::1 first, Ollama listens on IPv4 only, and every new connection waited ~2.1 s before
+    falling back - on every AI request."""
+    url = get_settings().ollama_base_url.rstrip("/")
+    return re.sub(r"^(https?://)localhost(?=[:/]|$)", r"\g<1>127.0.0.1", url)
+
+
+def _http() -> httpx.Client:
+    """One shared client: keeps the connection to Ollama open between requests (no new TCP setup per call)."""
+    global _client
+    with _client_lock:
+        if _client is None:
+            _client = httpx.Client(timeout=httpx.Timeout(get_settings().ai_timeout_seconds, connect=5.0),
+                                   limits=httpx.Limits(max_keepalive_connections=4, keepalive_expiry=120))
+        return _client
+
 
 class PriorityGate:
     """At most `slots` generations at a time. Interactive requests are served before background ones, and
-    `interactive_waiting()` lets a running background generation give way (it is cancelled and retried)."""
+    `interactive_waiting()` lets a running background generation give way (it is cancelled and retried).
+
+    `holds` counts candidate-facing work that is not an LLM call but shares the CPU (speech synthesis and
+    transcription during a turn). Measured in the browser E2E: a background feedback generation running next to
+    Kokoro made one spoken sentence take 122 s instead of ~1 s. While a hold is active, background generations
+    neither start nor continue."""
 
     def __init__(self, slots: int):
         self.slots = max(1, slots)
         self.running = 0
         self.waiting_interactive = 0
+        self.holds = 0
         self.cond = threading.Condition()
 
     def acquire(self, interactive: bool, timeout: float) -> bool:
@@ -72,7 +100,7 @@ class PriorityGate:
             if interactive:
                 self.waiting_interactive += 1
             try:
-                while self.running >= self.slots or (not interactive and self.waiting_interactive):
+                while self.running >= self.slots or (not interactive and (self.waiting_interactive or self.holds)):
                     left = end - time.monotonic()
                     if left <= 0:
                         return False
@@ -89,7 +117,23 @@ class PriorityGate:
             self.cond.notify_all()
 
     def interactive_waiting(self) -> bool:
-        return self.waiting_interactive > 0
+        return self.waiting_interactive > 0 or self.holds > 0
+
+    def hold(self, delta: int) -> None:
+        with self.cond:
+            self.holds = max(0, self.holds + delta)
+            self.cond.notify_all()
+
+
+@contextmanager
+def interactive_hold():
+    """with interactive_hold(): ...  - a candidate is waiting on this work; background generations pause."""
+    gate = _gate()
+    gate.hold(+1)
+    try:
+        yield
+    finally:
+        gate.hold(-1)
 
 
 _gate_obj: PriorityGate | None = None
@@ -110,22 +154,44 @@ def _model_matches(wanted: str, available: str) -> bool:
     return available == wanted
 
 
+def provider() -> str:
+    return get_settings().local_ai_provider.strip().lower()
+
+
 def runtime_status(force: bool = False) -> dict:
-    """{"provider", "model", "running", "model_ready", "error"} - cheap enough to call on every page load."""
+    """{"provider", "model", "running", "model_ready", "error"} - cheap enough to call on every page load.
+
+    With LOCAL_AI_PROVIDER=gemini this is Gemini's status; if Gemini can't be used and AI_FALLBACK_TO_OLLAMA is on,
+    a ready Ollama is reported instead (with "fallback_for": "gemini" and Gemini's problem in "primary_error")."""
     s = get_settings()
-    base = {"provider": s.local_ai_provider, "model": s.ollama_model}
-    if s.local_ai_provider.lower() != "ollama":
-        return {**base, "running": False, "model_ready": False, "error": "No local AI provider is configured."}
+    if provider() == "gemini":
+        from . import gemini_llm
+        st = gemini_llm.runtime_status(force)
+        if st["running"] and st["model_ready"] or not s.ai_fallback_to_ollama:
+            return st
+        ol = _ollama_status(force)
+        if ol["running"] and ol["model_ready"]:
+            return {**ol, "fallback_for": "gemini", "primary_error": st["error"]}
+        return st
+    if provider() != "ollama":
+        return {"provider": s.local_ai_provider, "model": s.ollama_model, "running": False, "model_ready": False,
+                "error": "No AI provider is configured."}
+    return _ollama_status(force)
+
+
+def _ollama_status(force: bool = False) -> dict:
+    s = get_settings()
+    base = {"provider": "ollama", "model": s.ollama_model}
     with _status_lock:
         cached = _status_cache["value"]
         if cached and not force and time.monotonic() - _status_cache["at"] < _STATUS_TTL:
             return cached
     try:
-        r = httpx.get(f"{s.ollama_base_url.rstrip('/')}/api/tags", timeout=2.0)
+        r = _http().get(f"{_base_url()}/api/tags", timeout=2.0)
         r.raise_for_status()
         names = [m.get("name") or m.get("model") or "" for m in r.json().get("models", [])]
         ready = any(_model_matches(s.ollama_model, n) for n in names)
-        value = {**base, "running": True, "model_ready": ready,
+        value = {**base, "running": True, "model_ready": ready, "installed": names,
                  "error": None if ready else f"The model '{s.ollama_model}' has not been downloaded. "
                                              f"Run: ollama pull {s.ollama_model}"}
     except (httpx.HTTPError, ValueError):
@@ -156,29 +222,107 @@ def _http_error(status_code: int, body: str) -> LLMError:
     return LLMError(f"The local AI returned an error ({status_code}). {detail}".strip(), kind="http_error")
 
 
+_gpu_override_failed = False  # set when loading with OLLAMA_NUM_GPU failed: Ollama then places the layers itself
+
+
+def _load_options(s) -> dict:
+    """Options that decide how the model is loaded. They must be the same for every request (and the warm-up),
+    otherwise Ollama reloads the model."""
+    opts = {"num_ctx": s.ollama_num_ctx}
+    if s.ollama_num_gpu >= 0 and not _gpu_override_failed:
+        opts["num_gpu"] = s.ollama_num_gpu
+    return opts
+
+
 def _options(s, max_tokens: int | None, temperature: float | None) -> dict:
-    # num_ctx must be the same for every request (and the warm-up), otherwise Ollama reloads the model.
     return {"temperature": s.ai_temperature if temperature is None else temperature,
             "num_predict": min(max_tokens or s.ai_max_output_tokens, s.ai_max_output_tokens),
-            "num_ctx": s.ollama_num_ctx}
+            **_load_options(s)}
+
+
+_active_model: str | None = None
+
+
+def _switch_model(model: str) -> None:
+    """Unload the previously used model when a different one is requested (called while holding the gate).
+
+    Measured on the test laptop (4 GB GPU): with the 4B and 1.7B models both resident, Ollama placed the second one
+    on the CPU only ("100% CPU") and it generated at ~19 tokens/s instead of fitting on the GPU. Unloading first costs
+    one model load (5-8 s) but lets the new model use the GPU. Best effort: a failure here never fails the request."""
+    global _active_model
+    previous, _active_model = _active_model, model
+    if previous and previous != model:
+        try:
+            _http().post(f"{_base_url()}/api/generate", json={"model": previous, "keep_alive": 0}, timeout=15.0)
+        except httpx.HTTPError:
+            log.warning("could not unload model '%s' before switching to '%s'", previous, model)
 
 
 def chat_json(system: str, prompt: str, schema: dict, *, max_tokens: int | None = None,
               temperature: float | None = None, priority: str = "interactive",
-              on_delta: Callable[[str], None] | None = None) -> LLMResult:
-    """Ask the local model for JSON matching `schema`. Raises LLMError on any failure.
+              on_delta: Callable[[str], None] | None = None, model: str | None = None) -> LLMResult:
+    """Ask the language model for JSON matching `schema`. Raises LLMError on any failure.
 
     priority: "interactive" (a person is waiting) or "background" (may be cancelled with kind="preempted" when an
-    interactive request arrives). on_delta(text_so_far) is called as the reply is generated."""
+    interactive request arrives). on_delta(text_so_far) is called as the reply is generated.
+    model: a tier model chosen by services/model_router.py; if it is not available, the main model is used instead.
+
+    With LOCAL_AI_PROVIDER=gemini the request goes to Gemini; if that fails before any text was streamed and
+    AI_FALLBACK_TO_OLLAMA is on, the same request is answered by the local Ollama model."""
+    kw = dict(max_tokens=max_tokens, temperature=temperature, priority=priority, on_delta=on_delta)
+    if provider() != "gemini":
+        return _chat_ollama(system, prompt, schema, model=model, status=runtime_status(), **kw)
+    global _gemini_down_until
+    from . import gemini_llm
     s = get_settings()
-    status = runtime_status()
+    if s.ai_fallback_to_ollama and time.monotonic() < _gemini_down_until:
+        status = _ollama_status()
+        if status["running"] and status["model_ready"]:
+            return _chat_ollama(system, prompt, schema, model=None, status=status, **kw)
+    streamed = False
+
+    def track(text: str) -> None:
+        nonlocal streamed
+        streamed = True
+        if on_delta:
+            on_delta(text)
+
+    try:
+        # only stream through when the caller streams: lets gemini_llm switch models on cut-off JSON otherwise
+        return gemini_llm.chat_json(system, prompt, schema, model=model, **{**kw, "on_delta": track if on_delta else None})
+    except LLMError as exc:
+        if exc.kind in ("timeout", "not_running", "http_error", "model_missing"):
+            _gemini_down_until = time.monotonic() + s.gemini_cooldown_seconds
+        if streamed or not s.ai_fallback_to_ollama:
+            raise
+        status = _ollama_status()
+        if not (status["running"] and status["model_ready"]):
+            raise
+        log.warning("gemini failed (%s); answering with ollama", exc.kind)
+        return _chat_ollama(system, prompt, schema, model=None, status=status, **kw)
+
+
+_gemini_down_until = 0.0  # monotonic time until which Gemini is skipped (see GEMINI_COOLDOWN_SECONDS)
+
+
+def _chat_ollama(system: str, prompt: str, schema: dict, *, max_tokens: int | None, temperature: float | None,
+                 priority: str, on_delta: Callable[[str], None] | None, model: str | None,
+                 status: dict) -> LLMResult:
+    global _gpu_override_failed
+    s = get_settings()
     if not status["running"]:
         raise LLMError(status["error"], kind="not_running")
     if not status["model_ready"]:
         raise LLMError(status["error"], kind="model_missing")
+    use_model = s.ollama_model
+    if model and model != s.ollama_model:
+        if any(_model_matches(model, n) for n in status.get("installed", [])):
+            use_model = model
+        else:
+            log.warning("routed model '%s' is not downloaded; using '%s'", model, s.ollama_model)
 
     payload = {
-        "model": s.ollama_model,
+        "model": use_model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": prompt}],
         "format": schema,
         "stream": True,
@@ -190,15 +334,21 @@ def chat_json(system: str, prompt: str, schema: dict, *, max_tokens: int | None 
     gate = _gate()
     queued = time.monotonic()
     if not gate.acquire(interactive, timeout=s.ai_timeout_seconds):
+        # A background job that waited this long is simply retried later (candidates kept the model busy).
         raise LLMError("The local AI is busy with other requests. Please try again in a minute.",
-                       kind="timeout", status_code=429)
+                       kind="timeout" if interactive else "preempted", status_code=429)
+    try:
+        _switch_model(use_model)
+    except BaseException:
+        gate.release()
+        raise
     started = time.monotonic()
     parts: list[str] = []
     final: dict | None = None
     first_token: float | None = None
     try:
         for attempt in (1, 2):
-            with httpx.stream("POST", f"{s.ollama_base_url.rstrip('/')}/api/chat", json=payload,
+            with _http().stream("POST", f"{_base_url()}/api/chat", json=payload,
                               timeout=httpx.Timeout(s.ai_timeout_seconds, connect=5.0)) as r:
                 if r.status_code != 200:
                     body = r.read().decode("utf-8", "replace")
@@ -206,6 +356,13 @@ def chat_json(system: str, prompt: str, schema: dict, *, max_tokens: int | None 
                     # the test laptop as a CUDA init error, exit 0xc0000409). A second attempt reloads it.
                     if r.status_code == 500 and "process has terminated" in body and attempt == 1:
                         log.warning("ollama runner crashed while loading; retrying once")
+                        continue
+                    # All layers on the GPU did not fit (e.g. another program holds VRAM): let Ollama choose.
+                    if r.status_code == 500 and attempt == 1 and "num_gpu" in payload["options"]:
+                        _gpu_override_failed = True
+                        log.warning("loading with num_gpu=%s failed; letting Ollama place the layers",
+                                    s.ollama_num_gpu)
+                        payload["options"] = {k: v for k, v in payload["options"].items() if k != "num_gpu"}
                         continue
                     raise _http_error(r.status_code, body)
                 for line in r.iter_lines():
@@ -255,23 +412,33 @@ def chat_json(system: str, prompt: str, schema: dict, *, max_tokens: int | None 
                "first_token_ms": round(((first_token or done_at) - started) * 1000)}
     return LLMResult(content=content, prompt_tokens=final.get("prompt_eval_count"),
                      output_tokens=final.get("eval_count"), latency_ms=int((done_at - started) * 1000),
-                     timings=timings)
+                     timings={**timings, "model": use_model})
 
 
 def warmup() -> dict:
     """Load the model into memory ahead of time (an empty request), so the first question doesn't pay the
-    30-70 s load. Uses the same num_ctx as real requests. Safe to call often: cheap when already loaded."""
+    30-70 s load. Uses the same load options as real requests. Safe to call often: cheap when already loaded."""
     s = get_settings()
-    if not s.ai_enabled or s.local_ai_provider.lower() != "ollama":
+    if not s.ai_enabled or provider() not in ("ollama", "gemini"):
         return {"ok": False, "reason": "AI disabled"}
-    base = s.ollama_base_url.rstrip("/")
+    if provider() == "gemini":
+        from . import gemini_llm
+        r = gemini_llm.warmup()
+        # Only load the local model when it will actually be used (Gemini can't be reached / has no key).
+        if r["ok"] or not s.ai_fallback_to_ollama:
+            return r
+    base = _base_url()
     try:
-        loaded = httpx.get(f"{base}/api/ps", timeout=2.0).json().get("models", [])
-        if any(_model_matches(s.ollama_model, m.get("name") or m.get("model") or "") for m in loaded):
+        loaded = _http().get(f"{base}/api/ps", timeout=2.0).json().get("models", [])
+        # loaded with other settings (e.g. an older num_ctx) counts as not loaded: the first question would reload it
+        if any(_model_matches(s.ollama_model, m.get("name") or m.get("model") or "")
+               and m.get("context_length", s.ollama_num_ctx) == s.ollama_num_ctx for m in loaded):
+            global _active_model
+            _active_model = _active_model or s.ollama_model
             return {"ok": True, "already_loaded": True, "load_ms": 0}
         t = time.monotonic()
-        r = httpx.post(f"{base}/api/generate", json={"model": s.ollama_model, "keep_alive": s.ollama_keep_alive,
-                                                     "options": {"num_ctx": s.ollama_num_ctx}},
+        r = _http().post(f"{base}/api/generate", json={"model": s.ollama_model, "keep_alive": s.ollama_keep_alive,
+                                                     "options": _load_options(s)},
                        timeout=httpx.Timeout(s.ai_timeout_seconds, connect=3.0))
         return {"ok": r.status_code == 200, "already_loaded": False, "load_ms": round((time.monotonic() - t) * 1000)}
     except (httpx.HTTPError, ValueError) as exc:

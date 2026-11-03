@@ -40,24 +40,18 @@ VAGUE_KINDS = {"vague", "vague_claim", "team_vague", "partial", "short"}
 
 
 def setup(backend_dir: Path):
-    os.environ.update({"DATABASE_URL": "sqlite://", "TTS_ENABLED": "false", "STT_ENABLED": "false",
+    os.environ.update({"MONGODB_DB": "hiresense_eval", "TTS_ENABLED": "false", "STT_ENABLED": "false",
                        "AI_DAILY_LIMIT_PER_USER": "100000"})
     sys.path.insert(0, str(backend_dir))
     os.chdir(backend_dir)
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    from sqlalchemy.pool import StaticPool
-
     from app import database, seed as seed_module
     from app.config import get_settings
-    from app.database import Base, get_db
+    from app.database import get_db
     get_settings.cache_clear()
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-    database.SessionLocal = factory
-    seed_module.SessionLocal = factory
-    seed_module.seed(demo=False)
+    database.init_db()
+    database.clear_database()  # a throwaway MongoDB database (MONGODB_DB set above), never the app's own
+    seed_module.seed()
+    factory = database.SessionLocal
     from app.main import app
     from app.routers import interviews
 
@@ -166,6 +160,12 @@ def run_interview(c, factory, sim, data, run, uid):
         if body.get("ready_to_complete"):
             break
     c.delete(f"/api/student/interviews/{s['id']}")
+    from app.models import InterviewQuestion  # server-side audit metadata (not part of the API response)
+    db = factory()
+    metas = {q_.text: q_.meta for q_ in db.query(InterviewQuestion).filter(InterviewQuestion.session_id == s["id"])}
+    db.close()
+    for t_ in turns:
+        t_["meta"] = metas.get(t_["question"]) or t_.get("meta")
     qs = [t_["question"] for t_ in turns]
     terms = grounding_terms(resume)
     dup_pairs = [(a, b, round(sim(qs[a], qs[b]), 3)) for a in range(len(qs)) for b in range(a + 1, len(qs))]
@@ -184,6 +184,9 @@ def run_interview(c, factory, sim, data, run, uid):
         "banned_phrases": sum(bool(BANNED.search(q)) for q in qs),
         "words_per_question": round(statistics.mean(len(q.split()) for q in qs), 1),
         "wall_ms": [round(w) for w in walls],
+        "generation_attempts": [(t_.get("meta") or {}).get("attempts") for t_ in turns],
+        "rejections": [r for t_ in turns for r in ((t_.get("meta") or {}).get("rejected") or [])],
+        "sources": [(t_.get("meta") or {}).get("source") for t_ in turns],
     }
 
 

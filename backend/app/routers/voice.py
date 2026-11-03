@@ -11,7 +11,7 @@ from collections import defaultdict, deque
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
+from ..odm import Session
 
 from ..database import get_db
 from ..deps import get_current_user, require_student
@@ -55,7 +55,7 @@ def speak(body: SpeakIn, user: User = Depends(get_current_user)):
     _rate_limit(user.id, "tts", 150)
     static = tts.is_static(body.text)
     try:
-        with perf.timer("tts.request", chars=len(body.text)) as m:
+        with local_llm.interactive_hold(), perf.timer("tts.request", chars=len(body.text)) as m:
             out = tts.synthesize(body.text, body.voice, body.speed, cache=True) if static \
                 else tts.synthesize(body.text, body.voice, body.speed)
             m["cached"] = bool(out.get("cached"))
@@ -117,10 +117,11 @@ def warmup(user: User = Depends(get_current_user)):
 
 @router.post("/api/student/interviews/{session_id}/transcribe")
 def transcribe_answer(session_id: int, question_id: int = Form(...), audio: UploadFile = File(...),
-                      partial: bool = Form(False),
+                      partial: bool = Form(False), live: bool = Form(False),
                       user: User = Depends(require_student), db: Session = Depends(get_db)):
     """partial=true: one speech segment while the candidate is still talking (shown live and joined at the end, so
-    only the last segment has to be transcribed after they stop)."""
+    only the last segment has to be transcribed after they stop). live=true: a live caption of the unfinished segment,
+    sent about every 1.2 s while the candidate talks (one at a time), so it has its own, higher rate limit."""
     session = db.get(InterviewSession, session_id)
     if not session or session.student_id != user.id:
         raise HTTPException(404, "Interview not found")
@@ -129,8 +130,13 @@ def transcribe_answer(session_id: int, question_id: int = Form(...), audio: Uplo
     current = session.questions[-1] if session.questions else None
     if not current or current.id != question_id or current.answer:
         raise HTTPException(409, "This recording is not for the current question")
-    _rate_limit(user.id, "stt", 240 if partial else 60)
-    return {**_transcribe(audio), "question_id": question_id, "partial": partial}
+    if live:
+        _rate_limit(user.id, "stt_live", 1500)
+    else:
+        _rate_limit(user.id, "stt", 240 if partial else 60)
+    # The question as context helps Whisper spell technical words (e.g. "FastAPI", "PostgreSQL") the candidate repeats.
+    prompt = " ".join((current.text or "").split())[:300] or None
+    return {**_transcribe(audio, prompt), "question_id": question_id, "partial": partial, "live": live}
 
 
 @router.post("/api/student/english/{session_id}/transcribe")
@@ -146,15 +152,15 @@ def transcribe_english(session_id: int, audio: UploadFile = File(...), user: Use
     return _transcribe(audio)
 
 
-def _transcribe(audio: UploadFile) -> dict:
+def _transcribe(audio: UploadFile, prompt: str | None = None) -> dict:
     data = audio.file.read(MAX_AUDIO_BYTES + 1)
     if len(data) > MAX_AUDIO_BYTES:
         raise HTTPException(413, "The recording is too long")
     if not data:
         raise HTTPException(400, "The recording is empty")
     try:
-        with perf.timer("stt.transcribe") as m:
-            out = stt.transcribe(data)
+        with local_llm.interactive_hold(), perf.timer("stt.transcribe") as m:
+            out = stt.transcribe(data, prompt)
             m["audio_s"] = out.get("duration") or 0
             return out
     except stt.BadAudio as exc:

@@ -2,8 +2,8 @@
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from ..odm import select
+from ..odm import Session
 
 from ..models import (
     AssessmentResult, EnglishSession, InterviewSession, PracticeExercise, ProgressRecord, Resume, StudentBadge, User,
@@ -96,8 +96,6 @@ def student_summary(db: Session, student: User) -> dict:
     for k, vals in by_cat_assess.items():
         if k == "aptitude" and _avg(vals) is not None and _avg(vals) < 60:
             weak.append(f"Aptitude tests (avg {_avg(vals)}%)")
-    if pron and _avg(pron) < 70:
-        weak.append(f"Pronunciation (avg {_avg(pron)})")
 
     stats = badge_stats(db, sid)
     badges = db.scalars(select(StudentBadge).where(StudentBadge.student_id == sid)).all()
@@ -191,15 +189,12 @@ def remedies(s: dict) -> list[dict]:
 
     eng = s["english"]
     crit = eng["by_criterion"]
-    if eng["sessions"] == 0 and eng["speaking_exercises"] == 0:
-        add("No English speaking practice yet", "Practise speaking English for 15 minutes daily.",
-            "english_practice", "Complete 5 English speaking sessions or exercises", 5)
+    if eng["sessions"] == 0:
+        add("No English speaking practice yet", "Practise speaking English with Aria for 15 minutes daily.",
+            "english_practice", "Complete 5 English conversation sessions", 5)
     elif (eng["average_score"] or 100) < 60 or any((v or 10) < 6 for v in crit.values()):
         add("Poor English communication", "Practise speaking English for 15 minutes daily.",
             "english_practice", "Practise spoken English on 7 days", 7)
-    if eng["pronunciation_avg"] is not None and eng["pronunciation_avg"] < 70:
-        add("Unclear pronunciation", "Do 5 pronunciation drills daily, focusing on the highlighted words.",
-            "english_practice", "Complete 10 pronunciation drills", 10)
     tech = s["interviews"]["by_category"].get("technical")
     tech_tests = s["assessments"]["by_category"].get("technical")
     if (tech is not None and tech < 60) or (tech_tests is not None and tech_tests < 60):

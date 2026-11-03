@@ -15,10 +15,10 @@ from playwright.sync_api import sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-from sqlalchemy import select  # noqa: E402
 
 from app.database import SessionLocal  # noqa: E402
 from app.models import User  # noqa: E402
+from app.odm import select  # noqa: E402
 from app.security import create_reset_token  # noqa: E402
 
 OUT = Path(__file__).resolve().parent / "output"
@@ -93,7 +93,7 @@ with sync_playwright() as p:
 
     # ---- merged navigation
     nav = page.locator("nav").first.inner_text()
-    ok("menu shows 'My Progress' and 'Jobs & Drives'", "My Progress" in nav and "Jobs & Drives" in nav)
+    ok("menu shows 'My progress' and 'Jobs & drives'", "My progress" in nav and "Jobs & drives" in nav)
     ok("old separate menu items are gone",
        not any(x in nav for x in ("Performance Report", "Practice History", "Placement Drives")))
     page.goto(BASE + "/student/report")

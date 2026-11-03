@@ -1,0 +1,98 @@
+{
+  "label": "after-coaching",
+  "model": "qwen3:4b",
+  "num_ctx": 8192,
+  "runs": 6,
+  "stages": {
+    "llm_question_first_call_ms": 4362,
+    "llm_question_ms": {
+      "n": 6,
+      "p50_ms": 6493,
+      "p95_ms": 7536,
+      "mean_ms": 6110,
+      "min_ms": 2857,
+      "max_ms": 7662
+    },
+    "llm_score_ms": {
+      "n": 6,
+      "p50_ms": 3358,
+      "p95_ms": 3605,
+      "mean_ms": 3365,
+      "min_ms": 3094,
+      "max_ms": 3610
+    },
+    "server_answer_to_next_question_ms": {
+      "n": 6,
+      "p50_ms": 10015,
+      "p95_ms": 11049,
+      "mean_ms": 9475,
+      "min_ms": 5951,
+      "max_ms": 11251
+    },
+    "llm_question_first_sentence_ms": {
+      "n": 6,
+      "p50_ms": 2096,
+      "p95_ms": 2554,
+      "mean_ms": 2124,
+      "min_ms": 1741,
+      "max_ms": 2627
+    },
+    "server_answer_to_first_sentence_ms": {
+      "n": 6,
+      "p50_ms": 5452,
+      "p95_ms": 6117,
+      "mean_ms": 5489,
+      "min_ms": 4835,
+      "max_ms": 6216
+    },
+    "tts_whole_question_ms": {
+      "n": 3,
+      "p50_ms": 9094,
+      "p95_ms": 9100,
+      "mean_ms": 8893,
+      "min_ms": 8486,
+      "max_ms": 9100
+    },
+    "tts_first_sentence_ms": {
+      "n": 3,
+      "p50_ms": 2220,
+      "p95_ms": 2244,
+      "mean_ms": 2188,
+      "min_ms": 2097,
+      "max_ms": 2246
+    },
+    "tts_audio_seconds": 12.145,
+    "stt_ms": {
+      "n": 3,
+      "p50_ms": 7660,
+      "p95_ms": 7930,
+      "mean_ms": 7733,
+      "min_ms": 7579,
+      "max_ms": 7960
+    },
+    "stt_audio_seconds": 25.69
+  },
+  "ollama_breakdown": {
+    "cold": {
+      "queue_ms": 0,
+      "load_ms": 87,
+      "prompt_ms": 669,
+      "generate_ms": 2573,
+      "first_token_ms": 1773
+    },
+    "question": {
+      "queue_ms": 0,
+      "load_ms": 40,
+      "prompt_ms": 670,
+      "generate_ms": 5310,
+      "first_token_ms": 798
+    },
+    "score": {
+      "queue_ms": 0,
+      "load_ms": 36,
+      "prompt_ms": 394,
+      "generate_ms": 2804,
+      "first_token_ms": 547
+    }
+  }
+}

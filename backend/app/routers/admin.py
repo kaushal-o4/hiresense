@@ -2,8 +2,8 @@
 import csv
 import io
 import os
-import sqlite3
 import tempfile
+import zipfile
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Literal
@@ -11,8 +11,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, make_url, or_, select
-from sqlalchemy.orm import Session
+from ..odm import func, or_, select
+from ..odm import Session
 from starlette.background import BackgroundTask
 
 from ..config import get_settings
@@ -899,23 +899,19 @@ def ai_reports(kind: str = "interview", page: int = 1, page_size: int = 20, admi
 
 @router.get("/backup")
 def backup(request: Request, admin: User = Depends(require_admin), db: Session = Depends(get_db)):
-    url = get_settings().database_url
-    if not url.startswith("sqlite"):
-        raise HTTPException(400, "Automatic backup download is available for SQLite. For PostgreSQL run: "
-                                 "pg_dump -Fc -d <database> -f hiresense.dump")
-    src_path = make_url(url).database
-    if not src_path or src_path == ":memory:":
-        raise HTTPException(400, "The in-memory database cannot be backed up")
-    tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    """Every MongoDB collection as MongoDB Extended JSON (one file per collection) in a zip. Restore one with
+    `mongoimport --db hiresense --collection <name> --file <name>.json --jsonArray`. Uploaded files are not
+    included: copy backend/uploads separately."""
+    from bson import json_util
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".zip", delete=False)
     tmp.close()
-    src = sqlite3.connect(src_path)
-    dst = sqlite3.connect(tmp.name)
-    with dst:
-        src.backup(dst)  # consistent online copy
-    src.close()
-    dst.close()
+    mongo = db.database
+    with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in sorted(mongo.list_collection_names()):
+            zf.writestr(f"{name}.json", json_util.dumps(list(mongo[name].find()), indent=1))
     audit(db, admin.id, "system.backup", None, None, {}, client_ip(request))
     db.commit()
-    name = f"hiresense_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.db"
-    return FileResponse(tmp.name, filename=name, media_type="application/octet-stream",
+    name = f"hiresense_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.zip"
+    return FileResponse(tmp.name, filename=name, media_type="application/zip",
                         background=BackgroundTask(os.unlink, tmp.name))

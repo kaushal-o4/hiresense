@@ -1,7 +1,6 @@
 fastapi>=0.115
 uvicorn[standard]>=0.32
-sqlalchemy>=2.0.36
-alembic>=1.14
+pymongo>=4.10               # MongoDB driver (app/odm.py)
 pydantic>=2.10
 pydantic-settings>=2.6
 email-validator>=2.2
@@ -20,7 +19,8 @@ scikit-learn>=1.5
 joblib>=1.4
 numpy>=1.26
 # ---- voice interview (local speech) ----
-transformers>=4.45          # Whisper speech-to-text
+transformers>=4.45          # Whisper speech-to-text (fallback engine)
+faster-whisper>=1.2         # Whisper speech-to-text, default engine (CTranslate2, several times faster on CPU)
 soundfile>=0.12
 misaki>=0.7.4               # phoneme helpers for Kokoro (base package only, no spaCy)
 phonemizer-fork>=3.3        # GPL-3.0, see README licences

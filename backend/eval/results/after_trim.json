@@ -1,0 +1,1080 @@
+{
+  "backend_dir": "C:\\Users\\skaus\\OneDrive\\Desktop\\hiresense\\backend",
+  "model": "qwen3:4b",
+  "started": "2026-10-11T10:32:57.893736+00:00",
+  "interviews": [
+    {
+      "id": "aria_hospital",
+      "interviewer": "aria",
+      "turns": [
+        {
+          "question": "How did you first get interested in Python and web development?",
+          "type": "behavioral",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague",
+          "answer": "I developed a hospital management project.",
+          "score": 30.0
+        },
+        {
+          "question": "Can you tell me more about the hospital resource management project you built? What problem did it solve?",
+          "type": "project",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "partial",
+          "answer": "I made the bed allocation part. When a patient comes we check which bed is free and give it. I used Django models for beds and wards. I think it worked fine.",
+          "score": 70.0
+        },
+        {
+          "question": "Let's look at the bed allocation part you built. What specific decision did you make to handle bed availability checks?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "vague_claim",
+          "answer": "I used AI in my project and I improved the performance a lot.",
+          "score": 0.0
+        },
+        {
+          "question": "In your bed allocation system, what specific part did you implement without AI?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "strong",
+          "answer": "For invalid input, every REST endpoint validated the payload with a Django form before saving, so a ward id that did not exist returned a 400 error with a clear message instead of crashing. I also added a database constraint so the same bed could not be allocated twice, and I wrote unit tests that post bad data and check the error response.",
+          "score": 65.0
+        },
+        {
+          "question": "What specific part of your hospital resource management system did you find most challenging to implement?",
+          "type": "behavioral",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": null
+        }
+      ],
+      "questions": 5,
+      "duplicate_pairs": [],
+      "resume_grounded": 1.0,
+      "followup_similarity": [
+        0.795,
+        0.575,
+        0.444
+      ],
+      "followup_relevance": 1.0,
+      "banned_phrases": 0,
+      "words_per_question": 15.6,
+      "wall_ms": [
+        16297,
+        15101,
+        8896,
+        10972,
+        14435
+      ]
+    },
+    {
+      "id": "victor_hospital",
+      "interviewer": "victor",
+      "turns": [
+        {
+          "question": "How did you design the bed-allocation module in your hospital resource management system to ensure real-time updates without excessive database load?",
+          "type": "technical",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague",
+          "answer": "I developed a hospital management project.",
+          "score": 0.0
+        },
+        {
+          "question": "Which part of Hospital Resources Management System did you build yourself?",
+          "type": "project",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "partial",
+          "answer": "I made the bed allocation part. When a patient comes we check which bed is free and give it. I used Django models for beds and wards. I think it worked fine.",
+          "score": 87.0
+        },
+        {
+          "question": "Be specific: what did you implement, and why that approach?",
+          "type": "project",
+          "difficulty": "medium",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "vague_claim",
+          "answer": "I used AI in my project and I improved the performance a lot.",
+          "score": 46.0
+        },
+        {
+          "question": "How did you measure the performance improvement from your AI implementation in the bed allocation module?",
+          "type": "technical",
+          "difficulty": "medium",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "strong",
+          "answer": "For invalid input, every REST endpoint validated the payload with a Django form before saving, so a ward id that did not exist returned a 400 error with a clear message instead of crashing. I also added a database constraint so the same bed could not be allocated twice, and I wrote unit tests that post bad data and check the error response.",
+          "score": 65.0
+        },
+        {
+          "question": "How did you handle input validation for the bed allocation REST endpoints to prevent invalid data from causing database errors?",
+          "type": "technical",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": null
+        }
+      ],
+      "questions": 5,
+      "duplicate_pairs": [],
+      "resume_grounded": 0.8,
+      "followup_similarity": [
+        0.724,
+        0.209,
+        0.515
+      ],
+      "followup_relevance": 0.667,
+      "banned_phrases": 0,
+      "words_per_question": 15.6,
+      "wall_ms": [
+        5679,
+        20537,
+        8713,
+        19227,
+        9893
+      ]
+    },
+    {
+      "id": "marcus_hospital",
+      "interviewer": "marcus",
+      "turns": [
+        {
+          "question": "How did you handle input validation for the hospital resource allocation system's bed allocation module?",
+          "type": "technical",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague",
+          "answer": "I developed a hospital management project.",
+          "score": 0.0
+        },
+        {
+          "question": "You mentioned building the bed-allocation module. What specific validation rule did you implement for bed availability during allocation?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "partial",
+          "answer": "I made the bed allocation part. When a patient comes we check which bed is free and give it. I used Django models for beds and wards. I think it worked fine.",
+          "score": 62.0
+        },
+        {
+          "question": "What specific error handling did you implement for bed allocation failures?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague_claim",
+          "answer": "I used AI in my project and I improved the performance a lot.",
+          "score": 0.0
+        },
+        {
+          "question": "You said you improved performance with AI. How did you measure the speed improvement?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "strong",
+          "answer": "For invalid input, every REST endpoint validated the payload with a Django form before saving, so a ward id that did not exist returned a 400 error with a clear message instead of crashing. I also added a database constraint so the same bed could not be allocated twice, and I wrote unit tests that post bad data and check the error response.",
+          "score": 33.5
+        },
+        {
+          "question": "What specific result did your hospital resource allocation system achieve in terms of bed availability accuracy?",
+          "type": "behavioral",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": null
+        }
+      ],
+      "questions": 5,
+      "duplicate_pairs": [
+        {
+          "a": 1,
+          "b": 5,
+          "similarity": 0.768,
+          "qa": "How did you handle input validation for the hospital resource allocation system's bed allocation module?",
+          "qb": "What specific result did your hospital resource allocation system achieve in terms of bed availability accuracy?"
+        },
+        {
+          "a": 2,
+          "b": 3,
+          "similarity": 0.769,
+          "qa": "You mentioned building the bed-allocation module. What specific validation rule did you implement for bed availability during allocation?",
+          "qb": "What specific error handling did you implement for bed allocation failures?"
+        }
+      ],
+      "resume_grounded": 0.8,
+      "followup_similarity": [
+        0.171,
+        0.511,
+        0.708
+      ],
+      "followup_relevance": 0.667,
+      "banned_phrases": 0,
+      "words_per_question": 14.8,
+      "wall_ms": [
+        5650,
+        9189,
+        7939,
+        8234,
+        21069
+      ]
+    },
+    {
+      "id": "elena_hospital",
+      "interviewer": "elena",
+      "turns": [
+        {
+          "question": "Can you share a time when you had to work with a team to solve a problem that required technical collaboration?",
+          "type": "behavioral",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague",
+          "answer": "Yes, once a project did not go well but we managed.",
+          "score": 10.0
+        },
+        {
+          "question": "In that project, what was your specific role and what did you do to help the team succeed?",
+          "type": "behavioral",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "partial",
+          "answer": "In my final-year project our database design was wrong and we found out late. I talked to the team and we changed it.",
+          "score": 80.0
+        },
+        {
+          "question": "In your final-year project, what specific action did you take to fix the database design issue?",
+          "type": "behavioral",
+          "difficulty": "medium",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "team_vague",
+          "answer": "I am a team player and I always help everyone.",
+          "score": 0.0
+        },
+        {
+          "question": "Describe a time you had to learn something new quickly.",
+          "type": "behavioral",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "strong",
+          "answer": "In our hospital project the demo was in one week and the bed allocation kept giving double bookings. My task was the allocation module, so I owned it. I reproduced the bug with a script, fixed it with a database lock, and told the team lead the demo scope we could safely show. The demo worked, and since then I write a reproduction test before fixing anything.",
+          "score": 92.5
+        },
+        {
+          "question": "Tell me about a time you had to meet a tight deadline.",
+          "type": "behavioral",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": null
+        }
+      ],
+      "questions": 5,
+      "duplicate_pairs": [],
+      "resume_grounded": 0.0,
+      "followup_similarity": [
+        0.434,
+        0.746,
+        0.112
+      ],
+      "followup_relevance": 0.667,
+      "banned_phrases": 0,
+      "words_per_question": 15.4,
+      "wall_ms": [
+        5882,
+        11128,
+        9277,
+        25311,
+        21133
+      ]
+    },
+    {
+      "id": "victor_cyber",
+      "interviewer": "victor",
+      "turns": [
+        {
+          "question": "How did you handle false positives in your Splunk SIEM project for SSH logins?",
+          "type": "technical",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague",
+          "answer": "I made a SIEM in my home lab.",
+          "score": 0.0
+        },
+        {
+          "question": "You mentioned setting up a Splunk SIEM for SSH logs. What specific alert rule did you implement to detect brute-force login attempts?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "partial",
+          "answer": "I would look at the logs and see where the failed logins are coming from, maybe block the IP.",
+          "score": 62.0
+        },
+        {
+          "question": "Be specific: what did you implement, and why that approach?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "short",
+          "answer": "Check the firewall.",
+          "score": 22.5
+        },
+        {
+          "question": "You mentioned checking the firewall. What specific firewall rule did you implement to block brute-force attempts?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": null
+        }
+      ],
+      "questions": 4,
+      "duplicate_pairs": [
+        {
+          "a": 1,
+          "b": 2,
+          "similarity": 0.765,
+          "qa": "How did you handle false positives in your Splunk SIEM project for SSH logins?",
+          "qb": "You mentioned setting up a Splunk SIEM for SSH logs. What specific alert rule did you implement to detect brute-force login attempts?"
+        }
+      ],
+      "resume_grounded": 0.5,
+      "followup_similarity": [
+        0.162,
+        0.027,
+        0.598
+      ],
+      "followup_relevance": 0.333,
+      "banned_phrases": 0,
+      "words_per_question": 15.5,
+      "wall_ms": [
+        5322,
+        9349,
+        8578,
+        9268
+      ]
+    },
+    {
+      "id": "aria_long",
+      "interviewer": "aria",
+      "turns": [
+        {
+          "question": "How did you decide to build the hospital resource management system's bed allocation module?",
+          "type": "behavioral",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "vague",
+          "answer": "I developed a hospital management project.",
+          "score": 15.5
+        },
+        {
+          "question": "Can you tell me what problem you were trying to solve with the bed allocation module?",
+          "type": "behavioral",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "partial",
+          "answer": "I made the bed allocation part. When a patient comes we check which bed is free and give it. I used Django models for beds and wards. I think it worked fine.",
+          "score": 80.0
+        },
+        {
+          "question": "You mentioned using Django models for beds and wards. Can you tell me how you handled errors when a bed wasn't available?",
+          "type": "technical",
+          "difficulty": "medium",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "vague_claim",
+          "answer": "I used AI in my project and I improved the performance a lot.",
+          "score": 0.0
+        },
+        {
+          "question": "In your bed allocation module, what specific part did you build without AI?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "strong",
+          "answer": "For invalid input, every REST endpoint validated the payload with a Django form before saving, so a ward id that did not exist returned a 400 error with a clear message instead of crashing. I also added a database constraint so the same bed could not be allocated twice, and I wrote unit tests that post bad data and check the error response.",
+          "score": 65.0
+        },
+        {
+          "question": "How did you test that Hospital Resources Management System worked correctly?",
+          "type": "project",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "team_vague",
+          "answer": "I worked with a team and we finished it on time.",
+          "score": 10.0
+        },
+        {
+          "question": "Looking back at Hospital Resources Management System, what would you do differently now?",
+          "type": "project",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "incorrect",
+          "answer": "Django is a database, so it stores all the beds directly, and MySQL is the frontend part that shows the pages to the user.",
+          "score": 35.0
+        },
+        {
+          "question": "So you used Django to manage the bed data, right? How did you make sure the bed data stayed consistent when multiple people tried to book the same bed?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "stt_errors",
+          "answer": "so the jango view takes the request and um the bed model saves it in my sequel and then it returns jason to the front end",
+          "score": 53.0
+        },
+        {
+          "question": "How did you ensure the hospital resource system could handle more users without slowing down?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": "short",
+          "answer": "Not sure.",
+          "score": 4.5
+        },
+        {
+          "question": "So when you say Django stores beds, what specific part of your code made sure beds weren't double-booked?",
+          "type": "technical",
+          "difficulty": "easy",
+          "is_followup": true,
+          "meta": null,
+          "answer_kind": "long",
+          "answer": "So basically the biggest problem was that two nurses could allocate the same bed at the same moment, because each request read the free bed and then saved it. First I tried to check again before saving, but the problem still happened when requests were very close. Then I read about database transactions and I used select_for_update inside a transaction so the row is locked while one request is allocating it. I tested it by writing a small script that sends twenty requests at the same time, and after the change only one of them got the bed and the others got a clear message. It was the hardest bug in the project and I learned that you cannot trust a check that is done outside the transaction.",
+          "score": 92.5
+        },
+        {
+          "question": "What are the main limitations of Hospital Resources Management System today?",
+          "type": "project",
+          "difficulty": "medium",
+          "is_followup": false,
+          "meta": null,
+          "answer_kind": null
+        }
+      ],
+      "questions": 10,
+      "duplicate_pairs": [],
+      "resume_grounded": 1.0,
+      "followup_similarity": [
+        0.183,
+        0.742,
+        0.425,
+        0.216,
+        0.173
+      ],
+      "followup_relevance": 0.4,
+      "banned_phrases": 0,
+      "words_per_question": 16.2,
+      "wall_ms": [
+        5152,
+        10979,
+        9626,
+        10912,
+        21332,
+        28419,
+        12627,
+        14126,
+        13672,
+        23723
+      ]
+    }
+  ],
+  "english": [
+    {
+      "id": "games_to_movies_free",
+      "learning_mode": "free_conversation",
+      "turns": [
+        {
+          "student": "I like playing video games.",
+          "reply": "I love that you mentioned video games! Do you prefer games with many endings or one powerful ending that stays with you?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Your hobbies and weekends",
+            "previous_topics": [],
+            "candidate_interests": [
+              "video games"
+            ],
+            "important_details": [
+              "prefers video games"
+            ],
+            "practising": [],
+            "conversation_mode": "free_conversation"
+          }
+        },
+        {
+          "student": "I like story based games where your choices change the ending.",
+          "reply": "That's such a cool detail about story games! I love how choices impact the story. What's one game you've played recently that made you feel really understood by its characters?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Your hobbies and weekends",
+            "previous_topics": [],
+            "candidate_interests": [
+              "video games",
+              "story games"
+            ],
+            "important_details": [
+              "prefers video games",
+              "enjoys games where choices change endings"
+            ],
+            "practising": [],
+            "conversation_mode": "free_conversation"
+          }
+        },
+        {
+          "student": "Yesterday I go to my friend house and we play it together.",
+          "reply": "You mentioned playing games with friends at your friend's house yesterday - that's so social! What's the most fun moment you had while gaming together?",
+          "corrections": [
+            {
+              "original": "Yesterday I go to my friend house and we play it together.",
+              "corrected": "Yesterday I went to my friend's house and we played together.",
+              "explanation": "The verb tense for past events should be past simple, and 'go' needs to be 'went' for past tense."
+            }
+          ],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": true,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Your hobbies and weekends",
+            "previous_topics": [],
+            "candidate_interests": [
+              "story games",
+              "video games",
+              "social gaming"
+            ],
+            "important_details": [
+              "prefers video games",
+              "enjoys games where choices change endings",
+              "played games with friends",
+              "recent gaming session happened yesterday"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "free_conversation"
+          }
+        },
+        {
+          "student": "Actually, I prefer talking about movies now. I watched a science fiction movie yesterday.",
+          "reply": "You switched to movies so smoothly! I love sci-fi films - what's one scene you imagined after watching it that felt most like your own life?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "movies",
+            "previous_topics": [
+              "Your hobbies and weekends"
+            ],
+            "candidate_interests": [
+              "story games",
+              "video games",
+              "social gaming",
+              "science fiction",
+              "movie watching",
+              "movies"
+            ],
+            "important_details": [
+              "prefers video games",
+              "enjoys games where choices change endings",
+              "played games with friends",
+              "recent gaming session happened yesterday",
+              "prefers sci-fi movies",
+              "watched a movie yesterday"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "free_conversation"
+          }
+        },
+        {
+          "student": "I liked the idea of travelling through time.",
+          "reply": "That's such a cool detail about time travel! I love how it makes the past and future feel so connected. What's one moment you imagined from that trip that still feels vivid to you today?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "time travel",
+            "previous_topics": [
+              "Your hobbies and weekends",
+              "movies"
+            ],
+            "candidate_interests": [
+              "story games",
+              "video games",
+              "social gaming",
+              "movie watching",
+              "movies",
+              "science fiction",
+              "time travel"
+            ],
+            "important_details": [
+              "prefers video games",
+              "enjoys games where choices change endings",
+              "played games with friends",
+              "recent gaming session happened yesterday",
+              "prefers sci-fi movies",
+              "watched a movie yesterday",
+              "enjoys sci-fi movies",
+              "imagined time travel moments"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "free_conversation"
+          }
+        },
+        {
+          "student": "Can we talk about technology and AI instead?",
+          "reply": "You mentioned wanting to switch to technology and AI - that's such a cool shift! What's one tech tool you've used recently that surprised you with how it understands your needs?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "technology and AI",
+            "previous_topics": [
+              "Your hobbies and weekends",
+              "movies",
+              "time travel"
+            ],
+            "candidate_interests": [
+              "video games",
+              "social gaming",
+              "movie watching",
+              "movies",
+              "science fiction",
+              "time travel",
+              "technology",
+              "technology and AI"
+            ],
+            "important_details": [
+              "enjoys games where choices change endings",
+              "played games with friends",
+              "recent gaming session happened yesterday",
+              "prefers sci-fi movies",
+              "watched a movie yesterday",
+              "enjoys sci-fi movies",
+              "imagined time travel moments",
+              "wants to talk about technology and AI"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "free_conversation"
+          }
+        }
+      ],
+      "topic_follow": 1.0,
+      "repeated_questions": 0,
+      "corrections_on_error_turns": [
+        1
+      ],
+      "corrections_on_clean_turns": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "spoken_corrections": 0,
+      "memory_hits": [],
+      "reply_words": 28.2,
+      "errors": 0,
+      "wall_ms": [
+        12856,
+        14631,
+        18097,
+        21741,
+        22616,
+        20721,
+        14097
+      ]
+    },
+    {
+      "id": "learning_mode_grammar",
+      "learning_mode": "english_learning",
+      "turns": [
+        {
+          "student": "Yesterday I go to college and meet my friend.",
+          "reply": "A more natural way to say that is: \"Yesterday I went to college and met my friend.\". I love that you mentioned going to college yesterday! Could you tell me how you met your friend that day?",
+          "corrections": [
+            {
+              "original": "Yesterday I go to college and meet my friend.",
+              "corrected": "Yesterday I went to college and met my friend.",
+              "explanation": "We use past tense for completed actions like 'went' and 'met' when talking about yesterday."
+            }
+          ],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": true,
+          "spoken_correction": true,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "College life and friends",
+            "previous_topics": [],
+            "candidate_interests": [
+              "college",
+              "friends"
+            ],
+            "important_details": [
+              "went to college yesterday",
+              "met a friend"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "english_learning"
+          }
+        },
+        {
+          "student": "We was discussing about our project and he give me good idea.",
+          "reply": "A more natural way to say that is: \"We were discussing\". I heard you were working on a project together! What was the best part of that conversation?",
+          "corrections": [
+            {
+              "original": "We was discussing",
+              "corrected": "We were discussing",
+              "explanation": "We use 'were' for past continuous"
+            },
+            {
+              "original": "he give me",
+              "corrected": "he gave me",
+              "explanation": "We use past simple for actions completed in the past"
+            }
+          ],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": true,
+          "spoken_correction": true,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Project discussion",
+            "previous_topics": [
+              "College life and friends"
+            ],
+            "candidate_interests": [
+              "college",
+              "friends",
+              "project work",
+              "friend collaboration"
+            ],
+            "important_details": [
+              "went to college yesterday",
+              "met a friend",
+              "discussing project ideas",
+              "friend gave helpful idea"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "english_learning"
+          }
+        },
+        {
+          "student": "I also play the guitar in the college band.",
+          "reply": "I love that you mentioned playing guitar in the college band! It\u2019s such a fun way to mix school and creativity. What\u2019s one sound or song that makes you feel most connected to your band friends?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "college band activities",
+            "previous_topics": [
+              "College life and friends",
+              "Project discussion"
+            ],
+            "candidate_interests": [
+              "project work",
+              "friend collaboration",
+              "college",
+              "friends"
+            ],
+            "important_details": [
+              "went to college yesterday",
+              "met a friend",
+              "discussing project ideas",
+              "friend gave helpful idea",
+              "plays guitar in college band"
+            ],
+            "practising": [
+              "past tense"
+            ],
+            "conversation_mode": "english_learning"
+          }
+        },
+        {
+          "student": "As I said before, I practise it every evening after class.",
+          "reply": "A more natural way to say that is: \"As I said before, I practice it every evening after class.\". I heard you practice guitar every evening after class \u2014 that\u2019s really consistent! How do you feel when you play with friends in the band?",
+          "corrections": [
+            {
+              "original": "As I said before, I practise it every evening after class.",
+              "corrected": "As I said before, I practice it every evening after class.",
+              "explanation": "We usually say 'practice' without the 's' for the third person."
+            }
+          ],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": true,
+          "memory": {
+            "current_topic": "college band activities",
+            "previous_topics": [
+              "College life and friends",
+              "Project discussion"
+            ],
+            "candidate_interests": [
+              "project work",
+              "friend collaboration",
+              "college",
+              "friends",
+              "college band activities"
+            ],
+            "important_details": [
+              "went to college yesterday",
+              "met a friend",
+              "discussing project ideas",
+              "friend gave helpful idea",
+              "plays guitar in college band",
+              "practices guitar every evening after class"
+            ],
+            "practising": [
+              "past tense",
+              "sentence formation"
+            ],
+            "conversation_mode": "english_learning"
+          }
+        }
+      ],
+      "topic_follow": 1.0,
+      "repeated_questions": 0,
+      "corrections_on_error_turns": [
+        1,
+        2
+      ],
+      "corrections_on_clean_turns": [
+        0,
+        1
+      ],
+      "spoken_corrections": 2,
+      "memory_hits": [
+        true
+      ],
+      "reply_words": 36.2,
+      "errors": 0,
+      "wall_ms": [
+        13031,
+        17274,
+        19304,
+        25584,
+        21683
+      ]
+    },
+    {
+      "id": "confidence_cricket",
+      "learning_mode": "confidence",
+      "turns": [
+        {
+          "student": "I like cricket.",
+          "reply": "That's a great choice! Cricket has so many exciting moments. What's your favorite part of watching a cricket match?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Sports",
+            "previous_topics": [],
+            "candidate_interests": [
+              "cricket"
+            ],
+            "important_details": [
+              "likes cricket"
+            ],
+            "practising": [],
+            "conversation_mode": "confidence"
+          }
+        },
+        {
+          "student": "Close final overs.",
+          "reply": "Wow, the tension in those last few overs! What's the most thrilling moment you've ever seen there?",
+          "corrections": [],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Sports",
+            "previous_topics": [],
+            "candidate_interests": [
+              "cricket"
+            ],
+            "important_details": [
+              "likes cricket",
+              "mentions final overs"
+            ],
+            "practising": [],
+            "conversation_mode": "confidence"
+          }
+        },
+        {
+          "student": "um yes one match",
+          "reply": "You mentioned a match with close final overs - that sounds intense! What was the most recent match you felt that way about?",
+          "corrections": [
+            {
+              "original": "um yes one match",
+              "corrected": "you mentioned a match with close final overs",
+              "explanation": "Simplified to match your earlier point about final overs"
+            }
+          ],
+          "topic_follow": true,
+          "repeated_question": false,
+          "has_error": false,
+          "spoken_correction": false,
+          "memory_hit": null,
+          "memory": {
+            "current_topic": "Sports",
+            "previous_topics": [],
+            "candidate_interests": [
+              "cricket"
+            ],
+            "important_details": [
+              "likes cricket",
+              "mentions final overs",
+              "mentions match with close final overs"
+            ],
+            "practising": [
+              "articles (a, an, the)"
+            ],
+            "conversation_mode": "confidence"
+          }
+        }
+      ],
+      "topic_follow": 1.0,
+      "repeated_questions": 0,
+      "corrections_on_error_turns": [],
+      "corrections_on_clean_turns": [
+        0,
+        0,
+        1
+      ],
+      "spoken_corrections": 0,
+      "memory_hits": [],
+      "reply_words": 19.7,
+      "errors": 0,
+      "wall_ms": [
+        11563,
+        13873,
+        10513,
+        16416
+      ]
+    }
+  ],
+  "latency": {
+    "answer_scoring": {
+      "n": 28,
+      "p50_ms": 3469,
+      "max_ms": 3981,
+      "mean_ms": 3503
+    },
+    "english_chat": {
+      "n": 16,
+      "p50_ms": 17178,
+      "max_ms": 25502,
+      "mean_ms": 17063
+    },
+    "interview_question": {
+      "n": 52,
+      "p50_ms": 5853,
+      "max_ms": 10082,
+      "mean_ms": 6197
+    }
+  },
+  "calls": {
+    "answer_scoring": {
+      "total": 28,
+      "invalid": 0
+    },
+    "english_chat": {
+      "total": 16,
+      "invalid": 0
+    },
+    "interview_question": {
+      "total": 52,
+      "invalid": 0
+    }
+  },
+  "invalid_rate": 0.0,
+  "persona_followup_similarity": {
+    "aria-marcus": 0.265,
+    "aria-victor": 0.787,
+    "marcus-victor": 0.221
+  },
+  "summary": {
+    "interview_questions": 34,
+    "duplicate_pairs": 3,
+    "resume_grounded_mean": 0.683,
+    "followup_relevance_mean": 0.622,
+    "banned_phrases": 0,
+    "words_per_question": {
+      "aria_hospital": 15.6,
+      "victor_hospital": 15.6,
+      "marcus_hospital": 14.8,
+      "elena_hospital": 15.4,
+      "victor_cyber": 15.5,
+      "aria_long": 16.2
+    },
+    "english_topic_follow_mean": 1.0,
+    "english_repeated_questions": 0,
+    "invalid_rate": 0.0
+  }
+}

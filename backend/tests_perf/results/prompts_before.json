@@ -1,0 +1,155 @@
+{
+  "provider": "gemini",
+  "runs": 2,
+  "features": {
+    "resume_analysis": {
+      "latency": {
+        "n": 2,
+        "p50_ms": 56115,
+        "max_ms": 66046
+      },
+      "answered_by": [
+        "ollama",
+        "ollama"
+      ],
+      "avg_tokens_out": 1214,
+      "avg_tokens_in": 670,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "skills": 12,
+          "projects": 2,
+          "internships": 1,
+          "removed_unsupported": 2,
+          "questions": 8,
+          "missing_skills": 4
+        },
+        {
+          "skills": 12,
+          "projects": 2,
+          "internships": 1,
+          "removed_unsupported": 2,
+          "questions": 8,
+          "missing_skills": 4
+        }
+      ]
+    },
+    "answer_scoring": {
+      "latency": {
+        "n": 8,
+        "p50_ms": 2158,
+        "max_ms": 24645
+      },
+      "answered_by": [
+        "ollama",
+        "ollama",
+        "ollama",
+        "ollama",
+        "ollama",
+        "ollama",
+        "ollama",
+        "ollama"
+      ],
+      "avg_tokens_out": 52,
+      "avg_tokens_in": 451,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "label": "strong",
+          "score": 92.0,
+          "in_band": true
+        },
+        {
+          "label": "partial",
+          "score": 57.5,
+          "in_band": true
+        },
+        {
+          "label": "incorrect",
+          "score": 15.0,
+          "in_band": true
+        },
+        {
+          "label": "irrelevant",
+          "score": 0.0,
+          "in_band": true
+        },
+        {
+          "label": "strong",
+          "score": 100.0,
+          "in_band": true
+        },
+        {
+          "label": "partial",
+          "score": 60.0,
+          "in_band": true
+        },
+        {
+          "label": "incorrect",
+          "score": 29.5,
+          "in_band": true
+        },
+        {
+          "label": "irrelevant",
+          "score": 0.0,
+          "in_band": true
+        }
+      ],
+      "in_band_rate": 1.0
+    },
+    "answer_feedback": {
+      "latency": {
+        "n": 2,
+        "p50_ms": 11086,
+        "max_ms": 11272
+      },
+      "answered_by": [
+        "ollama",
+        "ollama"
+      ],
+      "avg_tokens_out": 299,
+      "avg_tokens_in": 430,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "improvements": 3,
+          "sample_words": 58
+        },
+        {
+          "improvements": 3,
+          "sample_words": 57
+        }
+      ]
+    },
+    "interview_report": {
+      "latency": {
+        "n": 2,
+        "p50_ms": 11546,
+        "max_ms": 11666
+      },
+      "answered_by": [
+        "ollama",
+        "ollama"
+      ],
+      "avg_tokens_out": 302,
+      "avg_tokens_in": 533,
+      "invalid_outputs": 0,
+      "quality": [
+        {
+          "summary_words": 36,
+          "strengths": 3,
+          "weaknesses": 3,
+          "suggestions": 4,
+          "closing_words": 37
+        },
+        {
+          "summary_words": 39,
+          "strengths": 3,
+          "weaknesses": 4,
+          "suggestions": 4,
+          "closing_words": 30
+        }
+      ]
+    }
+  }
+}

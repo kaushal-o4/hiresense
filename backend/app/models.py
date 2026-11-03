@@ -1,17 +1,13 @@
-"""Database models for HireSense.
+"""Database models for HireSense, stored in MongoDB (one collection per model, see odm.py).
 
-Enumerated values are stored as short strings guarded by CHECK constraints so the
-schema works identically on SQLite (development/tests) and PostgreSQL.
+Enumerated values are short strings; the allowed values below are enforced by the API schemas.
 """
 from datetime import datetime, timezone
 
-from sqlalchemy import (
-    JSON, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer,
-    String, Text, UniqueConstraint,
+from .odm import (
+    JSON, Base, Boolean, CheckConstraint, DateTime, Float, ForeignKey, Index, Integer, Mapped,
+    String, Text, UniqueConstraint, mapped_column, relationship,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from .database import Base
 
 
 def utcnow() -> datetime:
@@ -666,9 +662,13 @@ INTEGRITY_EVENT_TYPES = ("face_absent", "multiple_faces", "attention_away", "cam
                          "camera_obstructed", "low_light", "monitoring_interrupted", "focus_change",
                          "permission_revoked", "monitoring_withdrawn", "monitoring_unavailable",
                          "paste_detected", "paste_long", "fullscreen_exit", "second_display", "phone_in_view",
-                         "notes_in_view")
+                         "notes_in_view",
+                         # security module (2026-10-23): partial face, repeated gaze, audio, connection, session
+                         "face_partial", "attention_repeated", "background_speech", "microphone_disconnected",
+                         "network_interruption", "session_reconnected", "interview_paused")
 INTEGRITY_SEVERITIES = ("info", "low", "medium", "high")
-INTEGRITY_REVIEW = ("pending", "no_concern", "concern_noted", "dismissed")
+# dismissed = technical / false signal (older reviews); false_positive and needs_review added 2026-10-23
+INTEGRITY_REVIEW = ("pending", "no_concern", "concern_noted", "dismissed", "false_positive", "needs_review")
 
 
 class IntegrityEvent(TimestampMixin, Base):
@@ -680,6 +680,8 @@ class IntegrityEvent(TimestampMixin, Base):
         CheckConstraint(_in("severity", INTEGRITY_SEVERITIES), name="ck_integrity_severity"),
         CheckConstraint(_in("review_status", INTEGRITY_REVIEW), name="ck_integrity_review"),
         Index("ix_integrity_session", "session_id", "t_ms"),
+        # retried / re-sent batches carry the same client id, so an event is stored once
+        UniqueConstraint("session_id", "client_event_id", name="uq_integrity_client_event"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -695,6 +697,28 @@ class IntegrityEvent(TimestampMixin, Base):
     reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     reviewer_notes: Mapped[str | None] = mapped_column(Text)
     reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    client_event_id: Mapped[str | None] = mapped_column(String(40))  # idempotency key from the browser
+    source: Mapped[str] = mapped_column(String(10), default="browser", nullable=False)  # browser | server
+    # small whitelisted facts about the event (e.g. max_faces, cause, count) - never media or measurements of a face
+    details: Mapped[dict | None] = mapped_column(JSON)
+
+
+class IntegrityReview(Base):
+    """Append-only history of reviews of an integrity event. The event keeps its original detection fields; a
+    review only adds a status and notes, so nobody can silently rewrite what was detected."""
+    __tablename__ = "integrity_reviews"
+    __table_args__ = (
+        CheckConstraint(_in("review_status", INTEGRITY_REVIEW), name="ck_integrity_review_status"),
+        Index("ix_integrity_review_event", "event_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("integrity_events.id", ondelete="CASCADE"), nullable=False)
+    reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    reviewer_role: Mapped[str] = mapped_column(String(20), nullable=False)
+    review_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
 
 
 class ErrorLog(TimestampMixin, Base):
@@ -848,3 +872,22 @@ class PlatformSetting(Base):
     value: Mapped[dict | list | str | int | float | bool | None] = mapped_column(JSON)
     description: Mapped[str | None] = mapped_column(Text)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+
+class EnglishMistakePattern(TimestampMixin, Base):
+    """One kind of English mistake a student keeps making, counted from the corrections given in their practice
+    sessions (services/english_profile.py). The category is a rough, rule-based label, not a grammar analysis.
+    The student can dismiss a pattern or clear all of them."""
+    __tablename__ = "english_mistake_patterns"
+    __table_args__ = (UniqueConstraint("student_id", "category", name="uq_mistake_student_category"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    category: Mapped[str] = mapped_column(String(30), nullable=False)
+    count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    sessions: Mapped[int] = mapped_column(Integer, default=0, nullable=False)  # distinct practice sessions
+    last_session_id: Mapped[int | None] = mapped_column(Integer)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    example_original: Mapped[str | None] = mapped_column(String(300))
+    example_corrected: Mapped[str | None] = mapped_column(String(300))
+    dismissed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

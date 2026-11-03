@@ -190,7 +190,7 @@ def test_english_transcribe_local(client, mock_llm, monkeypatch, new_client):
                                  files={"audio": ("reply.wav", wav_bytes(), "audio/wav")})
     r = send(client, s["id"])
     assert r.status_code == 503 and "type your answer" in r.json()["detail"]  # STT off in tests
-    monkeypatch.setattr(stt, "transcribe", lambda data: {"text": "I like cricket", "duration": 2.0,
+    monkeypatch.setattr(stt, "transcribe", lambda data, prompt=None: {"text": "I like cricket", "duration": 2.0,
                                                          "speech_seconds": 1.6, "engine": "mock", "note": None})
     r = send(client, s["id"])
     assert r.status_code == 200 and r.json()["text"] == "I like cricket"

@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from docx import Document
-from sqlalchemy import select
+from app.odm import select
 
 from app.config import get_settings
 from app.models import AuditLog, Resume, User
@@ -151,7 +151,7 @@ def test_seed_generates_random_admin_password_when_unset(db_session_factory, mon
     s = get_settings()
     monkeypatch.setattr(s, "admin_password", "")
     monkeypatch.setattr(s, "admin_email", "fresh-admin@test.dev")
-    seed_module.seed(demo=False)
+    seed_module.seed()
     out = capsys.readouterr().out
     generated = re.search(r"Generated password .*: (\S+)", out).group(1)
     assert generated and generated != seed_module.PUBLISHED_ADMIN_PASSWORD

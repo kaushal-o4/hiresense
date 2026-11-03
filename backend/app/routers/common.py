@@ -4,8 +4,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import func, select, update
-from sqlalchemy.orm import Session
+from ..odm import func, select, update
+from ..odm import Session
 
 from ..database import get_db
 from ..deps import client_ip, get_current_user

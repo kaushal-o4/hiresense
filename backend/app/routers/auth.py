@@ -1,12 +1,15 @@
+"""Authentication routes: register, login, logout and password reset.
+"""
+
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
-from sqlalchemy import delete as sa_delete
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from ..odm import delete as sa_delete
+from ..odm import select
+from ..odm import Session
 
 from ..config import get_settings
 from ..database import get_db
@@ -31,17 +34,22 @@ MAX_FAILED, WINDOW_SECONDS = 8, 15 * 60
 
 
 def _set_cookie(response: Response, token: str) -> None:
+    """Store the session JWT in the httpOnly, SameSite=Lax cookie (JavaScript cannot read it)."""
     settings = get_settings()
     response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax", secure=settings.cookie_secure,
                         max_age=settings.access_token_minutes * 60, path="/")
 
 
 def _email_taken(db: Session, email: str) -> bool:
+    """True if an account with this email exists (emails are stored lower-case)."""
     return db.scalar(select(User.id).where(User.email == email.lower())) is not None
 
 
 @router.post("/register/student", status_code=201)
 def register_student(body: StudentRegister, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Create an active student account with an empty profile, then sign the student in (sets the
+    cookie). 403 if student registration is closed in admin settings, 409 if the email is taken.
+    """
     if not get_setting(db, "student_registration_open"):
         raise HTTPException(403, "Student registration is currently closed")
     if _email_taken(db, body.email):
@@ -64,6 +72,9 @@ def register_student(body: StudentRegister, request: Request, response: Response
 
 @router.post("/register/recruiter", status_code=201)
 def register_recruiter(body: RecruiterRegister, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Create a recruiter account. If admin approval is required (setting `recruiter_requires_approval`)
+    the account stays "pending", admins are notified and the recruiter is NOT signed in; otherwise signs them in.
+    """
     if not get_setting(db, "recruiter_registration_open"):
         raise HTTPException(403, "Recruiter registration is currently closed")
     if _email_taken(db, body.email):
@@ -91,6 +102,12 @@ def register_recruiter(body: RecruiterRegister, request: Request, response: Resp
 
 @router.post("/login")
 def login(body: LoginIn, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Check email and password and set the session cookie.
+
+    Brute-force protection: after MAX_FAILED wrong passwords for one email within WINDOW_SECONDS, further attempts
+    get 429 (kept in memory, so it resets when the server restarts). Pending, suspended and deactivated accounts get
+    403 with a reason. Returns the user's profile; the token is also returned for API clients.
+    """
     email = body.email.lower()
     now = datetime.now(timezone.utc).timestamp()
     attempts = [t for t in _failed.get(email, []) if now - t < WINDOW_SECONDS]
@@ -120,12 +137,14 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
 
 @router.post("/logout")
 def logout(response: Response):
+    """Clear the session cookie. (JWTs are stateless, so there is no server-side session to delete.)"""
     response.delete_cookie(COOKIE_NAME, path="/")
     return {"ok": True}
 
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Current user's profile plus AI availability. The frontend calls this on load (auth.jsx) to restore the session."""
     return {"user": profile_out(user), "ai": ai_status(db)}
 
 
@@ -180,6 +199,9 @@ def forgot_password(body: ForgotPasswordIn, request: Request, db: Session = Depe
 
 @router.post("/reset-password")
 def reset_password(body: ResetPasswordIn, request: Request, db: Session = Depends(get_db)):
+    """Set a new password from a reset-link token. The token must be valid, unexpired and issued for the
+    current password; changing the password makes this and any older link stop working. Clears the login lockout.
+    """
     payload = read_reset_token(body.token)
     user = db.get(User, int(payload["sub"])) if payload and str(payload.get("sub", "")).isdigit() else None
     if not user or not reset_token_matches(payload, user.password_hash) or user.status in ("deactivated", "pending"):
@@ -223,6 +245,7 @@ def delete_my_account(body: DeleteAccountIn, request: Request, response: Respons
 @router.post("/change-password")
 def change_password(body: ChangePassword, request: Request, user: User = Depends(get_current_user),
                     db: Session = Depends(get_db)):
+    """Change the signed-in user's password after checking the current one."""
     if not verify_password(body.current_password, user.password_hash):
         raise HTTPException(400, "Current password is incorrect")
     user.password_hash = hash_password(body.new_password)

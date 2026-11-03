@@ -34,6 +34,9 @@ with sync_playwright() as p:
         page.wait_for_timeout(1500)
         page.screenshot(path=OUT / "avatar_idle.png", clip=page.locator("[data-avatar-status]").bounding_box(), animations="allow")
         if "--speak" in sys.argv:
+            agree = page.get_by_label("I have read what is monitored")  # monitoring notice (security module)
+            if agree.count():
+                agree.check()
             page.get_by_role("button", name="I agree - start the interview").click()
             try:
                 page.wait_for_function("document.querySelector('[data-avatar-mode]')?.dataset.avatarMode === 'speaking'", timeout=90000)

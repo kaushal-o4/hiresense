@@ -1,7 +1,7 @@
 """Who may view which student's detailed records."""
 from fastapi import HTTPException
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from ..odm import select
+from ..odm import Session
 
 from ..deps import mentor_can_access
 from ..models import Job, JobApplication, User

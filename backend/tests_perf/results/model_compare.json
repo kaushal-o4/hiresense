@@ -1,0 +1,199 @@
+{
+ "hardware_note": "RTX 3050 4 GB laptop; see PERFORMANCE_BASELINE.md",
+ "num_ctx": 8192,
+ "runs": 3,
+ "models": {
+  "qwen3:4b": {
+   "cold_load_ms": 9349,
+   "placement": {
+    "size_gb": 4.15,
+    "gpu_share_pct": 55
+   },
+   "english_chat": {
+    "n": 9,
+    "p50_ms": 21906,
+    "p95_ms": 39484,
+    "mean_ms": 24768,
+    "failed": 0,
+    "correction_given_on_flawed_msgs": "5/6"
+   },
+   "answer_scoring": {
+    "n": 18,
+    "p50_ms": 2570,
+    "p95_ms": 3254,
+    "mean_ms": 2708,
+    "by_answer": {
+     "strong": {
+      "scores": [
+       92.0,
+       100.0,
+       92.0
+      ],
+      "expected_band": [
+       65,
+       100
+      ],
+      "in_band": 3
+     },
+     "concise_correct": {
+      "scores": [
+       82.5,
+       82.5,
+       82.5
+      ],
+      "expected_band": [
+       45,
+       100
+      ],
+      "in_band": 3
+     },
+     "partial": {
+      "scores": [
+       60.5,
+       62.0,
+       62.0
+      ],
+      "expected_band": [
+       25,
+       70
+      ],
+      "in_band": 3
+     },
+     "vague": {
+      "scores": [
+       20.0,
+       22.5,
+       24.0
+      ],
+      "expected_band": [
+       0,
+       50
+      ],
+      "in_band": 3
+     },
+     "incorrect": {
+      "scores": [
+       23.0,
+       23.0,
+       51.0
+      ],
+      "expected_band": [
+       0,
+       40
+      ],
+      "in_band": 2
+     },
+     "irrelevant": {
+      "scores": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "expected_band": [
+       0,
+       25
+      ],
+      "in_band": 3
+     }
+    },
+    "ordering_ok": true
+   }
+  },
+  "qwen3:1.7b": {
+   "cold_load_ms": 10201,
+   "placement": {
+    "size_gb": 2.18,
+    "gpu_share_pct": 100
+   },
+   "english_chat": {
+    "n": 9,
+    "p50_ms": 2257,
+    "p95_ms": 12304,
+    "mean_ms": 4119,
+    "failed": 0,
+    "correction_given_on_flawed_msgs": "5/6"
+   },
+   "answer_scoring": {
+    "n": 18,
+    "p50_ms": 609,
+    "p95_ms": 756,
+    "mean_ms": 623,
+    "by_answer": {
+     "strong": {
+      "scores": [
+       100.0,
+       100.0,
+       100.0
+      ],
+      "expected_band": [
+       65,
+       100
+      ],
+      "in_band": 3
+     },
+     "concise_correct": {
+      "scores": [
+       90.0,
+       90.0,
+       90.0
+      ],
+      "expected_band": [
+       45,
+       100
+      ],
+      "in_band": 3
+     },
+     "partial": {
+      "scores": [
+       90.0,
+       90.0,
+       90.0
+      ],
+      "expected_band": [
+       25,
+       70
+      ],
+      "in_band": 0
+     },
+     "vague": {
+      "scores": [
+       90.0,
+       90.0,
+       90.0
+      ],
+      "expected_band": [
+       0,
+       50
+      ],
+      "in_band": 0
+     },
+     "incorrect": {
+      "scores": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "expected_band": [
+       0,
+       40
+      ],
+      "in_band": 3
+     },
+     "irrelevant": {
+      "scores": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "expected_band": [
+       0,
+       25
+      ],
+      "in_band": 3
+     }
+    },
+    "ordering_ok": true
+   }
+  }
+ }
+}

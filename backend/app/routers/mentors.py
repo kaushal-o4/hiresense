@@ -5,8 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from ..odm import select
+from ..odm import Session
 
 from ..database import get_db
 from ..deps import ensure_mentor_access, require_mentor

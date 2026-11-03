@@ -97,8 +97,12 @@ class SpokenStream:
             s = _speakable(s)
             if key == "question" and not self.question_started:
                 self.question_started = True
-                if _GREETING.fullmatch(s + " ") or _GREETING.fullmatch(s):
-                    continue  # model greeted despite instructions: don't say it twice
+                # A pure greeting the model added ("Hello, I'm Aria.") is not said twice. A sentence that merely
+                # STARTS like a greeting but is the question itself ("Hi Priya, how did you ...?") is spoken:
+                # dropping it silenced the whole first question in a browser run.
+                greeting = _GREETING.fullmatch(s + " ") or _GREETING.fullmatch(s)
+                if greeting and not s.rstrip().endswith("?"):
+                    continue
             if s:
                 self.spoken.append(s)
                 self.emit(s)
@@ -114,6 +118,19 @@ class SpokenStream:
     @property
     def spoken_text(self) -> str:
         return " ".join(self.spoken)
+
+
+def split_first_clause(sentence: str, min_len: int = 90, min_head: int = 25) -> tuple[str, str]:
+    """(head, tail) split at the first comma/semicolon after `min_head` characters, if the sentence is long;
+    otherwise (sentence, ""). Only used for synthesis order - the words are unchanged."""
+    if len(sentence) < min_len:
+        return sentence, ""
+    m = re.search(r"[,;:]\s", sentence[min_head:])
+    if not m:
+        return sentence, ""
+    cut = min_head + m.start() + 1
+    head, tail = sentence[:cut].strip(), sentence[cut:].strip()
+    return (head, tail) if len(tail.split()) >= MIN_WORDS else (sentence, "")
 
 
 def final_sentences(preface: str | None, question: str) -> list[str]:

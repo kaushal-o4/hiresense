@@ -13,7 +13,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from ..odm import select
 
 from .. import database
 from ..models import PerfMetric
@@ -32,7 +32,8 @@ CLIENT_METRICS = {
     "client.repeat_submit": "Duplicate submission blocked in the browser",
 }
 ALLOWED_META = {"tokens_in", "tokens_out", "queue_ms", "load_ms", "prompt_ms", "generate_ms", "first_token_ms",
-                "segments", "audio_s", "chars", "mode", "status", "attempt", "cached", "words", "kind", "preempted"}
+                "segments", "audio_s", "chars", "mode", "status", "attempt", "cached", "words", "kind", "preempted",
+                "model"}
 
 
 def _clean_meta(meta: dict | None) -> dict | None:
@@ -40,7 +41,9 @@ def _clean_meta(meta: dict | None) -> dict | None:
         return None
     out = {}
     for k, v in meta.items():
-        if k in ALLOWED_META and (isinstance(v, (int, float, bool)) or (isinstance(v, str) and len(v) <= 20)):
+        # model names ("gemini:gemini-3.5-flash-lite") are longer than other string details
+        limit = 48 if k == "model" else 20
+        if k in ALLOWED_META and (isinstance(v, (int, float, bool)) or (isinstance(v, str) and len(v) <= limit)):
             out[k] = v
     return out or None
 
@@ -96,7 +99,10 @@ def summary(db, hours: int = 24) -> list[dict]:
                              PerfMetric.meta).where(PerfMetric.created_at >= since)).all()
     groups: dict[str, dict] = {}
     for metric, ms, ok, source, meta in rows:
-        g = groups.setdefault(metric, {"metric": metric, "source": source, "ok": [], "failed": 0, "meta": {}})
+        g = groups.setdefault(metric, {"metric": metric, "source": source, "ok": [], "failed": 0, "meta": {},
+                                       "models": {}})
+        if isinstance((meta or {}).get("model"), str):
+            g["models"][meta["model"]] = g["models"].get(meta["model"], 0) + 1
         if ok:
             g["ok"].append(ms)
         else:
@@ -112,7 +118,8 @@ def summary(db, hours: int = 24) -> list[dict]:
                     "count": len(xs) + g["failed"], "failed": g["failed"],
                     "avg_ms": round(sum(xs) / len(xs)) if xs else None, "p50_ms": _pct(xs, 50),
                     "p95_ms": _pct(xs, 95), "max_ms": max(xs) if xs else None,
-                    "avg_details": {k: round(sum(v) / len(v), 1) for k, v in g["meta"].items()}})
+                    "avg_details": {k: round(sum(v) / len(v), 1) for k, v in g["meta"].items()},
+                    "models": g["models"]})
     return sorted(out, key=lambda r: r["metric"])
 
 

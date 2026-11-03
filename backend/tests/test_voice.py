@@ -84,11 +84,13 @@ def test_transcribe_mocked_then_submit_through_existing_answer_api(client, mock_
     register_student(client)
     s = start_interview(client, mock_llm)
     q = s["questions"][0]
-    monkeypatch.setattr(stt, "transcribe", lambda data: {
+    prompts = []
+    monkeypatch.setattr(stt, "transcribe", lambda data, prompt=None: prompts.append(prompt) or {
         "text": "I built a placement tracker with React and Flask for three hundred students.",
         "duration": 4.2, "speech_seconds": 3.5, "engine": "mock", "note": None})
     r = send(client, s["id"], q["id"])
     assert r.status_code == 200 and r.json()["text"].startswith("I built") and r.json()["question_id"] == q["id"]
+    assert prompts == [" ".join(q["text"].split())[:300]]  # the question helps Whisper spell technical words
     # transcription alone must NOT create an answer
     assert client.get(f"/api/student/interviews/{s['id']}").json()["questions"][0]["answer"] is None
     mock_llm.responses += [eval_json(7), question_json("Why did you choose Flask?", followup=True)]
@@ -99,6 +101,24 @@ def test_transcribe_mocked_then_submit_through_existing_answer_api(client, mock_
     assert r.json()["session"]["questions"][1]["text"] == "Why did you choose Flask?"
     # an old recording for the answered question is refused
     assert send(client, s["id"], q["id"]).status_code == 409
+
+
+def test_live_captions_have_their_own_rate_limit(client, mock_llm, monkeypatch):
+    from app.routers import voice
+    from app.services import stt
+    register_student(client)
+    s = start_interview(client, mock_llm)
+    q = s["questions"][0]
+    monkeypatch.setattr(stt, "transcribe", lambda data, prompt=None: {
+        "text": "so far", "duration": 1.2, "speech_seconds": 1.0, "engine": "mock", "note": None})
+    voice._hits.clear()
+    for _ in range(300):  # a long answer sends a live caption about every 1.2 s: more than the 240 pieces limit
+        r = client.post(f"/api/student/interviews/{s['id']}/transcribe",
+                        data={"question_id": str(q["id"]), "partial": "true", "live": "true"},
+                        files={"audio": ("live.wav", wav_bytes(), "audio/wav")})
+        assert r.status_code == 200 and r.json()["live"] is True
+    assert send(client, s["id"], q["id"]).status_code == 200  # the final transcription is not blocked by them
+    voice._hits.clear()
 
 
 def test_transcribe_rejects_wrong_question_other_student_and_recruiter(client, new_client, mock_llm):

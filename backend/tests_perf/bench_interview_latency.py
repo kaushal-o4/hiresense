@@ -21,16 +21,12 @@ import sys
 import time
 from pathlib import Path
 
-os.environ["DATABASE_URL"] = "sqlite://"
+os.environ["MONGODB_DB"] = "hiresense_bench"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import create_engine  # noqa: E402
-from sqlalchemy.orm import sessionmaker  # noqa: E402
-from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from app import database, seed as seed_module  # noqa: E402
 from app.config import get_settings  # noqa: E402
-from app.database import Base  # noqa: E402
 
 get_settings.cache_clear()
 HERE = Path(__file__).resolve().parent
@@ -80,17 +76,19 @@ def main():
     ap.add_argument("--runs", type=int, default=5)
     ap.add_argument("--out", default=None)
     ap.add_argument("--label", default="")
+    ap.add_argument("--mode", default="fast", choices=["fast", "coaching"])
     args = ap.parse_args()
 
-    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
-    Base.metadata.create_all(engine)
-    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-    database.SessionLocal = factory
-    seed_module.SessionLocal = factory
-    seed_module.seed(demo=False)
+    database.init_db()
+    database.clear_database()  # a throwaway MongoDB database (MONGODB_DB set above), never the app's own
+    seed_module.seed()
+    factory = database.SessionLocal
     db = factory()
 
-    from app.services import ai, local_llm, stt, tts
+    from app.services import ai, embeddings, local_llm, stt, tts
+    if "--no-warm" not in sys.argv and hasattr(local_llm, "warmup"):
+        embeddings.warmup()  # the server loads these at startup (main.warm_up_models); do the same here
+        local_llm.warmup()
     st = local_llm.runtime_status(force=True)
     if not (st["running"] and st["model_ready"]):
         sys.exit(f"LLM not available: {st['error']}")
@@ -108,7 +106,7 @@ def main():
     local_llm.chat_json = spy
     spy.feature = "cold"
 
-    def q(history, position, **extra):
+    def q(history, position, **extra):  # noqa: E306
         return ai.next_interview_question(db, None, position=position, history=history, difficulty="medium",
                                           interviewer="aria", **RESUME, **extra)
 
@@ -117,12 +115,24 @@ def main():
     _, cold = timed(q, [], 1)
     res["stages"]["llm_question_first_call_ms"] = round(cold)
 
-    gen, score, turn = [], [], []
+    streaming = "on_delta" in ai.next_interview_question.__code__.co_varnames
+    gen, score, turn, first_sentence, turn_first = [], [], [], [], []
     history: list[dict] = []
     for i in range(args.runs):
         spy.feature = "question"
-        nq, ms = timed(q, history, len(history) + 1)
+        extra = {}
+        marks: dict = {}
+        if streaming:  # new code: when is the first complete sentence ready to be spoken?
+            from app.services.speech_stream import SpokenStream
+            t_start = time.perf_counter()
+            ss = SpokenStream(lambda s: marks.setdefault("first", (time.perf_counter() - t_start) * 1000))
+            extra = {"on_delta": ss.feed}
+            if args.mode == "coaching":
+                extra["response_mode"] = "coaching"
+        nq, ms = timed(q, history, len(history) + 1, **extra)
         gen.append(ms)
+        if "first" in marks:
+            first_sentence.append(marks["first"])
         ans = ANSWERS[i % len(ANSWERS)]
         spy.feature = "score"
         ev, ms_s = timed(ai.score_answer, db, None, job_role=RESUME["job_role"], question=nq["question"],
@@ -130,15 +140,23 @@ def main():
                              {"name": "Relevance", "weight": 0.25}, {"name": "Correctness", "weight": 0.3},
                              {"name": "Clarity", "weight": 0.25}, {"name": "Communication", "weight": 0.2}])
         score.append(ms_s)
-        turn.append(ms_s + ms)  # old server path after an answer: score, then the next question
+        turn.append(ms_s + ms)  # server path after an answer: score, then the whole next question
+        if "first" in marks:
+            turn_first.append(ms_s + marks["first"])  # ... until the first sentence can be synthesised
         history.append({"question": nq["question"], "type": nq["question_type"], "difficulty": "medium",
-                        "answer": ans, "score": ev["score"]})
-        print(f"  run {i + 1}: question {ms:.0f} ms, score {ms_s:.0f} ms", flush=True)
+                        "answer": ans, "score": ev["score"],
+                        "communication": ev.get("communication")})
+        print(f"  run {i + 1}: question {ms:.0f} ms (first sentence {marks.get('first', 0):.0f} ms), "
+              f"score {ms_s:.0f} ms, words {len(nq['question'].split())}", flush=True)
     res["stages"]["llm_question_ms"] = summary(gen)
     res["stages"]["llm_score_ms"] = summary(score)
     res["stages"]["server_answer_to_next_question_ms"] = summary(turn)
+    if first_sentence:
+        res["stages"]["llm_question_first_sentence_ms"] = summary(first_sentence)
+        res["stages"]["server_answer_to_first_sentence_ms"] = summary(turn_first)
     for k, v in breakdowns.items():
-        res["ollama_breakdown"][k] = {f: round(statistics.mean(x[f] for x in v)) for f in v[0]}
+        res["ollama_breakdown"][k] = {f: round(statistics.mean(x[f] for x in v)) for f in v[0]
+                                          if isinstance(v[0][f], (int, float))}  # skip "model"
 
     # 2. TTS: whole question vs first sentence
     if s.tts_enabled:

@@ -93,6 +93,8 @@ def test_repeated_long_pastes_escalate_across_batches(client, streaming_ai):
 def test_object_detection_is_switched_off_without_camera(client, streaming_ai):
     register_student(client)
     s = _start(client)
+    from conftest import join_app_threads
+    join_app_threads(("prefetch-",))  # the first-question prefetch shares the test DB connection: let it finish
     from app import database
     from app.models import PlatformSetting
     db = database.SessionLocal()

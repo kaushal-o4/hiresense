@@ -1,21 +1,18 @@
 """Initial platform data.
 
-    python -m app.seed            # admin account + badges, reward rules, categories, rubrics, question bank
-    python -m app.seed --demo     # additionally creates clearly-labelled demo accounts for trying each portal
+    python -m app.seed     # admin account + badges, reward rules, categories, rubrics, question bank
+
+No demo or sample accounts are created. Students and recruiters register themselves (recruiters can be set to need
+admin approval); the admin creates mentor accounts in the admin portal.
 
 Safe to run repeatedly (existing rows are left untouched).
 """
 import secrets
-import sys
-
-from sqlalchemy import select
 
 from .config import get_settings
-from .database import SessionLocal
-from .models import (
-    Assessment, Badge, Challenge, BankQuestion, EvaluationRubric, InterviewCategory, MentorAssignment, MentorProfile,
-    RecruiterProfile, RewardRule, StudentProfile, User,
-)
+from .database import SessionLocal, init_db
+from .models import Assessment, Badge, BankQuestion, Challenge, EvaluationRubric, InterviewCategory, RewardRule, User
+from .odm import select
 from .security import hash_password
 
 # The admin password that older versions of this project shipped and documented. Never accepted for new installs,
@@ -157,8 +154,9 @@ STARTER_ASSESSMENTS = [
 ]
 
 
-def seed(demo: bool = False) -> None:
+def seed() -> None:
     settings = get_settings()
+    init_db()
     db = SessionLocal()
     try:
         if not db.scalar(select(User).where(User.email == settings.admin_email.lower())):
@@ -210,45 +208,10 @@ def seed(demo: bool = False) -> None:
             if not db.scalar(select(Assessment).where(Assessment.title == spec["title"])):
                 db.add(Assessment(created_by=admin.id if admin else None, pass_percent=60, **spec))
         db.commit()
-
-        if demo:
-            _demo_accounts(db)
         print("Seed complete.")
     finally:
         db.close()
 
 
-def _demo_accounts(db) -> None:
-    """Empty demo accounts (no fabricated activity) so each portal can be explored."""
-    pw = hash_password("Demo@12345")
-    accounts = {
-        "student@demo.hiresense": ("Demo Student", "student"),
-        "mentor@demo.hiresense": ("Demo Mentor", "mentor"),
-        "recruiter@demo.hiresense": ("Demo Recruiter", "recruiter"),
-    }
-    users = {}
-    for email, (name, role) in accounts.items():
-        u = db.scalar(select(User).where(User.email == email))
-        if not u:
-            u = User(email=email, password_hash=pw, full_name=name, role=role, status="active")
-            if role == "student":
-                u.student_profile = StudentProfile(college="Demo Institute of Technology", degree="B.Tech",
-                                                   branch="Computer Science", graduation_year=2027, cgpa=8.0,
-                                                   skills=["Python", "SQL", "Git"], projects=[], experience=[],
-                                                   target_role="Software Engineer")
-            elif role == "mentor":
-                u.mentor_profile = MentorProfile(department="Training & Placement", expertise=["Interviews", "Python"])
-            else:
-                u.recruiter_profile = RecruiterProfile(company_name="Demo Company (sample)", designation="HR Manager")
-            db.add(u)
-            db.flush()
-            print(f"Created demo {role}: {email} / Demo@12345")
-        users[role] = u
-    if not db.scalar(select(MentorAssignment).where(MentorAssignment.mentor_id == users["mentor"].id,
-                                                    MentorAssignment.student_id == users["student"].id)):
-        db.add(MentorAssignment(mentor_id=users["mentor"].id, student_id=users["student"].id))
-    db.commit()
-
-
 if __name__ == "__main__":
-    seed(demo="--demo" in sys.argv)
+    seed()

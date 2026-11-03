@@ -1,0 +1,98 @@
+{
+  "label": "",
+  "model": "qwen3:4b",
+  "num_ctx": 8192,
+  "runs": 6,
+  "stages": {
+    "llm_question_first_call_ms": 5666,
+    "llm_question_ms": {
+      "n": 6,
+      "p50_ms": 5772,
+      "p95_ms": 5886,
+      "mean_ms": 5360,
+      "min_ms": 4211,
+      "max_ms": 5898
+    },
+    "llm_score_ms": {
+      "n": 6,
+      "p50_ms": 3219,
+      "p95_ms": 3373,
+      "mean_ms": 3248,
+      "min_ms": 3159,
+      "max_ms": 3384
+    },
+    "server_answer_to_next_question_ms": {
+      "n": 6,
+      "p50_ms": 8933,
+      "p95_ms": 9178,
+      "mean_ms": 8607,
+      "min_ms": 7412,
+      "max_ms": 9192
+    },
+    "llm_question_first_sentence_ms": {
+      "n": 6,
+      "p50_ms": 2518,
+      "p95_ms": 2603,
+      "mean_ms": 2370,
+      "min_ms": 1731,
+      "max_ms": 2604
+    },
+    "server_answer_to_first_sentence_ms": {
+      "n": 6,
+      "p50_ms": 5713,
+      "p95_ms": 5901,
+      "mean_ms": 5618,
+      "min_ms": 5115,
+      "max_ms": 5945
+    },
+    "tts_whole_question_ms": {
+      "n": 3,
+      "p50_ms": 4910,
+      "p95_ms": 4922,
+      "mean_ms": 4891,
+      "min_ms": 4838,
+      "max_ms": 4923
+    },
+    "tts_first_sentence_ms": {
+      "n": 3,
+      "p50_ms": 1097,
+      "p95_ms": 1105,
+      "mean_ms": 1092,
+      "min_ms": 1073,
+      "max_ms": 1106
+    },
+    "tts_audio_seconds": 12.145,
+    "stt_ms": {
+      "n": 3,
+      "p50_ms": 4068,
+      "p95_ms": 4148,
+      "mean_ms": 4092,
+      "min_ms": 4052,
+      "max_ms": 4157
+    },
+    "stt_audio_seconds": 25.69
+  },
+  "ollama_breakdown": {
+    "cold": {
+      "queue_ms": 0,
+      "load_ms": 22,
+      "prompt_ms": 612,
+      "generate_ms": 4282,
+      "first_token_ms": 1360
+    },
+    "question": {
+      "queue_ms": 0,
+      "load_ms": 38,
+      "prompt_ms": 671,
+      "generate_ms": 4554,
+      "first_token_ms": 797
+    },
+    "score": {
+      "queue_ms": 0,
+      "load_ms": 24,
+      "prompt_ms": 409,
+      "generate_ms": 2688,
+      "first_token_ms": 553
+    }
+  }
+}

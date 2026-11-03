@@ -12,6 +12,15 @@ import pytest
 from conftest import admin_login, login, register_student
 
 
+@pytest.fixture(autouse=True)
+def _join_background_threads():
+    """Let prefetch / turn / feedback threads finish before the next test empties the database."""
+    yield
+    for t in list(threading.enumerate()):
+        if t.name.startswith(("prefetch-", "turn-", "feedback-")):
+            t.join(timeout=10)
+
+
 def parse_sse(text: str) -> list[tuple[str, dict]]:
     out = []
     for block in text.split("\n\n"):
@@ -64,6 +73,37 @@ def test_spoken_stream_emits_preface_then_question_and_skips_greeting():
     assert remaining_after(["Something else entirely here."], final) is None
 
 
+def test_ollama_url_avoids_slow_localhost_lookup(monkeypatch):
+    """Windows: 'localhost' tried IPv6 first and cost ~2.1 s per connection to Ollama (measured)."""
+    from app.config import get_settings
+    from app.services import local_llm
+    for given, expected in [("http://localhost:11434", "http://127.0.0.1:11434"),
+                            ("http://localhost:11434/", "http://127.0.0.1:11434"),
+                            ("http://gpu-box:11434", "http://gpu-box:11434")]:
+        monkeypatch.setattr(get_settings(), "ollama_base_url", given)
+        assert local_llm._base_url() == expected
+
+
+def test_question_starting_like_a_greeting_is_still_spoken():
+    """Regression (browser run): "Hi Priya, how did you ...?" matched the greeting filter and was never spoken."""
+    from app.services.speech_stream import final_sentences
+    q = "Hi Priya, how did you decide to build the Placement Tracker app with React and Flask?"
+    assert final_sentences("", q) == [q]
+    assert final_sentences("", "Hello, I'm Victor. How would you index a large table?") == \
+        ["How would you index a large table?"]
+
+
+def test_long_first_sentence_split_at_a_natural_pause_only():
+    from app.services.speech_stream import split_first_clause
+    long = ("Thanks for walking me through your library API, so tell me how you decided which columns to index "
+            "in PostgreSQL?")
+    head, tail = split_first_clause(long)
+    assert head.endswith("library API,") and f"{head} {tail}" == long
+    assert split_first_clause("How does a hash map handle collisions?") == ("How does a hash map handle collisions?", "")
+    no_comma = "Explain how a B tree index speeds up lookups in a relational database and when it does not help much"
+    assert split_first_clause(no_comma) == (no_comma, "")
+
+
 # --------------------------------------------------------------------------- streamed turns
 
 @pytest.fixture()
@@ -110,10 +150,17 @@ def _start(client, **extra):
             "defer_first_question": True, **extra}
     r = client.post("/api/student/interviews", json=body)
     assert r.status_code == 201, r.text
+    # Wait for the first-question prefetch thread so the next request sees the question it stores.
+    if extra.get("defer_first_question", True):
+        from conftest import join_app_threads
+        join_app_threads()
     return r.json()["session"]
 
 
 def _wait_question(client, sid, n=1):
+    for t in list(threading.enumerate()):
+        if t.name == f"prefetch-{sid}":
+            t.join(timeout=10)
     for _ in range(100):
         s = client.get(f"/api/student/interviews/{sid}").json()
         if len(s["questions"]) >= n:
@@ -226,7 +273,8 @@ def test_policy_discloses_processing_retention_and_access(client):
     register_student(client)
     p = client.get("/api/monitoring/policy").json()
     assert "browser" in p["processing"] and p["retention_days"] == 90
-    assert "Recruiters do not receive" in p["access"] and p["camera_required"] is False
+    # recruiters: only for jobs the candidate applied to (security module, 2026-10-23); disclosed in the policy
+    assert "recruiters of jobs you have applied to" in p["access"] and p["camera_required"] is True  # default
     assert "never" in p["review"].lower()
 
 
@@ -317,8 +365,9 @@ def test_reviewer_access_is_least_privilege_and_audited(client, new_client, stre
     recruiter = new_client()
     login(recruiter, "r@test.dev", "Passw0rd!")
 
-    assert recruiter.get("/api/monitoring/sessions").status_code == 403
-    assert recruiter.get(f"/api/monitoring/sessions/{s['id']}").status_code == 403
+    # a recruiter the student never applied to sees nothing (security module: recruiters see applicants only)
+    assert recruiter.get("/api/monitoring/sessions").json()["items"] == []
+    assert recruiter.get(f"/api/monitoring/sessions/{s['id']}").status_code == 404
     assert mentor.get("/api/monitoring/sessions").status_code == 403  # no review permission yet
     admin.patch(f"/api/admin/users/{m['id']}", json={"permissions": ["review_integrity"]})
     assert mentor.get("/api/monitoring/sessions").json()["items"] == []  # permission, but student not assigned
@@ -349,6 +398,7 @@ def test_expired_events_are_purged(client, streaming_ai, db):
     from app.routers.monitoring import purge_expired
     register_student(client)
     s = _start(client)
+    _wait_question(client, s["id"])
     db.add(IntegrityEvent(session_id=s["id"], event_type="low_light", t_ms=1, severity="info",
                           confidence_sufficient=True, created_at=datetime.now(timezone.utc) - timedelta(days=200)))
     db.commit()
