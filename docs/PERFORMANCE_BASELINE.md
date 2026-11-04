@@ -3,7 +3,7 @@
 Hardware: Windows 11 laptop, i5-12450H, 15.7 GB RAM, RTX 3050 Laptop 4 GB, Ollama 0.40.5, `num_ctx` 8192.
 Everything below was measured on this machine; nothing is estimated. Raw data: `backend/tests_perf/results/`.
 
-## 1. Interview pipeline (measured earlier, README §2e)
+## 1. Interview pipeline (measured earlier, see [PERFORMANCE.md](PERFORMANCE.md))
 `bench_interview_latency.py`, `qwen3:4b`, Fast mode, p50 / p95: question 4.1 / 4.5 s, answer scoring 3.3 / 3.4 s,
 answer → first spoken sentence 6.1 / 6.4 s, answer → next question complete 7.4 / 7.7 s, first call after start (model
 preloaded) 4.7 s. Findings that drove the work: Ollama URL `localhost` cost ~2.1 s per connection on Windows,

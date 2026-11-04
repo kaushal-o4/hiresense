@@ -82,9 +82,9 @@ Browser (React frontend)
 FastAPI backend (routers + services)
    |        |            |
    v        v            v
-Database   Local LLM   Local embeddings
-(SQLite/  (Ollama     (Sentence Transformers,
-Postgres)  qwen3:4b)   MiniLM)
+Database   LLM              Local embeddings
+(MongoDB)  (Gemini, or     (Sentence Transformers,
+           Ollama qwen3:4b)  MiniLM)
 
 Optional voice pipeline:
 Browser recorder -> STT (Whisper) -> answer API
@@ -97,7 +97,7 @@ TTS (Kokoro) -> audio -> browser player
 | ---|---|--- |
 | Frontend | Part users see | React app |
 | Backend | Server logic | FastAPI |
-| Database | Stores data | SQLite/PostgreSQL |
+| Database | Stores data | MongoDB |
 | API | Way to communicate | /api/* routes |
 | Endpoint | One API address | /api/student/interviews |
 | JSON | Text data format | Request/response |
@@ -108,7 +108,8 @@ TTS (Kokoro) -> audio -> browser player
 | Inference | Running a model | generate question |
 | Embedding | Text turned into numbers | matching.py |
 | Token | Words/pieces of text | Model input |
-| Ollama | Local AI runtime | Runs qwen3:4b locally |
+| Ollama | Local AI runtime | Runs qwen3:4b locally (fallback when Gemini fails) |
+| Gemini | Google's hosted model | Default language-model provider |
 
 ## 3. How All Parts Work Together
 
@@ -125,7 +126,7 @@ The backend is written in FastAPI (Python). It receives requests, checks login, 
 
 ### Database
 
-The database stores users, profiles, resumes, interviews, questions, answers, assessments, jobs, applications, mentoring, progress, and logs. SQLite is default; PostgreSQL is supported. Tables and relationships are defined in backend/app/models.py.
+The database stores users, profiles, resumes, interviews, questions, answers, assessments, jobs, applications, mentoring, progress, and logs. It is MongoDB; collections and relationships are defined in backend/app/models.py and handled by a small data layer in backend/app/odm/.
 
 
 ### APIs
@@ -287,11 +288,11 @@ Cross-checks LLM question type; never changes interview.
 - Planning: defined problem, roles, and modules from PROJECT_SPEC.md and README.md.
 - Frontend: built React pages, components, state machines, monitoring, voice UI.
 - Backend: FastAPI routers, services, security, database, seed data.
-- Database: SQLAlchemy models and Alembic migrations.
-- AI integration: selected local Ollama and embeddings; wrote prompts, schemas, validation rules.
+- Database: started on SQLite/SQLAlchemy with Alembic migrations, moved to MongoDB with a small SQLAlchemy-style data layer (`backend/app/odm/`); no migrations are needed now.
+- AI integration: started with local Ollama and embeddings, then added Google Gemini as the default provider with Ollama fallback; wrote prompts, schemas, validation rules, and calibrated scoring on a labelled answer set.
 - ML: trained question-type classifier offline using scikit-learn.
 - Integration: connected frontend and backend through API client; added voice pipeline.
-- Testing: 208 backend pytest tests (mocked models) + 79 frontend tests; integration tests with real models.
+- Testing: 358 backend pytest tests (mocked models, 2 more skipped without Redis) + 141 frontend tests; integration tests with real models; a browser smoke test in CI.
 - Current status: feature-rich but AI quality depends on local model and manual verification.
 
 ## 8. Understanding Important Files
@@ -300,12 +301,13 @@ Cross-checks LLM question type; never changes interview.
 | ---|--- |
 | backend/app/main.py | App creation, routers, middleware, startup warmup |
 | backend/app/config.py | Settings from environment |
-| backend/app/models.py | All DB tables |
+| backend/app/models.py | All collections |
+| backend/app/odm/ | MongoDB data layer |
 | backend/app/schemas.py | Request validation |
-| backend/app/services/ai.py | All AI prompts and validation |
+| backend/app/services/ai.py (+ ai_base, ai_resume, ai_english, ai_tasks) | AI prompts and validation; ai_base.py is the single model gateway |
 | backend/app/services/matching.py | Job matching |
 | backend/app/services/rewards.py | Points/badges/streaks |
-| backend/app/routers/interviews.py | Interview API |
+| backend/app/routers/interviews.py, interview_live.py | Interview API (text; streamed voice turns) |
 | frontend/src/api.js | Frontend HTTP client |
 | frontend/src/App.jsx | Routes and guards |
 | frontend/src/voice/* | Avatar/lip-sync/state machines |
@@ -317,7 +319,8 @@ Cross-checks LLM question type; never changes interview.
 
 - Python 3.12+
 - Node.js 20+
-- Ollama for AI features (optional but needed for AI)
+- MongoDB Community Server
+- A Gemini API key, or Ollama for local AI
 
 ### Backend
 
@@ -326,8 +329,8 @@ cd backend
 python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
-alembic upgrade head
-python -m app.seed --demo
+copy .env.example .env
+python -m app.seed
 uvicorn app.main:app --reload --port 8000
 ```
 

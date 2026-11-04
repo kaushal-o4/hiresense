@@ -1,7 +1,7 @@
 # Visual attention monitoring (added 2026-10-25)
 
 An estimate of how much of the interview the candidate's head and eyes were directed toward the screen, shown live
-and in the post-interview report. It extends the existing interview security module (README §2e/§2g); nothing was
+and in the post-interview report. It extends the existing interview security module ([INTERVIEW_SECURITY.md](INTERVIEW_SECURITY.md)); nothing was
 rebuilt. Labelled everywhere: **"Estimated visual attention toward the interview screen."**
 
 ## What it is built on (already in the project, reused)
@@ -89,7 +89,7 @@ Modified: `interviewMonitor.js` (meter, 1 s tick, recalibrate, pause, final uplo
 **Test fix found on the way:** `test_latency_and_monitoring.py` crashed the interpreter in 3-4 of 10 runs while I was
 testing this feature (a segfault or "bad parameter or other API misuse" inside the request that starts a live
 interview; the traces show the `prefetch-N` thread and the request's worker thread). The cause is the test setup: the
-first-question prefetch thread and the request that started it share ONE in-memory SQLite connection (production gives
+first-question prefetch thread and the request that started it share ONE in-memory SQLite connection (this was before the move to MongoDB; production gives
 each thread its own). I did not run the old code to check whether it flaked before my changes; none of the changed
 code appears in the traces. The prefetch now runs inline in tests only (`conftest._prefetch_runs_inline`); 0 failures in
 10 repeated runs afterwards and two clean full-suite runs. Production code is unchanged.
@@ -98,7 +98,7 @@ code appears in the traces. The prefetch now runs inline in tests only (`conftes
 * **Never tested with a human face or a real webcam.** The fake camera is a rendered 3D character; it cannot show
   glasses, beards, masks, skin-tone or lighting differences, a webcam at the side, a laptop on the knees, or
   real eye movements. The thresholds (30° yaw, 25° pitch, 0.6 eye offset, 1 s confirm, 2.5 s gap) need tuning with
-  real sessions before anyone relies on the numbers. Test with your own camera: the steps in README §2g "How to try it".
+  real sessions before anyone relies on the numbers. Test with your own camera: the steps in [INTERVIEW_SECURITY.md](INTERVIEW_SECURITY.md) "How to try it yourself".
 * Gaze is approximate (head pose + eye blendshapes); it cannot tell what the candidate is looking at. People look away
   while thinking. Looking at a second monitor beside the camera reads as "away" unless that was the calibrated position.
 * Several faces, a face cut by the frame, a dark picture, or a blocked camera are treated as *not observable*, so the

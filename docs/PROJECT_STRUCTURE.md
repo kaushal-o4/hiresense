@@ -2,30 +2,30 @@
 
 This document describes the project **as it is**: which file does what, who calls it, and how the main features
 flow through the code. It is a map for reading the code, not a design proposal. Paths are relative to the project
-root (`hiresense/`). For setup and running, see `README.md`; for the AI models, see `docs/AI_ML_Use.md`.
+root (`hiresense/`). For setup and running, see `README.md`; for the AI models, see `docs/AI_MODELS_AND_SCORING.md` and `docs/AI_ML_Use.md`.
 
-Last checked against the code: 2026-10-22.
+Last checked against the code: 2026-11-05 (after the stage 6 module split).
 
 ---
 
 ## 1. The big picture
 
 ```
-Browser (React, port 5173)                      Server (FastAPI, port 8000)                 Local AI (same laptop)
+Browser (React, port 5173)                      Server (FastAPI, port 8000)                 AI
 ──────────────────────────                      ───────────────────────────                 ─────────────────────
-pages/*.jsx  ──calls──>  api.js  ──/api/...──>  routers/*.py  ──calls──>  services/*.py  ──>  Ollama qwen3:4b (LLM)
+pages/*.jsx  ──calls──>  api.js  ──/api/...──>  routers/*.py  ──calls──>  services/*.py  ──>  Gemini (default) / Ollama qwen3:4b (LLM)
    │                    (fetch +                   │ checks login             │                  MiniLM (embeddings)
    │                     cookie)                   │ (deps.py)                │                  Whisper (speech→text)
 components/ui.jsx                                  ▼                          ▼                  Kokoro (text→speech)
-voice/*, monitoring/*                         models.py  <──SQLAlchemy──>  SQLite file (hiresense.db) or PostgreSQL
+voice/*, monitoring/*                         models.py  <──app/odm (pymongo)──>  MongoDB
 ```
 
 - In development, Vite proxies every `/api/...` request to FastAPI (`frontend/vite.config.js`), so the login
   cookie stays on one origin.
-- All AI runs locally. No API keys or cloud services are used.
+- The language model is Google Gemini by default (`LOCAL_AI_PROVIDER=gemini`, needs `GEMINI_API_KEY`) with Ollama as fallback; `LOCAL_AI_PROVIDER=ollama` keeps everything local. Embeddings, Whisper, Kokoro and MediaPipe run locally.
 - **Routers** (`backend/app/routers/`) receive HTTP requests, check who is calling and validate input.
   **Services** (`backend/app/services/`) hold the business logic and the AI calls. **Models**
-  (`backend/app/models.py`) define the database tables.
+  (`backend/app/models.py`) define the MongoDB collections through the small data layer in `backend/app/odm/`.
 
 ---
 
@@ -37,13 +37,14 @@ voice/*, monitoring/*                         models.py  <──SQLAlchemy──
 |---|---|---|---|---|---|
 | `main.py` | Server entry point | Creates the FastAPI `app`, registers all routers, adds security headers, logs unhandled errors to `ErrorLog`, warms up the AI models in a background thread at startup | `config`, `database`, all routers, `local_llm`, `embeddings`, `tts`, `stt` | `uvicorn app.main:app` (`start-backend.bat`) | Everything |
 | `config.py` | Settings from `backend/.env` | `Settings` (pydantic-settings), `get_settings()` | `.env` | Almost every module | DB URL, secret key, AI model names, limits |
-| `database.py` | Database connection | SQLAlchemy `engine`, `SessionLocal`, `get_db()` dependency (one session per request), SQLite WAL mode | `config` | Routers, background threads | All data access |
-| `models.py` | Database tables (~45 classes) | `User`, profiles, `Resume`, `InterviewSession` → `InterviewQuestion` → `InterviewAnswer`, `EnglishSession`/`EnglishMessage`, `Assessment`/`AssessmentResult`, `Job`/`JobApplication`, mentoring, rewards, `Notification`, `AuditLog`, `AIUsageLog`, `PerfMetric`, `IntegrityEvent`, `PlatformSetting` … | SQLAlchemy | Routers, services, Alembic | All stored data |
+| `database.py` | Database connection | MongoDB client, `SessionLocal`, `get_db()` dependency (one session per request), `init_db()` creates indexes and unique constraints at startup | `config`, `odm` | Routers, background threads | All data access |
+| `odm/` | MongoDB data layer with a SQLAlchemy-style API | `coltypes`, `expressions`, `statements`, `mapping`, `connection`, `query`, `session` (select/where/join, `Session` with commit/rollback, cascades, `after_commit` hooks); `from app.odm import …` still works | pymongo | `models.py`, `database.py` | All data access |
+| `models.py` | Collections (~45 classes) | `User`, profiles, `Resume`, `InterviewSession` → `InterviewQuestion` → `InterviewAnswer`, `EnglishSession`/`EnglishMessage`, `Assessment`/`AssessmentResult`, `Job`/`JobApplication`, mentoring, rewards, `Notification`, `AuditLog`, `AIUsageLog`, `PerfMetric`, `IntegrityEvent`, `PlatformSetting`, English vocabulary … | `odm` | Routers, services | All stored data |
 | `schemas.py` | Request validation | Pydantic models for request bodies (e.g. `InterviewStart`, `AnswerIn`, `TurnIn`, `StudentRegister`), password-strength rule | pydantic | Routers | Input validation / error messages |
 | `serializers.py` | ORM → JSON | `profile_out`, `interview_out`, … — the single place that decides which fields each role may see | models | Routers | API responses |
 | `security.py` | Passwords and tokens | `hash_password`/`verify_password` (Argon2), `create_access_token`/`decode_access_token` (JWT), password-reset tokens | `config`, argon2, PyJWT | `deps.py`, `routers/auth.py` | Login, password reset |
 | `deps.py` | Request dependencies | `get_current_user` (reads the cookie, 401/403), `require_student/recruiter/mentor/admin`, `ensure_mentor_access` | `security`, `database`, models | Every protected router endpoint | Authentication and authorisation |
-| `seed.py` | Initial data | Admin account, badges, reward rules, interview categories, question bank, rubrics and sample assessments; `--demo` adds clearly-labelled demo users. Safe to run repeatedly | models | `start-backend.bat`, CI | First run |
+| `seed.py` | Initial data | Admin account, badges, reward rules, interview categories, question bank, rubrics and sample assessments. Safe to run repeatedly | models | `start-backend.bat`, CI | First run |
 
 ### 2.2 Routers (`backend/app/routers/`) — the HTTP API
 
@@ -52,34 +53,39 @@ All routes are under `/api`. Interactive documentation: `http://127.0.0.1:8000/d
 | File | Purpose | Main endpoints | Used by (frontend) |
 |---|---|---|---|
 | `auth.py` | Accounts and sessions | `POST /auth/register/student`, `/auth/register/recruiter`, `/auth/login`, `/auth/logout`, `GET /auth/me`, forgot/reset/change password, `DELETE /auth/me` | `auth.jsx`, `Login`, `Register`, `ForgotPassword`, `ResetPassword`, `Settings` |
-| `interviews.py` | AI mock interviews | `POST /student/interviews` (start), `GET` list/one, `POST …/answer` (text), `POST …/turn` (live voice, streamed), `POST …/next-question`, `POST …/complete`, `POST …/retry-evaluation`, `DELETE` (abandon), `GET /interviewers` | `Interviews`, `InterviewSession`, `VoiceInterview`, `voice/turnStream.js` |
+| `interviews.py` + `interview_live.py` | AI mock interviews | `POST /student/interviews` (start), `GET` list/one, `POST …/answer` (text), `POST …/turn` (live voice, streamed; in `interview_live.py`), `POST …/next-question`, `POST …/complete`, `POST …/retry-evaluation`, `DELETE` (abandon), `GET /interviewers` | `Interviews`, `InterviewSession`, `VoiceInterview`, `voice/turnStream.js` |
 | `voice.py` | Speech for the avatar | `GET /voice/status`, `POST /voice/speak` (Kokoro audio + mouth shapes), `/voice/speak/stream`, `/voice/warmup`, `POST …/transcribe` (Whisper) for interviews and English | `VoiceInterview`, `EnglishAvatarSession`, `InterviewerPicker` |
-| `english.py` | English conversation practice | `POST /student/english` (start), `…/message`, `…/end` (evaluate), `GET` list/one/stats/companion | `English`, `EnglishSession`, `EnglishAvatarSession` |
+| `english.py` | English conversation practice | `POST /student/english` (start), `…/message`, `…/message/stream`, `…/end` (evaluate), `GET` list/one/stats/companion, vocabulary, `daily-plan`, `progress` | `English`, `EnglishSession`, `EnglishAvatarSession` |
 | `assessments.py` | Timed MCQ / coding tests | Create/edit/AI-generate (staff), start/submit/results/evaluate (students) | `Assessments`, `AssessmentManager` |
 | `students.py` | Student portal data | `/student/dashboard`, `/progress`, `/report`, `/history`, resumes (upload, analyse; `/resumes/{id}/download` for permitted roles), rewards, mentoring, recommendations | Student pages |
-| `jobs.py` | Jobs and applications | Student job search/apply/withdraw, drives; recruiter jobs, applicants, matching, comparison, status changes, candidates | `student/Jobs`, `Applications`, `Drives`, recruiter pages |
+| `jobs/` (`common`, `student`, `recruiter`, `screening`) | Jobs and applications | Student job search/apply/withdraw, drives; recruiter jobs, applicants, matching, comparison of 2-4 applicants, printable report (`/recruiter/applications/{id}/report`), status changes, candidates | `student/Jobs`, `Applications`, `Drives`, recruiter pages |
 | `mentors.py` | Mentor portal | Dashboard, assigned students, feedback, plans, goals, sessions | Mentor pages |
-| `admin.py` | Admin portal | Users, assignments, question bank/categories/rubrics, badges/rules, settings, flagged activity, AI usage, errors, audit log, reports | Admin pages |
+| `admin/` (`analytics`, `people`, `content`, `operations`) | Admin portal | Users, assignments, question bank/categories/rubrics, badges/rules, settings, flagged activity, AI usage, errors, audit log, reports | Admin pages |
 | `monitoring.py` | Interview integrity + performance | Monitoring policy and consent, integrity events, review for staff, `/admin/performance` | `InterviewSetup`, `MonitorBar`, `IntegrityReview`, admin `Monitoring` |
-| `common.py` | Shared by all roles | `/profile`, `/notifications`, `/settings` (user preferences) | `Profile`, `Notifications`, `Layout`, `Settings` |
+| `common.py` | Shared by all roles | `/profile`, `/notifications`, `/notifications/stream` (Server-Sent Events), `/settings` (user preferences) | `Profile`, `Notifications`, `Layout`, `Settings` |
 
 ### 2.3 Services (`backend/app/services/`) — business logic and AI
 
 | File | Purpose | Main functions | Used by | Feature affected |
 |---|---|---|---|---|
 | `ai.py` + `ai_base.py`, `ai_resume.py`, `ai_english.py`, `ai_tasks.py` | **All language-model features** (prompts + validation); `ai.py` holds the interview prompts and re-exports the rest | `_structured_call` (single gateway to the LLM), `ai_status`, `analyze_resume`, `next_interview_question`, `score_answer` (fast), `answer_feedback` (slow, background), `evaluate_answer`, `apply_answer_rules`, `next_difficulty`, `interview_report`, `english_reply`, `english_evaluate`, `match_review`, `generate_assessment`, `evaluate_code`, recommendations | Routers | Resume, interviews, English, matching, assessments |
-| `local_llm.py` | Client for Ollama | `chat_json` (JSON-schema output, streaming), `runtime_status`, `warmup`, `interactive_hold` (pauses background AI work while a student waits) | `ai.py`, `interviews.py` | Every AI call |
+| `local_llm.py` + `gemini_llm.py`, `model_router.py` | LLM clients (Ollama; Gemini with backup models and cooldowns; per-task model tiers) | `chat_json` (JSON-schema output, streaming), `runtime_status`, `warmup`, `interactive_hold` (pauses background AI work while a student waits) | `ai.py`, `interviews.py` | Every AI call |
 | `interview_engine.py` | Interview logic that does **not** use the LLM | `candidate_context`, `coverage`, `stage`, `answer_signals`, `is_duplicate`, `validate_question`, `fallback_question` | `interviews.py`, `ai.py` | Question quality, no repeats, fallbacks |
 | `interviewers.py` | The 4 interviewer personalities (Aria, Victor, Marcus, Elena) | `INTERVIEWERS`, `get()`; voice, style, difficulty thresholds | `interviews.py`, `ai.py` | Interviewer behaviour (not scores) |
 | `report_metrics.py` | Deterministic report numbers | `report_metrics(session)` | `interviews.py` | Interview report |
 | `question_classifier.py` | Custom ML model (scikit-learn) | `predict(text)` → question type/difficulty | `interviews.py` | Question metadata |
 | `embeddings.py` | MiniLM sentence embeddings | `embed`, `status`, `warmup` | `ai.py`, `matching.py`, `interview_engine.py` | Off-topic check, job matching |
 | `matching.py` | Job ↔ student matching | `candidate_profile`, `job_profile`, `compute_match` (skill checks + embedding similarity, explainable score) | `jobs.py` | Job matching |
-| `english_companion.py` | English companion config | learning modes, topic memory | `english.py`, `ai.py` | English practice |
+| `english_companion.py`, `english_profile.py`, `english_vocab.py` | English companion config; recurring-mistake profile; vocabulary (Leitner boxes), daily plan and progress | learning modes, topic memory, patterns, reviews | `english.py`, `ai.py` | English practice |
 | `stt.py` / `tts.py` / `speech_stream.py` | Whisper speech-to-text / Kokoro text-to-speech / turning a streamed reply into spoken sentences | `transcribe`, `synthesize`, sentence splitter | `voice.py`, `interviews.py` | Voice interview, English avatar |
 | `insights.py` | Read-only performance views | `student_summary`, `readiness_score`, `practice_history`, `weekly_progress`, `record_progress` | `students.py`, `mentors.py`, `interviews.py` | Dashboards, progress, history |
 | `rewards.py` | Points, badges, goals | `award_points`, `after_activity`, `rule_requirements` | `interviews.py`, `english.py`, … | Rewards, mentor goals |
-| `integrity.py` | Monitoring policy and severity rules | disclosure text, severity, neutral labels | `monitoring.py` | Interview monitoring |
+| `integrity.py`, `attention.py` | Monitoring policy and severity rules; visual attention percentage | disclosure text, severity, neutral labels, risk summary | `monitoring.py` | Interview monitoring |
+| `scoring_bands.py` | Score → band (Needs work … Outstanding) | `band(score)` | interviews, serializers | Reports |
+| `consent.py` | AI data consent when the provider is hosted | `required`, `has`, `check` (428 until the student agrees; `users.ai_data_consent_at`) | AI routers | Privacy |
+| `limiter.py` | Login lockout and rate limits | `hit`, `count`, `clear`; Redis when `REDIS_URL` is set, memory otherwise | `auth.py`, `voice.py`, `monitoring.py` | Security |
+| `live_events.py` | In-process fan-out for the notification stream | `publish`, `subscribe` (signalled after commit) | `common.notify`, `common.py` router | Live notifications |
+| `background.py` | Tracked background threads, drained on shutdown | `spawn`, `drain`, `stopping` | `main.py`, routers | Graceful shutdown |
 | `perf.py` | Timing of each pipeline step | `record`, `timer` | `interviews.py`, `ai.py` | Admin performance tab |
 | `common.py` | Small helpers | `audit`, `notify`, `paginate`, `get_setting` | Most routers | Audit log, notifications, settings |
 | `access.py`, `skills.py`, `resume_parser.py`, `mailer.py` | Who may view a student; skill-name normalisation; PDF/DOCX text extraction; optional SMTP email | — | Routers/services | Access control, resume, password-reset email |
@@ -88,12 +94,13 @@ All routes are under `/api`. Interactive documentation: `http://127.0.0.1:8000/d
 
 | Path | Purpose |
 |---|---|
-| `backend/alembic/` | Database migrations (`alembic upgrade head`). **Do not edit existing migration files.** |
+| `backend/eval/calibrate_scoring.py`, `calibration_set.json` | Score calibration against 16 hand-labelled answers. |
+| `backend/requirements-cloud.txt`, `.env.cloud.example`, `Dockerfile` | Slim cloud profile (no torch/Whisper/Kokoro) used by Docker, Render and CI. |
 | `backend/ml/` | Training script and data for the question classifier (`train_question_classifier.py`). |
 | `backend/eval/` | Evaluation harness for interview quality (`run_eval.py`, `scenarios.json`). |
 | `backend/tests/` | Fast automated tests — the AI is replaced by a stub (`conftest.py`). Run: `python -m pytest tests -q`. |
-| `backend/tests_integration/` | Tests against the real local models (need Ollama running). |
-| `backend/tests_e2e/` | Browser tests with Playwright (voice interview, interviewers, English avatar, accounts). |
+| `backend/tests_integration/` | Tests against the real models (Gemini key and/or Ollama). |
+| `backend/tests_e2e/` | Browser tests with Playwright (voice interview, interviewers, English avatar, accounts, security module, consent, CI smoke test). |
 | `backend/tests_perf/` | Latency benchmarks of the interview pipeline. |
 | `backend/.env` | Local configuration and secrets. **Never commit or overwrite.** Template: `.env.example`. |
 
@@ -106,9 +113,9 @@ All routes are under `/api`. Interactive documentation: `http://127.0.0.1:8000/d
 | File | Purpose | Depends on | Used by |
 |---|---|---|---|
 | `main.jsx` | Entry point: renders `<App>` inside the router, `AuthProvider` and `ToastProvider` | `App`, `auth`, `ui` | `index.html` |
-| `App.jsx` | All routes; `RequireRole` sends users to their own portal; signed-out users see only login/register/reset | every page, `auth`, `Layout` | `main.jsx` |
+| `App.jsx` | All routes (pages lazy-loaded except sign-in/registration/reset/privacy); `RequireRole` sends users to their own portal; signed-out users see only login/register/reset | every page, `auth`, `Layout` | `main.jsx` |
 | `auth.jsx` | Login state (`useAuth`): loads `/auth/me` on start, `login()`, `logout()`, reacts to 401s | `api.js` | `App`, `Layout`, pages |
-| `api.js` | `fetch` wrapper: prefixes `/api`, sends the cookie, turns errors into readable `ApiError` messages; `get/post/put/patch/del/download` | — | Every page |
+| `api.js` | `fetch` wrapper: prefixes `/api` (or `VITE_API_URL` via `apiUrl()`), sends the cookie, turns errors into readable `ApiError` messages; `get/post/put/patch/del/download` | — | Every page |
 | `index.css`, `tailwind.config.js` | Tailwind setup, shared classes (`card`, `input`, `label`, `th`, `td`), brand colours | — | Everything |
 
 ### 3.2 Shared components (`components/`)
@@ -122,17 +129,19 @@ All routes are under `/api`. Interactive documentation: `http://127.0.0.1:8000/d
 | `Readiness.jsx` | Placement-readiness card |
 | `useSpeech.jsx` | Browser speech recognition/synthesis (English text pages) and user voice preferences |
 | `ConversationMemory.jsx` | What Aria remembers during English practice |
+| `DailyPlan.jsx`, `EnglishProgress.jsx` | English daily plan card and progress charts |
+| `scoreBand.js` | Score band labels (same bands as the backend) |
 | `codeRunner.js` | Runs a student's JavaScript in a Web Worker for self-checking (never decides scores) |
 
 ### 3.3 Pages (`pages/`)
 
 | Folder | Pages |
 |---|---|
-| `pages/` | `Login`, `Register`, `ForgotPassword`, `ResetPassword` (inside `AuthShell`), `Profile`, `Settings`, `Notifications`, `NotFound` |
-| `pages/student/` | `Dashboard`, `Resume`, `Interviews` (+ `InterviewerPicker`), `InterviewSession` (text mode + results), `VoiceInterview` (+ `InterviewSetup`, `InterviewerFeedback`), `English`, `EnglishSession` (+ `EnglishAvatarSession`), `Assessments`, `ProgressHub` (= `Progress` + `PerformanceReport` + `PracticeHistory`), `Rewards`, `Opportunities` (= `Jobs` + `Drives`), `Applications`, `Mentoring` |
-| `pages/recruiter/` | `Dashboard`, `Jobs`, `JobDetail`, `Candidates`, `CandidateDetail` |
+| `pages/` | `Login`, `Register`, `ForgotPassword`, `ResetPassword` (inside `AuthShell`), `Profile`, `Settings`, `Notifications`, `Privacy`, `NotFound` |
+| `pages/student/` | `Dashboard`, `Resume`, `Interviews` (+ `InterviewerPicker`), `InterviewSession` (text mode + results), `VoiceInterview` (+ `InterviewSetup`, `InterviewerFeedback`), `English`, `EnglishSession` (+ `EnglishAvatarSession`), `Vocabulary`, `Assessments`, `ProgressHub` (= `Progress` + `PerformanceReport` + `PracticeHistory`), `Rewards`, `Opportunities` (= `Jobs` + `Drives`), `Applications`, `Mentoring` |
+| `pages/recruiter/` | `Dashboard`, `Jobs`, `JobDetail`, `CompareCandidates`, `CandidateReport`, `Candidates`, `CandidateDetail` |
 | `pages/mentor/` | `Dashboard`, `Students`, `StudentDetail`, `Sessions` |
-| `pages/admin/` | `Dashboard`, `Users`, `Assignments`, `Jobs`, `InterviewConfig`, `Rewards`, `Monitoring`, `AuditLogs`, `Reports`, `Settings` |
+| `pages/admin/` | `Dashboard`, `Users`, `Assignments`, `Jobs`, `InterviewConfig`, `Rewards`, `Monitoring`, `SecuritySettings`, `AuditLogs`, `Reports`, `Settings` |
 | `pages/shared/` | `AssessmentManager` (recruiter + admin), `IntegrityReview` (admin + authorised mentors) |
 
 Every page file starts with a short comment saying what it shows and which API endpoints it calls.
@@ -148,6 +157,9 @@ Every page file starts with a short comment saying what it shows and which API e
 | `voice/Avatar3D.jsx`, `Avatar.jsx` | 3D (three.js) interviewer and the 2D SVG fallback |
 | `voice/avatarStates.js`, `faceRig.js`, `motion.js`, `visemes.js` | Expressions, blendshape mapping, idle motion and lip-sync maths |
 | `voice/useInterviewers.js`, `englishMachine.js` | Interviewer list from the server; English-practice conversation loop |
+| `voice/RoomParts.jsx`, `RoomSidePanels.jsx`, `RoomSettingsPanel.jsx`, `AnswerDock.jsx`, `ControlBar.jsx`, `roomUtils.js` | Display parts of the live interview room, split out of `VoiceInterview.jsx` |
+| `live/notificationStream.js` | One shared Server-Sent Events connection per tab for notifications (backoff, polling fallback) |
+| `english/vocab.js` | Vocabulary review session logic |
 | `monitoring/*` | Camera session, on-device face/phone detection (MediaPipe), paste and fullscreen guards, event reporting, `MonitorBar` |
 
 ---
@@ -203,7 +215,7 @@ approves them.
   answers with a stream of events (`scored`, `sentence`, `audio`, `done`); the next question is spoken sentence by
   sentence while it is still being written. A second submission of the same turn gets 409.
 
-### 4.5 Evaluating answers — **complete** (real-model quality: see README §9)
+### 4.5 Evaluating answers — **complete** (real-model quality and calibration: see `docs/AI_MODELS_AND_SCORING.md`)
 
 1. **Fast score** (the student waits for this): `interviews.py::_evaluate(full=False)` → `ai.score_answer`. The model
    gives 0–10 for relevance, correctness, completeness, clarity, communication; `apply_answer_rules` caps scores
@@ -237,7 +249,7 @@ Scores never depend on which interviewer was chosen.
 ### 4.8 Known incomplete or unverified parts
 
 - Voice features have **not been tested with a real human microphone**, only with automated fake-microphone tests.
-- Some AI features are not yet verified with the real model (see README §9 "Known limitations").
+- Every AI feature has been run against the real models (2026-11-04, `tests_integration/test_real_features.py`); the full behaviour eval (`eval/run_eval.py`) needs a re-run after it ran out of memory.
 - Speaking drills ("English Learning") were removed from the student portal; the old route redirects to English
   conversation. The `PracticeExercise` table (and its old data) is kept; `ai.speaking_feedback` was removed
   on 2026-11-04 as dead code.
@@ -252,5 +264,32 @@ Scores never depend on which interviewer was chosen.
 | Change buttons, cards, tables everywhere | `frontend/src/components/ui.jsx` | Used by every page — run `npm test` and `npm run build` |
 | Change a menu item | `NAV` in `frontend/src/components/Layout.jsx` | The route must exist in `App.jsx` |
 | Change interview scoring or prompts | `backend/app/services/ai.py` | Affects all scores; run `pytest tests` and the eval harness |
-| Add a database column | `models.py` **plus** a new Alembic migration | Never edit old migrations |
+| Add a database field | `models.py` (no migration: older documents get the default when read) | Add an index in the model if you query by it |
 | Change platform defaults | `seed.py` or the admin Settings page | Existing databases keep their stored values |
+
+---
+
+## 6. API route groups
+
+FastAPI generates interactive docs at **http://127.0.0.1:8000/docs** (Swagger) and **/redoc** (203 endpoints).
+
+| Prefix | Who | Purpose |
+|---|---|---|
+| `/api/auth` | everyone | register (student/recruiter), login, logout, me, change/forgot/reset password, delete account, privacy info, AI data consent |
+| `/api/profile`, `/api/notifications` | any signed-in user | profile CRUD, notifications and the live notification stream |
+| `/api/student/...` | student | dashboard, resumes, interviews, english (incl. vocabulary, daily plan, progress), assessments, progress, rewards, leaderboard, jobs, applications, mentoring, recommendations |
+| `/api/resumes/{id}` | owner / assigned mentor / recruiter with application / admin | view and download a resume |
+| `/api/recruiter/...` | recruiter | dashboard, jobs CRUD and publish/close, applications, status updates, AI match, compare, printable report, candidate search and detail |
+| `/api/assessments` | admin, recruiter | assessment CRUD, results, AI question drafting |
+| `/api/mentor/...` | mentor | dashboard, students, student detail, feedback/notes, plans/goals, sessions, AI recommendations |
+| `/api/admin/...` | admin | analytics, users, assignments, jobs, categories, question bank, rubrics, badges, reward rules, flagged review, AI usage, performance, errors, audit logs, settings, security settings, backup, placement report (JSON/CSV) |
+| `/api/monitoring/...` | admin, authorised mentors and recruiters | integrity sessions, events and reviews |
+| `/api/voice/...` | signed in | TTS status, speak, warm-up |
+| `/api/health/live`, `/api/health/ready` | anyone | liveness and readiness (AI parts reported as degraded, never faked) |
+
+## 7. How the portals connect
+
+- **Students** upload a resume and get an AI analysis. They take mock interviews and receive scores and a report. These are stored as progress records, which feed badges and points, update mentor goals, and alert the mentor if a score is low.
+- **Mentors** see their assigned students' resume analysis, interviews, English sessions, and assessments. They write feedback and private notes, create improvement plans with goals and deadlines, and schedule sessions. Students are notified, and goals tied to interviews, English, or assessments complete automatically when the student does the work.
+- **Recruiters** publish jobs. Eligible students apply and get an instant rule-based match. The recruiter can then run an AI match explanation, compare 2-4 candidates side by side, print a candidate report, and update the status. Every change notifies the student (live, over Server-Sent Events) and is recorded in the status history.
+- **Admins** approve recruiters, assign mentors, and configure question banks, rubrics, badges, reward rules, security settings and platform settings. They review flagged activity, which can revoke points, monitor AI usage, speed and errors, and export placement reports. Admin actions are written to the audit log.
