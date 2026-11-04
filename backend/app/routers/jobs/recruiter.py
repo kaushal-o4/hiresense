@@ -1,213 +1,25 @@
-"""Placement opportunities (student side) and recruiter job/candidate management."""
-import csv
-import io
+"""Recruiter portal: dashboard, jobs, applicants, AI match, compare, candidate report, candidate search."""
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
-from ..odm import func, or_, select
-from ..odm import Session
 
-from ..config import get_settings
-from ..database import get_db
-from ..deps import client_ip, require_recruiter, require_student
-from ..models import (
-    ApplicationMessage, ApplicationStatusHistory, Assessment, AssessmentAssignment,
-    InterviewSession, Job, JobApplication, JobRequirement, StudentProfile, User,
+from ...odm import func, or_, select
+from ...odm import Session
+from ...database import get_db
+from ...deps import client_ip, require_recruiter
+from ...models import (
+    ApplicationMessage, ApplicationStatusHistory, InterviewSession, Job, JobApplication, JobRequirement,
+    StudentProfile, User,
 )
-from ..schemas import ApplicationStatusIn, ApplyIn, AssignAssessmentIn, CompareIn, JobIn, MessageIn
-from ..serializers import application_out, interview_out, iso, job_out, resume_out
-from ..services import ai, mailer, matching
-from ..services.access import recruiter_has_applicant
-from ..services.common import audit, normalize_skills, notify, paginate
-from ..services.insights import current_resume, student_summary
+from ...schemas import ApplicationStatusIn, CompareIn, JobIn
+from ...serializers import application_out, interview_out, iso, job_out, resume_out
+from ...services.access import recruiter_has_applicant
+from ...services.common import audit, normalize_skills, notify, paginate
+from ...services.insights import current_resume, student_summary
+from .common import STATUS_LABELS, _assignments_out, _candidate_payload, _email_student, eligibility, match_with_review, semantic_match
 
-student_router = APIRouter(prefix="/api/student", tags=["student jobs"])
+
 recruiter_router = APIRouter(prefix="/api/recruiter", tags=["recruiter"])
-
-STATUS_LABELS = {"applied": "Applied", "shortlisted": "Shortlisted", "interview_scheduled": "Interview scheduled",
-                 "on_hold": "On hold", "selected": "Selected", "rejected": "Not selected", "withdrawn": "Withdrawn"}
-
-
-def _email_student(student: User, subject: str, text: str) -> None:
-    """Email a recruitment update too (only when SMTP is configured; the in-app notification is always created)."""
-    url = f"{get_settings().frontend_url.rstrip('/')}/student/applications"
-    mailer.send(student.email, subject, f"Hello {student.full_name},\n\n{text}\n\nView your applications: {url}\n")
-
-
-def _aware(dt):
-    return dt if dt is None or dt.tzinfo else dt.replace(tzinfo=timezone.utc)
-
-
-AI_METHODS = ("semantic+ai", "ai")
-
-
-def semantic_match(db: Session, job: Job, student: User) -> dict:
-    """Deterministic semantic match (services/matching.py). Works without the language model."""
-    _ok, reasons = eligibility(job, student.student_profile)
-    reasons = [r for r in reasons if "deadline" not in r.lower()]  # deadline is about the job, not the candidate
-    try:
-        return matching.compute_match(matching.job_profile(job), matching.candidate_profile(db, student),
-                                      eligibility_issues=reasons)
-    except matching.MatchInputError as exc:
-        return {"score": 0, "method": "unavailable", "matched_skills": [], "missing_skills": [],
-                "explanation": str(exc), "generated_at": datetime.now(timezone.utc).isoformat()}
-
-
-def match_with_review(db: Session, job: Job, app: JobApplication, reviewer_id: int) -> tuple[dict, str | None]:
-    """Semantic match plus a local-LLM explanation. The LLM never changes the score.
-
-    Returns (match, ai_error). When the LLM is unavailable the semantic match is still returned.
-    """
-    m = semantic_match(db, job, app.student)
-    if m["method"] == "unavailable":
-        return m, m["explanation"]
-    try:
-        review = ai.match_review(db, reviewer_id, job=_job_payload(job), candidate=_candidate_payload(db, app.student),
-                                 computed=m)
-    except ai.AIUnavailable as exc:
-        m["ai_note"] = f"AI explanation unavailable: {exc.message}"
-        return m, exc.message
-    m["score_explanation"] = m["explanation"]
-    m["explanation"] = review["explanation"]
-    m["strengths"] = review["strengths"] or m["strengths"]
-    # Keep the computed concerns (e.g. missing required skills) so the model can never hide a gap.
-    m["concerns"] = m["concerns"] + [c for c in review["concerns"] if c not in m["concerns"]]
-    m["method"] = "semantic+ai"
-    return m, None
-
-
-def eligibility(job: Job, profile: StudentProfile | None) -> tuple[bool, list[str]]:
-    reasons = []
-    if job.min_cgpa is not None and (not profile or profile.cgpa is None or profile.cgpa < job.min_cgpa):
-        reasons.append(f"Minimum CGPA {job.min_cgpa} required")
-    if job.eligible_branches:
-        allowed = {b.lower() for b in job.eligible_branches}
-        if not profile or not profile.branch or profile.branch.lower() not in allowed:
-            reasons.append("Open to branches: " + ", ".join(job.eligible_branches))
-    if job.graduation_years and (not profile or profile.graduation_year not in job.graduation_years):
-        reasons.append("Open to graduation years: " + ", ".join(map(str, job.graduation_years)))
-    if job.deadline and _aware(job.deadline) < datetime.now(timezone.utc):
-        reasons.append("Application deadline has passed")
-    return not reasons, reasons
-
-
-# =========================================================================== student
-
-@student_router.get("/jobs")
-def browse_jobs(q: str | None = None, location: str | None = None, job_type: str | None = None,
-                skill: str | None = None, eligible_only: bool = False, page: int = 1, page_size: int = 12,
-                user: User = Depends(require_student), db: Session = Depends(get_db)):
-    stmt = select(Job).where(Job.status == "published")
-    if q:
-        like = f"%{q}%"
-        stmt = stmt.where(or_(Job.title.ilike(like), Job.company_name.ilike(like), Job.description.ilike(like)))
-    if location:
-        stmt = stmt.where(Job.location.ilike(f"%{location}%"))
-    if job_type:
-        stmt = stmt.where(Job.job_type == job_type)
-    if skill:
-        stmt = stmt.where(Job.id.in_(select(JobRequirement.job_id).where(JobRequirement.skill.ilike(f"%{skill}%"))))
-    stmt = stmt.order_by(Job.published_at.desc().nullslast(), Job.id.desc())
-    profile = user.student_profile
-    my_skills = {s.lower() for s in (profile.skills if profile else [])}
-    applied = dict(db.execute(select(JobApplication.job_id, JobApplication.status)
-                              .where(JobApplication.student_id == user.id)).all())
-
-    def decorate(j: Job) -> dict:
-        d = job_out(j)
-        ok, reasons = eligibility(j, profile)
-        d["eligible"], d["ineligible_reasons"] = ok, reasons
-        d["skill_match"] = [s for s in d["required_skills"] + d["preferred_skills"] if s.lower() in my_skills]
-        d["application_status"] = applied.get(j.id)
-        return d
-
-    if eligible_only:
-        jobs = [decorate(j) for j in db.scalars(stmt).all()]
-        jobs = [j for j in jobs if j["eligible"]]
-        total = len(jobs)
-        start = (max(page, 1) - 1) * page_size
-        return {"items": jobs[start:start + page_size], "total": total, "page": page, "page_size": page_size,
-                "pages": max((total + page_size - 1) // page_size, 1)}
-    items, meta = paginate(db, stmt, page, page_size)
-    return {"items": [decorate(j) for j in items], **meta}
-
-
-@student_router.get("/jobs/{job_id}")
-def job_detail(job_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
-    job = db.get(Job, job_id)
-    if not job or job.status == "draft":
-        raise HTTPException(404, "Job not found")
-    d = job_out(job)
-    d["eligible"], d["ineligible_reasons"] = eligibility(job, user.student_profile)
-    app = db.scalar(select(JobApplication).where(JobApplication.job_id == job.id, JobApplication.student_id == user.id))
-    d["application"] = application_out(app) if app else None
-    d["assessments"] = [{"id": a.id, "title": a.title} for a in db.scalars(
-        select(Assessment).where(Assessment.job_id == job.id, Assessment.active.is_(True)))]
-    return d
-
-
-@student_router.post("/jobs/{job_id}/apply", status_code=201)
-def apply(job_id: int, body: ApplyIn, user: User = Depends(require_student), db: Session = Depends(get_db)):
-    job = db.get(Job, job_id)
-    if not job or job.status != "published":
-        raise HTTPException(404, "This job is not open for applications")
-    ok, reasons = eligibility(job, user.student_profile)
-    if not ok:
-        raise HTTPException(400, "You are not eligible: " + "; ".join(reasons))
-    existing = db.scalar(select(JobApplication).where(JobApplication.job_id == job.id,
-                                                      JobApplication.student_id == user.id))
-    if existing and existing.status != "withdrawn":
-        raise HTTPException(409, "You have already applied to this job")
-    if existing:
-        existing.status = "applied"
-        existing.cover_letter = body.cover_letter
-        existing.history.append(ApplicationStatusHistory(from_status="withdrawn", to_status="applied",
-                                                         changed_by=user.id, note="Re-applied"))
-        app = existing
-    else:
-        app = JobApplication(job_id=job.id, student_id=user.id, cover_letter=body.cover_letter, status="applied")
-        app.history.append(ApplicationStatusHistory(to_status="applied", changed_by=user.id))
-        db.add(app)
-    app.match = semantic_match(db, job, user)
-    notify(db, job.recruiter_id, "New application", f"{user.full_name} applied for {job.title}.", "application",
-           f"/recruiter/jobs/{job.id}")
-    db.commit()
-    return application_out(app)
-
-
-@student_router.get("/applications")
-def my_applications(status: str | None = None, user: User = Depends(require_student), db: Session = Depends(get_db)):
-    stmt = select(JobApplication).where(JobApplication.student_id == user.id)
-    if status:
-        stmt = stmt.where(JobApplication.status == status)
-    out = []
-    for a in db.scalars(stmt.order_by(JobApplication.updated_at.desc())):
-        d = application_out(a)
-        d["unread_messages"] = db.scalar(select(func.count(ApplicationMessage.id)).where(
-            ApplicationMessage.application_id == a.id, ApplicationMessage.sender_id != user.id,
-            ApplicationMessage.read.is_(False))) or 0
-        d["message_count"] = db.scalar(select(func.count(ApplicationMessage.id)).where(
-            ApplicationMessage.application_id == a.id)) or 0
-        d["assignments"] = _assignments_out(db, a)
-        out.append(d)
-    return out
-
-
-@student_router.post("/applications/{application_id}/withdraw")
-def withdraw(application_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
-    app = db.get(JobApplication, application_id)
-    if not app or app.student_id != user.id:
-        raise HTTPException(404, "Application not found")
-    if app.status in ("selected", "rejected", "withdrawn"):
-        raise HTTPException(400, f"Cannot withdraw an application that is {STATUS_LABELS[app.status].lower()}")
-    app.history.append(ApplicationStatusHistory(from_status=app.status, to_status="withdrawn", changed_by=user.id))
-    app.status = "withdrawn"
-    notify(db, app.job.recruiter_id, "Application withdrawn", f"{user.full_name} withdrew from {app.job.title}.",
-           "application", f"/recruiter/jobs/{app.job_id}")
-    db.commit()
-    return application_out(app)
-
 
 # =========================================================================== recruiter
 
@@ -414,24 +226,6 @@ def update_status(application_id: int, body: ApplicationStatusIn, request: Reque
     _email_student(app.student, f"Application update: {app.job.title}", msg)
     return application_out(app, include_student=True)
 
-
-def _candidate_payload(db: Session, student: User) -> dict:
-    s = student_summary(db, student)
-    resume = current_resume(db, student.id)
-    p = student.student_profile
-    return {
-        "education": {"college": s["student"]["college"], "branch": s["student"]["branch"],
-                      "graduation_year": s["student"]["graduation_year"], "cgpa": s["student"]["cgpa"]},
-        "skills": s["student"]["skills"],
-        "projects": (p.projects if p else []) or [],
-        "experience": (p.experience if p else []) or [],
-        "resume_analysis": {k: (resume.analysis or {}).get(k) for k in
-                            ("candidate_summary", "skills", "projects", "experience", "certifications")}
-        if resume and resume.analysis else None,
-        "interview_performance": s["interviews"], "english": s["english"], "assessments": s["assessments"],
-    }
-
-
 @recruiter_router.post("/applications/{application_id}/match")
 def ai_match(application_id: int, user: User = Depends(require_recruiter), db: Session = Depends(get_db)):
     app = _own_application(db, user, application_id)
@@ -456,7 +250,7 @@ def _recent_interviews(db: Session, student_id: int, limit: int = 5) -> list[dic
 
 
 def _compare_row(db: Session, user: User, job: Job, app: JobApplication) -> dict:
-    from .monitoring import integrity_overview  # late import: monitoring is a sibling router
+    from ..monitoring import integrity_overview  # late import: monitoring is a sibling router
 
     s = student_summary(db, app.student)
     req = {r.skill.lower() for r in job.requirements if r.importance == "required"}
@@ -617,152 +411,3 @@ def candidate_detail(student_id: int, user: User = Depends(require_recruiter), d
         data["summary"]["student"]["email"] = None
         data["notice"] = "Detailed resume and interview reports are visible once this candidate applies to one of your jobs."
     return data
-
-
-# =========================================================================== screening, assignments, messages, export
-
-def _assignments_out(db: Session, app: JobApplication) -> list[dict]:
-    rows = db.scalars(select(AssessmentAssignment).where(AssessmentAssignment.application_id == app.id)).all()
-    return [{"id": r.id, "assessment_id": r.assessment_id, "title": r.assessment.title, "status": r.status,
-             "due_at": iso(r.due_at), "score": r.result.score if r.result else None,
-             "passed": r.result.passed if r.result else None} for r in rows]
-
-
-def _job_payload(job: Job) -> dict:
-    return {"title": job.title, "description": job.description, "experience_years": job.experience_years,
-            "min_cgpa": job.min_cgpa, "eligible_branches": job.eligible_branches,
-            "required_skills": [r.skill for r in job.requirements if r.importance == "required"],
-            "preferred_skills": [r.skill for r in job.requirements if r.importance == "preferred"]}
-
-
-@recruiter_router.post("/jobs/{job_id}/screen")
-def screen_all(job_id: int, force: bool = False, user: User = Depends(require_recruiter), db: Session = Depends(get_db)):
-    """AI resume screening for every active applicant of a job (up to 25 per request)."""
-    job = _own_job(db, user, job_id)
-    apps = db.scalars(select(JobApplication).where(JobApplication.job_id == job.id,
-                                                   JobApplication.status != "withdrawn")).all()
-    todo = [a for a in apps if force or (a.match or {}).get("method") not in AI_METHODS][:25]
-    screened, error = 0, None
-    for a in todo:
-        m, ai_error = match_with_review(db, job, a, user.id)
-        a.match = m
-        db.commit()
-        if ai_error:  # semantic score was refreshed, but the AI explanation is unavailable - stop calling it
-            error = ai_error
-            break
-        screened += 1
-    remaining = sum(1 for a in apps if (a.match or {}).get("method") not in AI_METHODS)
-    if error and screened == 0:
-        raise HTTPException(503, error + " Semantic match scores are still shown.")
-    return {"screened": screened, "remaining": remaining, "error": error}
-
-
-@recruiter_router.post("/applications/{application_id}/assessments", status_code=201)
-def assign_assessment(application_id: int, body: AssignAssessmentIn, request: Request,
-                      user: User = Depends(require_recruiter), db: Session = Depends(get_db)):
-    app = _own_application(db, user, application_id)
-    a = db.get(Assessment, body.assessment_id)
-    if not a or a.created_by != user.id or a.job_id != app.job_id:
-        raise HTTPException(400, "Choose one of your assessments linked to this job")
-    if not a.active:
-        raise HTTPException(400, "This assessment is inactive")
-    if db.scalar(select(AssessmentAssignment.id).where(AssessmentAssignment.assessment_id == a.id,
-                                                       AssessmentAssignment.application_id == app.id)):
-        raise HTTPException(409, "This assessment is already assigned to the candidate")
-    db.add(AssessmentAssignment(assessment_id=a.id, application_id=app.id, student_id=app.student_id,
-                                assigned_by=user.id, due_at=body.due_at))
-    text = f"You have been assigned the assessment '{a.title}' for {app.job.title}."
-    if body.due_at:
-        text += f" Please complete it by {body.due_at.strftime('%d %b %Y, %H:%M')} (UTC)."
-    if body.message:
-        text += f"\n\n{body.message}"
-    db.add(ApplicationMessage(application_id=app.id, sender_id=user.id, kind="assessment", body=text))
-    notify(db, app.student_id, "Assessment assigned", text.split("\n")[0], "assessment", "/student/assessments")
-    audit(db, user.id, "assessment.assign", "application", app.id, {"assessment_id": a.id}, client_ip(request))
-    db.commit()
-    return {"assignments": _assignments_out(db, app)}
-
-
-def message_out(m: ApplicationMessage) -> dict:
-    return {"id": m.id, "sender_id": m.sender_id, "sender_name": m.sender.full_name if m.sender else "System",
-            "kind": m.kind, "body": m.body, "read": m.read, "created_at": iso(m.created_at)}
-
-
-def _thread(db: Session, app: JobApplication, viewer: User) -> list[dict]:
-    msgs = db.scalars(select(ApplicationMessage).where(ApplicationMessage.application_id == app.id)
-                      .order_by(ApplicationMessage.id)).all()
-    for m in msgs:
-        if m.sender_id != viewer.id and not m.read:
-            m.read = True
-    db.commit()
-    return [message_out(m) for m in msgs]
-
-
-@recruiter_router.get("/applications/{application_id}/messages")
-def recruiter_messages(application_id: int, user: User = Depends(require_recruiter), db: Session = Depends(get_db)):
-    return _thread(db, _own_application(db, user, application_id), user)
-
-
-@recruiter_router.post("/applications/{application_id}/messages", status_code=201)
-def recruiter_send(application_id: int, body: MessageIn, user: User = Depends(require_recruiter),
-                   db: Session = Depends(get_db)):
-    app = _own_application(db, user, application_id)
-    db.add(ApplicationMessage(application_id=app.id, sender_id=user.id, kind=body.kind, body=body.body.strip()))
-    title = "Interview invitation" if body.kind == "invitation" else f"Message from {app.job.company_name}"
-    notify(db, app.student_id, title, body.body[:140], "message", "/student/applications")
-    db.commit()
-    _email_student(app.student, f"{title} - {app.job.title}", body.body.strip())
-    return _thread(db, app, user)
-
-
-def _student_application(db: Session, user: User, application_id: int) -> JobApplication:
-    app = db.get(JobApplication, application_id)
-    if not app or app.student_id != user.id:
-        raise HTTPException(404, "Application not found")
-    return app
-
-
-@student_router.get("/applications/{application_id}/messages")
-def student_messages(application_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
-    return _thread(db, _student_application(db, user, application_id), user)
-
-
-@student_router.post("/applications/{application_id}/messages", status_code=201)
-def student_send(application_id: int, body: MessageIn, user: User = Depends(require_student),
-                 db: Session = Depends(get_db)):
-    app = _student_application(db, user, application_id)
-    if app.status == "withdrawn":
-        raise HTTPException(400, "This application was withdrawn")
-    db.add(ApplicationMessage(application_id=app.id, sender_id=user.id, kind="message", body=body.body.strip()))
-    notify(db, app.job.recruiter_id, f"Message from {user.full_name}", body.body[:140], "message",
-           f"/recruiter/jobs/{app.job_id}")
-    db.commit()
-    return _thread(db, app, user)
-
-
-def _csv(rows: list[dict], filename: str) -> StreamingResponse:
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()) if rows else ["empty"])
-    writer.writeheader()
-    writer.writerows(rows)
-    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                             headers={"Content-Disposition": f"attachment; filename={filename}"})
-
-
-@recruiter_router.get("/jobs/{job_id}/export")
-def export_applicants(job_id: int, request: Request, user: User = Depends(require_recruiter), db: Session = Depends(get_db)):
-    job = _own_job(db, user, job_id)
-    rows = []
-    for a in db.scalars(select(JobApplication).where(JobApplication.job_id == job.id)):
-        s = student_summary(db, a.student)
-        st = s["student"]
-        rows.append({"application_id": a.id, "name": st["full_name"], "email": st["email"], "college": st["college"] or "",
-                     "branch": st["branch"] or "", "graduation_year": st["graduation_year"] or "",
-                     "cgpa": st["cgpa"] if st["cgpa"] is not None else "", "status": a.status,
-                     "match_score": (a.match or {}).get("score", ""), "match_method": (a.match or {}).get("method", ""),
-                     "interview_avg": s["interviews"]["average_score"] or "", "english_avg": s["english"]["average_score"] or "",
-                     "assessment_avg": s["assessments"]["average_score"] or "", "readiness": s["readiness"]["score"],
-                     "skills": "; ".join(st["skills"]), "applied_on": iso(a.created_at)})
-    audit(db, user.id, "export.applicants", "job", job.id, {"rows": len(rows)}, client_ip(request))
-    db.commit()
-    return _csv(rows, f"applicants_job_{job.id}.csv")

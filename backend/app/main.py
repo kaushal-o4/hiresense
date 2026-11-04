@@ -17,7 +17,7 @@ from .config import get_settings
 from .database import SessionLocal
 from .models import ErrorLog
 from .routers import (
-    admin, assessments, auth, common, english, interviews, jobs, mentors, monitoring, students, voice,
+    admin, assessments, auth, common, english, interview_live, interviews, jobs, mentors, monitoring, students, voice,
 )
 
 logger = logging.getLogger("hiresense")
@@ -73,7 +73,7 @@ async def unhandled_error(request: Request, exc: Exception):
 
 
 for r in (auth.router, common.router, students.router, students.shared, interviews.public_router,
-          interviews.router, english.router,
+          interviews.router, interview_live.router, english.router,
           assessments.student_router, assessments.manage_router, jobs.student_router, jobs.recruiter_router,
           mentors.router, admin.router, voice.router, monitoring.router):
     app.include_router(r)
