@@ -17,3 +17,5 @@ backend/tests_e2e/output/
 backend/.vscode/
 backend/tests_perf/results/stt_clips/
 .claude/
+.env.docker
+backend/.env.cloud

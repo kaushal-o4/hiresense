@@ -78,6 +78,9 @@ export default function AuthShell({ title, subtitle, children }) {
             <div className="mt-8">{children}</div>
           </div>
         </div>
+        <p className="pb-6 text-center text-xs text-slate-500">
+          <a href="/privacy" className="hover:underline">Privacy notice</a>
+        </p>
       </div>
     </div>
   );

@@ -24,7 +24,7 @@ from ..models import (
 )
 from ..schemas import AnswerIn, InterviewStart, TurnIn
 from ..serializers import interview_out
-from ..services import ai, interview_engine, interviewers, local_llm, perf, question_classifier, speech_stream, tts
+from ..services import ai, background, consent, interview_engine, interviewers, local_llm, perf, question_classifier, speech_stream, tts
 from ..services.common import get_setting, notify, paginate
 from ..services.insights import current_resume, record_progress
 from ..services.report_metrics import report_metrics
@@ -235,6 +235,7 @@ def start_interview(body: InterviewStart, user: User = Depends(require_student),
     get their first question immediately; live voice interviews with `defer_first_question` get it written in a
     background thread while the student goes through the setup screen.
     """
+    consent.check(user)
     max_q = int(get_setting(db, "max_interview_questions") or 10)
     if body.question_count > max_q:
         raise HTTPException(400, f"An interview can have at most {max_q} questions")
@@ -379,7 +380,7 @@ def feedback_job(answer_id: int, user_id: int) -> None:
 
 
 def _feedback_in_background(answer_id: int, user_id: int) -> None:
-    threading.Thread(target=feedback_job, args=(answer_id, user_id), daemon=True, name=f"feedback-{answer_id}").start()
+    background.spawn(feedback_job, answer_id, user_id, name=f"feedback-{answer_id}")
 
 
 def _check_suspicious(session: InterviewSession, q: InterviewQuestion, body: AnswerIn) -> None:
@@ -516,7 +517,7 @@ def _start_prefetch(session_id: int, user_id: int) -> None:
             db.close()
             done.set()
             _prefetch.pop(session_id, None)
-    threading.Thread(target=run, daemon=True, name=f"prefetch-{session_id}").start()
+    background.spawn(run, name=f"prefetch-{session_id}")
 
 
 def _sse(event: str, data: dict) -> str:
@@ -718,7 +719,7 @@ def interview_turn(session_id: int, body: TurnIn, user: User = Depends(require_s
         finally:
             _unlock_turn(session_id)
             events.put(None)
-    threading.Thread(target=work, daemon=True, name=f"turn-{session_id}").start()
+    background.spawn(work, name=f"turn-{session_id}")
 
     def stream():
         while True:

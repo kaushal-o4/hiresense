@@ -9,6 +9,7 @@ import { api, get, post, put } from "../api";
 import { useAuth } from "../auth";
 import { Button, Card, ErrorBox, Field, PageHeader, Spinner, useApi, useToast } from "../components/ui";
 import { speak } from "../components/useSpeech";
+import { usePrivacyInfo } from "../components/AIConsent";
 
 const LANGS = [
   { value: "en-IN", label: "English (India)" }, { value: "en-US", label: "English (US)" },
@@ -98,6 +99,7 @@ export default function Settings() {
                 <Toggle checked={data.share_with_recruiters} label="Share profile with recruiters"
                   onChange={(v) => save({ share_with_recruiters: v }, v ? "Your profile is now visible to recruiters" : "Your profile is hidden from recruiter search")} />
               </div>
+              <AIConsentSetting />
             </Card>
           )}
         </>
@@ -114,6 +116,36 @@ export default function Settings() {
     </div>
   );
 }
+
+function AIConsentSetting() {
+  const { user, setUser } = useAuth();
+  const info = usePrivacyInfo();
+  const toast = useToast();
+  if (!info?.consent_required) return null;
+  const agreed = !!user.ai_data_consent_at;
+  const change = async (accept) => {
+    try {
+      const res = await post("/auth/ai-consent", { accept });
+      setUser(res.user);
+      toast(accept ? "Thanks - AI features are on" : "Consent withdrawn - AI features are off until you agree again");
+    } catch (e) {
+      toast(e.message, "error");
+    }
+  };
+  return (
+    <div className="mt-5 flex max-w-2xl items-center justify-between gap-4 border-t border-slate-200 pt-5">
+      <div>
+        <p className="text-sm font-medium">Allow processing by Google Gemini</p>
+        <p className="text-xs text-slate-500">Resume analysis, AI interviews and English practice send your text
+          {info.speech_to_google ? " and voice recordings" : ""} to Google.
+          {agreed ? ` Agreed on ${new Date(user.ai_data_consent_at).toLocaleDateString()}.` : " Not agreed - these features are off."}{" "}
+          <a href="/privacy" className="text-brand-600 hover:underline">Privacy notice</a></p>
+      </div>
+      <Toggle checked={agreed} label="Allow processing by Google Gemini" onChange={change} />
+    </div>
+  );
+}
+
 
 function DeleteAccount() {
   const { setUser } = useAuth();

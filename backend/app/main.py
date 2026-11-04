@@ -99,6 +99,8 @@ def check_secret_key() -> None:
 @app.on_event("startup")
 def warm_up_models():
     check_secret_key()
+    from .services import background
+    background.started()
     from .database import init_db
     init_db()  # MongoDB indexes and unique constraints
     # Load the models in the background so the first request doesn't wait for them (the language model alone took
@@ -124,6 +126,15 @@ def warm_up_models():
     except Exception:  # noqa: BLE001 - e.g. tables not migrated yet
         logger.warning("could not purge expired integrity events", exc_info=True)
     warn_published_admin_password()
+
+
+@app.on_event("shutdown")
+def drain_background_jobs():
+    """SIGTERM / Ctrl+C: uvicorn stops accepting requests and lets open ones finish, then this waits (up to
+    SHUTDOWN_GRACE_SECONDS) for background jobs such as answer feedback and reports to save their results."""
+    from .services import background
+    left = background.drain(settings.shutdown_grace_seconds)
+    logger.info("shutdown complete (%d background job(s) cut off)", left)
 
 
 def warn_published_admin_password():

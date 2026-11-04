@@ -33,7 +33,8 @@ def capture_mail(monkeypatch):
         sent.append({"to": to, "subject": subject, "body": body})
         return True
     monkeypatch.setattr(auth_router.mailer, "send", fake_send)
-    auth_router._reset_requests.clear()
+    from app.services import limiter
+    limiter.reset()
     return sent
 
 

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Download, FileUp, Loader2, Mic, Pencil, RefreshCw, Trash2, Wand2 } from "lucide-react";
 import { api, del, download, get, patch, post } from "../../api";
+import AIConsentGate from "../../components/AIConsent";
 import {
   Button, Card, ConfirmButton, EmptyState, ErrorBox, Field, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner,
   StatusPill, fmtDateTime, useApi, useToast,
@@ -284,6 +285,7 @@ export default function Resume() {
           <input ref={fileRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => upload(e.target.files[0])} />
           <Button onClick={() => fileRef.current?.click()} loading={uploading}><FileUp size={16} /> {uploading ? "Analysing…" : "Upload resume"}</Button>
         </>} />
+      <AIConsentGate action="analyse your resume" />
       {(uploading || busyId === current?.id) && <AnalysingNotice />}
       {loading && <Spinner />}
       <ErrorBox message={error} onRetry={reload} />

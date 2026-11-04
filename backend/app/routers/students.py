@@ -20,7 +20,7 @@ from ..models import (
 )
 from ..schemas import ResumeAnalysisCorrection
 from ..serializers import application_out, drive_out, iso, mentor_session_out, plan_out, resume_out
-from ..services import ai
+from ..services import ai, consent
 from ..services.access import ensure_can_view_student
 from ..services.common import normalize_skills
 from ..services.insights import (
@@ -76,6 +76,7 @@ def progress(user: User = Depends(require_student), db: Session = Depends(get_db
 
 @router.post("/recommendations")
 def recommendations(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    consent.check(user)
     summary = student_summary(db, user)
     try:
         return {"method": "ai", **ai.student_recommendations(db, user.id, snapshot=summary)}
@@ -85,6 +86,7 @@ def recommendations(user: User = Depends(require_student), db: Session = Depends
 
 @router.post("/role-recommendations")
 def role_recommendations(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    consent.check(user)
     summary = student_summary(db, user)
     p = user.student_profile
     snapshot = {**summary, "projects": (p.projects if p else []) or [], "experience": (p.experience if p else []) or []}
@@ -273,6 +275,7 @@ def _prune_resume_history(db: Session, student_id: int) -> None:
 def upload_resume(file: UploadFile = File(...), user: User = Depends(require_student),
                   db: Session = Depends(get_db)):
     # Sync endpoint: FastAPI runs it in a worker thread, so the blocking AI call doesn't stall the server.
+    consent.check(user)
     settings = get_settings()
     data = file.file.read(settings.max_upload_mb * 1024 * 1024 + 1)
     if len(data) > settings.max_upload_mb * 1024 * 1024:
@@ -308,6 +311,7 @@ def upload_resume(file: UploadFile = File(...), user: User = Depends(require_stu
 
 @router.post("/resumes/{resume_id}/analyze")
 def reanalyze(resume_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    consent.check(user)
     resume = db.get(Resume, resume_id)
     if not resume or resume.student_id != user.id:
         raise HTTPException(404, "Resume not found")

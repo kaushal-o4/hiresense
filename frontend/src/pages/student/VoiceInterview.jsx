@@ -398,7 +398,7 @@ export default function VoiceInterview() {
         // Live captions of the piece being spoken (one request at a time). The latest one also serves as the final
         // text when it already reaches the end of the speech, so nothing is left to transcribe after the pause.
         interimBusy: () => !!interim.current && !interim.current.done,
-        onInterim: voice?.stt?.enabled && qid ? (clip) => {
+        onInterim: voice?.stt?.enabled && voice.stt.live_captions !== false && qid ? (clip) => {
           const t = performance.now();
           const it = { from: clip.from, to: clip.to, done: false, text: "" };
           it.promise = upload(clip, "live.wav", { live: "true" })

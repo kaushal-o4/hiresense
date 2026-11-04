@@ -21,6 +21,7 @@ class StudentRegister(BaseModel):
     branch: str | None = Field(default=None, max_length=120)
     graduation_year: int | None = Field(default=None, ge=1990, le=2100)
     share_with_recruiters: bool = False
+    ai_consent: bool = False  # agreed to the hosted-AI data notice (only asked when LOCAL_AI_PROVIDER=gemini)
 
     _pw = field_validator("password")(_strong_password)
 

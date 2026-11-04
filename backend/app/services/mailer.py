@@ -6,7 +6,7 @@ Messages are sent on a background thread so a slow mail server never delays an A
 """
 import logging
 import smtplib
-import threading
+from . import background
 from email.message import EmailMessage
 
 from ..config import get_settings
@@ -41,5 +41,5 @@ def send(to: str, subject: str, body: str) -> bool:
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(body)
-    threading.Thread(target=_deliver, args=(msg,), daemon=True, name="mail").start()
+    background.spawn(_deliver, msg, name="mail")
     return True

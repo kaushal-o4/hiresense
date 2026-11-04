@@ -4,7 +4,7 @@
 // Reliability: every event gets a client id, so a batch can be re-sent safely (the server stores each id once).
 // Unsent events are kept in sessionStorage, so a reload or crash does not lose them (the reloaded page sends them),
 // and the page-close handler flushes with a keepalive request. Network failures are reported to onConnection.
-import { post, put } from "../api";
+import { apiUrl, post, put } from "../api";
 
 const storeKey = (id) => `hs-integrity-queue-${id}`;
 const store = {
@@ -70,7 +70,7 @@ export class EventReporter {
   flushOnExit() {
     if (this.latestAttention) {
       try {
-        fetch(`/api/student/interviews/${this.sessionId}/attention`, {
+        fetch(apiUrl(`/api/student/interviews/${this.sessionId}/attention`), {
           method: "PUT", credentials: "include", keepalive: true, headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.latestAttention),
         }).catch(() => {});
@@ -78,7 +78,7 @@ export class EventReporter {
     }
     if (!this.queue.length) return;
     try {
-      fetch(`/api/student/interviews/${this.sessionId}/integrity-events`, {
+      fetch(apiUrl(`/api/student/interviews/${this.sessionId}/integrity-events`), {
         method: "POST", credentials: "include", keepalive: true, headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ events: this.queue.slice(0, 50) }),
       }).catch(() => {});

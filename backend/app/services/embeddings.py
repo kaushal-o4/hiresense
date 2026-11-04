@@ -95,7 +95,11 @@ def _embed_one(text: str) -> tuple:
 
 def embed(texts: list[str]):
     """Unit-length embeddings, shape (len(texts), dim). Raises EmbeddingUnavailable."""
-    import numpy as np
+    _get_model()  # first: EmbeddingUnavailable when turned off / not installed (cloud hosts have no numpy either)
+    try:
+        import numpy as np
+    except ImportError:
+        raise EmbeddingUnavailable("numpy is not installed.")
     if not texts:
         return np.zeros((0, 0), dtype="float32")
     clean = [" ".join((t or "").split())[:2000] or "-" for t in texts]

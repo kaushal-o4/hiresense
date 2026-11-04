@@ -16,7 +16,7 @@ from ..deps import require_student
 from ..models import EnglishMessage, EnglishSession, User, VocabularyItem
 from ..schemas import EnglishMessageIn, EnglishStart, VocabularyReviewIn, VocabularyWordIn
 from ..serializers import english_out
-from ..services import ai, english_companion, english_profile, english_vocab, speech_stream
+from ..services import ai, background, consent, english_companion, english_profile, english_vocab, speech_stream
 from ..services.common import paginate
 from ..services.insights import record_progress
 from ..services.rewards import after_activity, award_points, rule_requirements, streak_lengths
@@ -96,6 +96,7 @@ OPENERS = {
 
 @router.post("", status_code=201)
 def start(body: EnglishStart, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    consent.check(user)
     history = [{"sender": "student", "content": OPENERS[body.style].format(topic=body.topic.strip())}]
     try:
         opening = ai.english_reply(db, user.id, topic=body.topic, history=history, style=body.style,
@@ -331,7 +332,7 @@ def send_message_stream(session_id: int, body: EnglishMessageIn, user: User = De
                 _streaming.discard(session_id)
             events.put(None)
 
-    threading.Thread(target=work, daemon=True, name=f"english-stream-{session_id}").start()
+    background.spawn(work, name=f"english-stream-{session_id}")
 
     def stream():
         while True:

@@ -1,0 +1,51 @@
+# Render Blueprint for the HireSense API (cloud profile: Gemini, no local models). docs/DEPLOY.md, step 3.
+# Render dashboard -> New -> Blueprint -> pick this repository. Values marked "sync: false" are asked for once.
+services:
+  - type: web
+    name: hiresense-api
+    runtime: docker
+    plan: free            # sleeps after 15 min without traffic; the first request then takes ~1 min
+    region: singapore     # closest Render region to India
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health/live
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: MONGODB_URL          # MongoDB Atlas connection string (mongodb+srv://user:password@cluster/...)
+        sync: false
+      - key: MONGODB_DB
+        value: hiresense
+      - key: SECRET_KEY
+        generateValue: true       # Render creates a long random value
+      - key: COOKIE_SECURE
+        value: "true"
+      # lax: the browser calls the API through Vercel's /api rewrite (frontend/vercel.json), so the cookie is
+      # first-party. Use "none" only if the frontend calls this onrender.com URL directly (VITE_API_URL).
+      - key: COOKIE_SAMESITE
+        value: lax
+      - key: FRONTEND_URL         # e.g. https://hiresense.vercel.app (links in emails)
+        sync: false
+      - key: CORS_ORIGINS         # same value as FRONTEND_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        value: admin@hiresense.app
+      - key: ADMIN_PASSWORD       # strong password for the first admin login
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: GEMINI_BACKUP_MODELS
+        value: gemini-3.5-flash-lite
+      - key: AI_DAILY_LIMIT_PER_USER
+        value: "60"
+      - key: AI_MAX_CONCURRENT
+        value: "4"
+      # Free instances have no persistent disk: uploaded resume FILES are lost on restart/deploy (the extracted
+      # text and the analysis stay in MongoDB). Attach a Render disk at /data to keep them.
+      - key: UPLOAD_DIR
+        value: /tmp/hiresense-uploads
+      - key: REDIS_URL            # optional; leave empty for one instance
+        sync: false

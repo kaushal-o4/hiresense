@@ -2,6 +2,8 @@
 // for disconnection and revoked permissions, and fully stopped at the end (or when monitoring is withdrawn).
 // The microphone stays with MicRecorder, which opens it only while it is the candidate's turn.
 
+import { apiUrl } from "../api";
+
 export function cameraErrorMessage(e) {
   if (e?.name === "NotAllowedError" || e?.name === "SecurityError") return "Camera permission was denied.";
   if (e?.name === "NotFoundError" || e?.name === "OverconstrainedError") return "No camera was found.";
@@ -96,7 +98,7 @@ export async function testMicrophone(onLevel, ms = 1500) {
 export async function checkNetwork() {
   const t = performance.now();
   try {
-    const r = await fetch("/api/health", { cache: "no-store", credentials: "include" });
+    const r = await fetch(apiUrl("/api/health"), { cache: "no-store", credentials: "include" });
     return { ok: r.ok, ms: Math.round(performance.now() - t) };
   } catch {
     return { ok: false, ms: null };

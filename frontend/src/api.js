@@ -25,11 +25,14 @@ function formatDetail(detail) {
   return JSON.stringify(detail);
 }
 
-/** Full URL of an API path ("/notifications" -> "/api/notifications"). One place to change the API origin. */
-export const apiUrl = (path) => `/api${path}`;
+// Empty (default): the API is on this same site (/api via the Vite proxy, a Vercel rewrite or nginx), so the login
+// cookie is first-party. VITE_API_URL=https://api.example.com when the API is on another domain (then the backend
+// needs COOKIE_SAMESITE=none, COOKIE_SECURE=true and this site in CORS_ORIGINS).
+export const API_BASE = (import.meta.env?.VITE_API_URL || "").replace(/\/+$/, "");
+export const apiUrl = (p) => (API_BASE && p.startsWith("/api") ? API_BASE + p : p);
 
 export async function api(path, { method = "GET", body, params, raw = false } = {}) {
-  let url = apiUrl(path);
+  let url = apiUrl(`/api${path}`);
   if (params) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {

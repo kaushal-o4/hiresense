@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import Privacy from "./pages/Privacy";
 
 const Profile = lazy(() => import("./pages/Profile"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -90,6 +92,7 @@ export default function App() {
       <Route path="/register" element={<Navigate to={HOME[user.role]} replace />} />
       <Route path="/forgot-password" element={<Navigate to="/settings" replace />} />
       <Route path="/reset-password" element={<ResetPassword />} />{/* a reset link may be opened while signed in */}
+      <Route path="/privacy" element={<Privacy />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to={HOME[user.role]} replace />} />
         <Route path="/profile" element={<Profile />} />

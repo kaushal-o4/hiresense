@@ -23,7 +23,7 @@ export function backoffDelay(attempt, random = Math.random) {
 }
 
 export class NotificationStream {
-  constructor({ url = apiUrl("/notifications/stream"), EventSourceImpl = globalThis.EventSource,
+  constructor({ url = apiUrl("/api/notifications/stream"), EventSourceImpl = globalThis.EventSource,
     setTimeoutFn = (...a) => globalThis.setTimeout(...a), clearTimeoutFn = (id) => globalThis.clearTimeout(id),
     setIntervalFn = (...a) => globalThis.setInterval(...a), clearIntervalFn = (id) => globalThis.clearInterval(id),
     random = Math.random, doc = globalThis.document } = {}) {

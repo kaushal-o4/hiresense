@@ -23,8 +23,15 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production-please-use-a-long-random-string"
     access_token_minutes: int = 60 * 12
     cookie_secure: bool = False
+    # "lax" (default) when the frontend reaches the API on the same site (Vite proxy, Vercel /api rewrite, nginx).
+    # "none" only when the browser calls the API on a different domain (VITE_API_URL); it requires COOKIE_SECURE=true.
+    cookie_samesite: str = "lax"
 
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Optional Redis for the login lockout and rate limits (shared by all API workers). Empty = in process memory.
+    redis_url: str = ""
+    # Seconds to let running background jobs (answer feedback, reports, emails) finish when the server stops.
+    shutdown_grace_seconds: float = 20.0
     # Store per-step timings for the admin performance dashboard (never stores candidate content)
     perf_metrics_enabled: bool = True
     # Live notifications (GET /api/notifications/stream, Server-Sent Events). A comment line is sent every
@@ -137,6 +144,16 @@ class Settings(BaseSettings):
 
     upload_dir: str = str(BASE_DIR / "uploads")
     max_upload_mb: int = 5
+
+    @property
+    def samesite(self) -> str:
+        v = self.cookie_samesite.strip().lower()
+        return v if v in ("lax", "strict", "none") else "lax"
+
+    @property
+    def sends_data_to_google(self) -> bool:
+        """True when resumes/answers go to the hosted Gemini API (the consent text is then shown)."""
+        return self.ai_enabled and self.local_ai_provider.strip().lower() == "gemini"
 
     @property
     def cors_origin_list(self) -> list[str]:

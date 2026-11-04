@@ -62,30 +62,25 @@ def _join_app_threads():
 def _prefetch_runs_inline(monkeypatch):
     """Run the first-question prefetch synchronously inside the request that starts the interview, so tests that
     check the first question exists right after the start response are deterministic."""
-    import threading
-    import types
+    from app.services import background
 
-    from app.routers import interviews
+    real_spawn = background.spawn
 
-    class _Thread(threading.Thread):
-        def start(self):
-            if str(self.name).startswith("prefetch-"):
-                self.run()
-            else:
-                super().start()
+    def spawn(target, *args, name=None):
+        if str(name).startswith("prefetch-"):
+            return target(*args)
+        return real_spawn(target, *args, name=name)
 
-    shim = types.SimpleNamespace(**{k: getattr(threading, k) for k in dir(threading) if not k.startswith("__")})
-    shim.Thread = _Thread
-    monkeypatch.setattr(interviews, "threading", shim)
+    monkeypatch.setattr(background, "spawn", spawn)
 
 
 @pytest.fixture(autouse=True)
 def _reset_ai_caches():
     from app.services import gemini_llm, local_llm
-    from app.routers import monitoring
+    from app.services import limiter
     local_llm._status_cache.update(at=0.0, value=None)
     gemini_llm._status_cache.update(at=0.0, value=None)
-    monitoring._rate.clear()  # per-interview rate limit; ids restart at 1 in every test's fresh database
+    limiter.reset()  # login lockout + rate limits; ids restart at 1 in every test's fresh database
     yield
 
 
@@ -108,8 +103,8 @@ def client(db_session_factory):
             db.close()
 
     app.dependency_overrides[get_db] = override
-    from app.routers import auth
-    auth._failed.clear()
+    from app.services import limiter
+    limiter.reset()
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
