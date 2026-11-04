@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { expressionFor, profileFor, storedQuality } from "./avatarStates";
 import { buildRig, composeFace, VISEMES } from "./faceRig";
@@ -304,7 +305,8 @@ export default function Avatar3D({
           camera.lookAt(c);
         } };
     };
-    const load = (url, fallback) => new GLTFLoader().load(url, (g) => onLoaded(g, url), undefined, (err) => {
+    // the bundled models are meshopt-compressed with WebP textures (frontend/avatar-src/compress_avatars.py)
+    const load = (url, fallback) => new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).load(url, (g) => onLoaded(g, url), undefined, (err) => {
       if (disposed) return;
       if (fallback) {
         console.info(`[avatar] ${url} unavailable, using ${fallback}`);

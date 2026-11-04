@@ -1,6 +1,6 @@
 /* Shared application shell, navigation and notifications. */
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import {
   Award, BarChart3, Bell, BookOpen, Briefcase, CalendarClock, ClipboardCheck, ClipboardList,
@@ -10,7 +10,7 @@ import {
 import { useAuth } from "../auth";
 import { get, post } from "../api";
 import Logo from "./Logo";
-import { fmtDateTime } from "./ui";
+import { fmtDateTime, Spinner } from "./ui";
 
 // `section` starts a new labelled group in the sidebar.
 const NAV = {
@@ -243,7 +243,10 @@ export default function Layout() {
           </Link>
         </header>
         <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 focus:outline-none sm:px-8">
-          <Outlet />
+          {/* pages are lazy-loaded chunks (App.jsx); the sidebar stays visible while one downloads */}
+          <Suspense fallback={<Spinner />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
