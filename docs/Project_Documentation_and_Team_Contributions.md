@@ -97,7 +97,7 @@ An ordinary portal stores data. HireSense adds practice, feedback, adaptive diff
 | 4 | AI identifies strengths/weaknesses/areas | Implemented in `ai.py` with validation rules |
 | 5 | Student selects interview/assessment/practice | Implemented (`Interviews.jsx`, `Assessments.jsx`, `English.jsx`) |
 | 6 | Interviewer asks resume-based questions | Implemented (`interviews.py`, `interview_engine.py`) |
-| 7 | Student answers via text or voice | Implemented; voice via Web Speech / local Kokoro+Whisper (browser-dependent) |
+| 7 | Student answers via text or voice | Implemented; live voice uses local Whisper (faster-whisper) + Kokoro; browser speech is only a fallback (cloud profile) |
 | 8 | System evaluates answers and feedback | Implemented (rule-capped scoring in `ai.py`) |
 | 9 | Adaptive difficulty | Implemented (up/down rule thresholds) |
 | 10 | Performance report | Implemented (`PerformanceReport.jsx`, report generation) |
@@ -105,13 +105,13 @@ An ordinary portal stores data. HireSense adds practice, feedback, adaptive diff
 | 12 | Recruiter candidate access | Implemented (`jobs.py`, recruiter pages) |
 | 13 | Admin manages platform | Implemented (`admin.py`, admin pages) |
 
-**Important honesty notes:** Voice recognition depends on browser support (Chrome/Edge for Web Speech; local voice uses backend TTS/STT). AI quality depends on whether Ollama and the selected model are installed. Without Ollama, interviews fall back to the admin question bank and answers stay unscored.
+**Important honesty notes:** The live interview transcribes speech on the server (Whisper) and speaks with Kokoro; the browser's own speech APIs are only a fallback. AI quality depends on the provider: Gemini by default (needs a key and quota) with Ollama `qwen3:4b` as fallback. Without any working model, interviews fall back to the admin question bank and answers stay unscored.
 
 ---
 
 ## 7. Actual Implemented Workflow
 
-The backend is a FastAPI application (`backend/app/main.py`). It exposes routers for auth, students, interviews, english, assessments, jobs, mentors, admin, voice and monitoring. The frontend is a React/Vite SPA with protected routes. Data is stored in SQLite by default, with PostgreSQL supported via `DATABASE_URL`.
+The backend is a FastAPI application (`backend/app/main.py`). It exposes routers for auth, students, interviews, english, assessments, jobs, mentors, admin, voice and monitoring. The frontend is a React/Vite SPA with protected routes. Data is stored in MongoDB (`MONGODB_URL`), through a small SQLAlchemy-style data layer in `backend/app/odm/`.
 
 Startup warms up models in a background thread. Security headers and a global exception handler are registered.
 
@@ -121,12 +121,12 @@ Startup warms up models in a background thread. Security headers and a global ex
 
 Components:
 - **Frontend:** React 18, Vite, Tailwind, React Router, Recharts, Three.js avatar.
-- **Backend:** FastAPI, SQLAlchemy 2, Alembic.
-- **Database:** SQLite (default) / PostgreSQL.
-- **AI text:** Ollama `qwen3:4b` (local).
+- **Backend:** FastAPI, pymongo with the project's `odm/` data layer.
+- **Database:** MongoDB (local, Docker or Atlas).
+- **AI text:** Google Gemini (default) with Ollama `qwen3:4b` (local) as fallback.
 - **Matching:** Sentence Transformers `all-MiniLM-L6-v2` (local).
 - **ML:** scikit-learn question classifier (`backend/ml`).
-- **Voice:** Browser Web Speech; optional Kokoro TTS + Whisper STT in backend; browser recorder.
+- **Voice:** Kokoro TTS + faster-whisper STT in the backend; browser recorder; browser speech as fallback.
 
 Text workflow diagram:
 
@@ -137,13 +137,13 @@ Student Browser (React)
 FastAPI API (routers + deps auth)
    |
    v
-Services (ai.py, matching.py, rewards.py, ...)  -->  Ollama (local LLM)
+Services (ai.py, matching.py, rewards.py, ...)  -->  Gemini (default) / Ollama (local LLM)
    |                                                Sentence Transformers
    v
-SQLAlchemy ORM
+app/odm data layer (pymongo)
    |
    v
-SQLite / PostgreSQL
+MongoDB
 ```
 
 ---
@@ -153,14 +153,14 @@ SQLite / PostgreSQL
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite 6, Tailwind CSS, React Router, Recharts, Three.js |
-| Backend | Python 3.12+, FastAPI, SQLAlchemy 2, Alembic |
-| DB | SQLite default; PostgreSQL supported |
+| Backend | Python 3.12+ (developed on 3.14), FastAPI, pymongo + `odm/` data layer |
+| DB | MongoDB |
 | Auth | JWT in httpOnly cookie, Argon2 hashing, RBAC |
-| AI text | Ollama `qwen3:4b` |
+| AI text | Google Gemini (default), Ollama `qwen3:4b` (fallback) |
 | Matching | Sentence Transformers `all-MiniLM-L6-v2` |
 | ML | scikit-learn |
 | Resumes | pypdf, python-docx |
-| Voice | Web Speech API; Kokoro TTS; Whisper STT |
+| Voice | Kokoro TTS; faster-whisper STT; browser speech as fallback |
 
 Dependencies: `backend/requirements.txt`, `frontend/package.json`.
 
@@ -289,7 +289,7 @@ Key execution paths:
 ### Member 3 — Backend and Database
 - **Module:** APIs, database schema, models, auth/permissions, data handling.
 - **Completed:** models, migrations, auth, routers, serializers, seed.
-- **Remaining:** DB indexing/performance, migration tests on PostgreSQL, stronger validation.
+- **Remaining:** DB indexing/performance on large data, stronger validation. (The PostgreSQL plan was dropped when the project moved to MongoDB.)
 - **Files:** `models.py`, `schemas.py`, `serializers.py`, `seed.py`, `database.py`, `routers/auth.py`, `common.py`, `students.py`.
 - **Tests:** pytest auth/permissions/workflows.
 - **Deliverables:** DB ER diagram, API contract docs.
@@ -373,13 +373,13 @@ Result: 208 backend tests passed and 79 frontend tests passed.
 
 ## 20. Current Limitations and Known Issues
 
-- AI availability depends on Ollama/model installation.
-- Voice requires Chrome/Edge for Web Speech (live voice is backend-based but still needs browser).
+- AI availability depends on the Gemini key/quota or a local Ollama install.
+- Voice and camera have only been tested with fake devices, never a real person.
 - 4B model quality/speed limitations.
 - No OCR for scanned PDFs.
-- Notifications are in-app only, 30s polling.
-- Login lockout/rate limiting in-memory (single process).
-- Frontend lacks automated UI tests.
+- Live notifications are delivered per API process (several workers need Redis pub/sub).
+- Login lockout/rate limiting uses Redis when `REDIS_URL` is set, otherwise memory (single process).
+- Frontend has unit tests (Vitest) and one CI browser smoke test, not full UI coverage.
 
 ---
 
@@ -387,7 +387,7 @@ Result: 208 backend tests passed and 79 frontend tests passed.
 
 - Add OCR for scanned resumes.
 - Improve model quality (larger model/quantisation).
-- Add real PostgreSQL testing in CI (already workflow).
+- Run the Docker images and hosted demo on a real host.
 - More adaptive interview templates.
 - Better analytics dashboards.
 - Multi-language support.
