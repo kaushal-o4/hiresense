@@ -1,56 +1,60 @@
 /* Top-level route definitions and role-based guards. */
 
+import { lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth";
 import Layout from "./components/Layout";
 import { Spinner } from "./components/ui";
 
+// Signed-out pages load with the app so the login screen appears at once. Every other page is its own chunk,
+// downloaded when first opened (Layout wraps the page outlet in <Suspense>).
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import Profile from "./pages/Profile";
-import Notifications from "./pages/Notifications";
-import NotFound from "./pages/NotFound";
-import Settings from "./pages/Settings";
-import ProgressHub from "./pages/student/ProgressHub";
-import Opportunities from "./pages/student/Opportunities";
 
-import StudentDashboard from "./pages/student/Dashboard";
-import Resume from "./pages/student/Resume";
-import Interviews from "./pages/student/Interviews";
-import InterviewSession from "./pages/student/InterviewSession";
-import VoiceInterview from "./pages/student/VoiceInterview";
-import English from "./pages/student/English";
-import EnglishSession from "./pages/student/EnglishSession";
-import StudentAssessments from "./pages/student/Assessments";
-import Rewards from "./pages/student/Rewards";
-import Applications from "./pages/student/Applications";
-import Mentoring from "./pages/student/Mentoring";
+const Profile = lazy(() => import("./pages/Profile"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Settings = lazy(() => import("./pages/Settings"));
+const ProgressHub = lazy(() => import("./pages/student/ProgressHub"));
+const Opportunities = lazy(() => import("./pages/student/Opportunities"));
 
-import RecruiterDashboard from "./pages/recruiter/Dashboard";
-import RecruiterJobs from "./pages/recruiter/Jobs";
-import RecruiterJobDetail from "./pages/recruiter/JobDetail";
-import Candidates from "./pages/recruiter/Candidates";
-import CandidateDetail from "./pages/recruiter/CandidateDetail";
+const StudentDashboard = lazy(() => import("./pages/student/Dashboard"));
+const Resume = lazy(() => import("./pages/student/Resume"));
+const Interviews = lazy(() => import("./pages/student/Interviews"));
+const InterviewSession = lazy(() => import("./pages/student/InterviewSession"));
+const VoiceInterview = lazy(() => import("./pages/student/VoiceInterview"));
+const English = lazy(() => import("./pages/student/English"));
+const EnglishSession = lazy(() => import("./pages/student/EnglishSession"));
+const StudentAssessments = lazy(() => import("./pages/student/Assessments"));
+const Rewards = lazy(() => import("./pages/student/Rewards"));
+const Applications = lazy(() => import("./pages/student/Applications"));
+const Mentoring = lazy(() => import("./pages/student/Mentoring"));
 
-import MentorDashboard from "./pages/mentor/Dashboard";
-import MentorStudents from "./pages/mentor/Students";
-import MentorStudentDetail from "./pages/mentor/StudentDetail";
-import MentorSessions from "./pages/mentor/Sessions";
+const RecruiterDashboard = lazy(() => import("./pages/recruiter/Dashboard"));
+const RecruiterJobs = lazy(() => import("./pages/recruiter/Jobs"));
+const RecruiterJobDetail = lazy(() => import("./pages/recruiter/JobDetail"));
+const Candidates = lazy(() => import("./pages/recruiter/Candidates"));
+const CandidateDetail = lazy(() => import("./pages/recruiter/CandidateDetail"));
 
-import AdminDashboard from "./pages/admin/Dashboard";
-import AdminUsers from "./pages/admin/Users";
-import AdminAssignments from "./pages/admin/Assignments";
-import AdminJobs from "./pages/admin/Jobs";
-import InterviewConfig from "./pages/admin/InterviewConfig";
-import AdminRewards from "./pages/admin/Rewards";
-import Monitoring from "./pages/admin/Monitoring";
-import AuditLogs from "./pages/admin/AuditLogs";
-import Reports from "./pages/admin/Reports";
-import AdminSettings from "./pages/admin/Settings";
-import AssessmentManager from "./pages/shared/AssessmentManager";
-import IntegrityReviewPage from "./pages/shared/IntegrityReview";
+const MentorDashboard = lazy(() => import("./pages/mentor/Dashboard"));
+const MentorStudents = lazy(() => import("./pages/mentor/Students"));
+const MentorStudentDetail = lazy(() => import("./pages/mentor/StudentDetail"));
+const MentorSessions = lazy(() => import("./pages/mentor/Sessions"));
+
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const AdminUsers = lazy(() => import("./pages/admin/Users"));
+const AdminAssignments = lazy(() => import("./pages/admin/Assignments"));
+const AdminJobs = lazy(() => import("./pages/admin/Jobs"));
+const InterviewConfig = lazy(() => import("./pages/admin/InterviewConfig"));
+const AdminRewards = lazy(() => import("./pages/admin/Rewards"));
+const Monitoring = lazy(() => import("./pages/admin/Monitoring"));
+const AuditLogs = lazy(() => import("./pages/admin/AuditLogs"));
+const Reports = lazy(() => import("./pages/admin/Reports"));
+const AdminSettings = lazy(() => import("./pages/admin/Settings"));
+const AssessmentManager = lazy(() => import("./pages/shared/AssessmentManager"));
+const IntegrityReviewPage = lazy(() => import("./pages/shared/IntegrityReview"));
 
 const HOME = { student: "/student", recruiter: "/recruiter", mentor: "/mentor", admin: "/admin" };
 
