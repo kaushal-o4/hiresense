@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { get, post } from "../api";
+import { subscribeNotifications } from "../live/notificationStream";
 import Logo from "./Logo";
 import { fmtDateTime } from "./ui";
 
@@ -74,18 +75,24 @@ function NotificationBell() {
   const load = async () => {
     try {
       setData(await get("/notifications", { page_size: 8 }));
-    } catch { /* ignore polling errors */ }
+    } catch { /* ignore refresh errors; the next signal or poll retries */ }
   };
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000);
+    // Live updates over Server-Sent Events, with backoff reconnects and a polling fallback (live/notificationStream.js).
+    let timer = null;
+    const unsubscribe = subscribeNotifications(() => {
+      clearTimeout(timer);
+      timer = setTimeout(load, 150); // coalesce bursts (several notifications in one action)
+    });
     const onClick = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
     return () => {
-      clearInterval(t);
+      unsubscribe();
+      clearTimeout(timer);
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };

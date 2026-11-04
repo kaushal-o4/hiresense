@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     # Store per-step timings for the admin performance dashboard (never stores candidate content)
     perf_metrics_enabled: bool = True
+    # Live notifications (GET /api/notifications/stream, Server-Sent Events). A comment line is sent every
+    # heartbeat so proxies keep the connection open; each stream ends after max_seconds and the browser reconnects
+    # (this also re-checks the login, so a stream never outlives its session).
+    notifications_heartbeat_seconds: float = 20.0
+    notifications_stream_max_seconds: float = 600.0
 
     # Initial admin account, created by `python -m app.seed`. Leave the password empty to have the seed generate a
     # random one and print it once. Never ship the old published default.

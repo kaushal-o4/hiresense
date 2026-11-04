@@ -26,6 +26,7 @@ from __future__ import annotations
 import copy
 import itertools
 import json
+import logging
 import re
 import threading
 from contextlib import contextmanager
@@ -1160,6 +1161,7 @@ class Session:
         self._identity: dict[tuple, Base] = {}
         self._new: list[Base] = []
         self._deleted: list[Base] = []
+        self._after_commit: list = []
 
     def _is_new(self, obj) -> bool:
         return any(o is obj for o in self._new)
@@ -1179,6 +1181,7 @@ class Session:
         self._identity.clear()
         self._new.clear()
         self._deleted.clear()
+        self._after_commit.clear()  # closed without a commit: whatever was queued never happened
 
     def _coll(self, cls):
         return self.database[_collection_name(cls)]
@@ -1302,6 +1305,17 @@ class Session:
     # ---- writing
     def commit(self):
         self.flush()
+        callbacks, self._after_commit = self._after_commit, []
+        for fn in callbacks:
+            try:
+                fn()
+            except Exception:  # noqa: BLE001 - a side effect of a commit must never undo or fail the commit
+                logging.getLogger("hiresense").warning("after-commit callback failed", exc_info=True)
+
+    def after_commit(self, fn) -> None:
+        """Run `fn()` once the next commit() has written everything (used for live notifications). Dropped on
+        rollback() or close() without a commit."""
+        self._after_commit.append(fn)
 
     def flush(self):
         if not (self._new or self._deleted or self._identity):
@@ -1415,6 +1429,7 @@ class Session:
         return res.deleted_count
 
     def rollback(self):
+        self._after_commit.clear()
         for obj in self._new:
             st = _state(obj)
             st.session = None
