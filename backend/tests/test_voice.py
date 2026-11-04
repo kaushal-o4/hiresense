@@ -105,20 +105,21 @@ def test_transcribe_mocked_then_submit_through_existing_answer_api(client, mock_
 
 def test_live_captions_have_their_own_rate_limit(client, mock_llm, monkeypatch):
     from app.routers import voice
+    from app.services import limiter
     from app.services import stt
     register_student(client)
     s = start_interview(client, mock_llm)
     q = s["questions"][0]
     monkeypatch.setattr(stt, "transcribe", lambda data, prompt=None: {
         "text": "so far", "duration": 1.2, "speech_seconds": 1.0, "engine": "mock", "note": None})
-    voice._hits.clear()
+    limiter.reset()
     for _ in range(300):  # a long answer sends a live caption about every 1.2 s: more than the 240 pieces limit
         r = client.post(f"/api/student/interviews/{s['id']}/transcribe",
                         data={"question_id": str(q["id"]), "partial": "true", "live": "true"},
                         files={"audio": ("live.wav", wav_bytes(), "audio/wav")})
         assert r.status_code == 200 and r.json()["live"] is True
     assert send(client, s["id"], q["id"]).status_code == 200  # the final transcription is not blocked by them
-    voice._hits.clear()
+    limiter.reset()
 
 
 def test_transcribe_rejects_wrong_question_other_student_and_recruiter(client, new_client, mock_llm):

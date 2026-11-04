@@ -12,7 +12,8 @@ def iso(dt):
 def user_out(u: User) -> dict:
     return {"id": u.id, "email": u.email, "full_name": u.full_name, "role": u.role, "status": u.status,
             "permissions": u.permissions or [], "preferences": u.preferences or {}, "created_at": iso(u.created_at),
-            "last_login_at": iso(u.last_login_at), "last_active_at": iso(u.last_active_at)}
+            "last_login_at": iso(u.last_login_at), "last_active_at": iso(u.last_active_at),
+            "ai_data_consent_at": iso(u.ai_data_consent_at)}
 
 
 def student_profile_out(u: User) -> dict:

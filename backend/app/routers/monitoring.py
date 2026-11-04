@@ -14,9 +14,6 @@ detected fields of an event; each review is appended to integrity_reviews.
 Browser-generated events are useful signals, but a browser client can be modified. The server therefore validates
 everything it can (consented feature, time window, size, rate, duplicates) and assigns severity itself - see README.
 """
-import threading
-import time
-from collections import deque
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -31,7 +28,7 @@ from ..models import IntegrityEvent, IntegrityReview, InterviewSession, Platform
 from ..schemas import (
     AttentionIn, ClientMetricsIn, ExplanationIn, IntegrityEventsIn, IntegrityReviewIn, MonitoringConsentIn,
 )
-from ..services import attention, integrity, perf
+from ..services import attention, integrity, limiter, perf
 from ..services.access import recruiter_has_applicant
 from ..services.common import audit, get_setting
 
@@ -41,24 +38,11 @@ MAX_EVENTS_PER_SESSION = 500
 LATE_EVENTS_GRACE = timedelta(minutes=3)  # events flushed by the browser right after the interview ended
 CLOCK_SLACK_MS = 60_000  # an event may not claim to be later than "now" by more than this (clock drift, queueing)
 RATE_LIMIT = (30, 60.0)  # at most 30 event batches per interview per 60 s (the browser sends one every ~8 s)
-_rate: dict[int, deque] = {}
-_rate_lock = threading.Lock()
 
 
 def _rate_ok(session_id: int) -> bool:
     limit, window = RATE_LIMIT
-    now = time.monotonic()
-    with _rate_lock:
-        q = _rate.setdefault(session_id, deque())
-        while q and now - q[0] > window:
-            q.popleft()
-        if len(q) >= limit:
-            return False
-        q.append(now)
-        if len(_rate) > 5000:  # forget idle sessions
-            for k in [k for k, v in _rate.items() if not v or now - v[-1] > window]:
-                _rate.pop(k, None)
-        return True
+    return limiter.hit(f"monitoring:{session_id}", limit, window)
 
 
 def _retention(db: Session) -> int:

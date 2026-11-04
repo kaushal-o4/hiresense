@@ -21,23 +21,35 @@ from ..security import (
     verify_password,
 )
 from ..serializers import profile_out
-from ..services import mailer
+from ..services import consent, limiter, mailer
 from ..services.ai import ai_status
 from ..services.common import audit, get_setting, notify
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger("hiresense.auth")
 
-# Simple in-memory brute-force protection: email -> [failed attempt timestamps]
-_failed: dict[str, list[float]] = {}
+# Brute-force protection: failed attempts per email (services/limiter.py: memory, or Redis when REDIS_URL is set)
 MAX_FAILED, WINDOW_SECONDS = 8, 15 * 60
 
 
+def _login_key(email: str) -> str:
+    return f"login:{email.lower()}"
+
+
 def _set_cookie(response: Response, token: str) -> None:
-    """Store the session JWT in the httpOnly, SameSite=Lax cookie (JavaScript cannot read it)."""
+    """Store the session JWT in an httpOnly cookie (JavaScript cannot read it). SameSite=Lax by default; "None" (with
+    Secure) only when the frontend calls the API on another domain (COOKIE_SAMESITE=none)."""
     settings = get_settings()
-    response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax", secure=settings.cookie_secure,
+    response.set_cookie(COOKIE_NAME, token, httponly=True, samesite=settings.samesite,
+                        secure=settings.cookie_secure or settings.samesite == "none",
                         max_age=settings.access_token_minutes * 60, path="/")
+
+
+def _clear_cookie(response: Response) -> None:
+    # must repeat SameSite/Secure, or browsers ignore the deletion of a SameSite=None cookie
+    settings = get_settings()
+    response.delete_cookie(COOKIE_NAME, path="/", httponly=True, samesite=settings.samesite,
+                           secure=settings.cookie_secure or settings.samesite == "none")
 
 
 def _email_taken(db: Session, email: str) -> bool:
@@ -59,9 +71,14 @@ def register_student(body: StudentRegister, request: Request, response: Response
     user.student_profile = StudentProfile(college=body.college, branch=body.branch,
                                           graduation_year=body.graduation_year, skills=[], projects=[], experience=[],
                                           share_with_recruiters=body.share_with_recruiters)
+    if body.ai_consent and consent.required():
+        user.ai_data_consent_at = datetime.now(timezone.utc)
     db.add(user)
     db.flush()
     audit(db, user.id, "user.register", "user", user.id, {"role": "student"}, client_ip(request))
+    if user.ai_data_consent_at:
+        audit(db, user.id, "user.ai_consent_given", "user", user.id, {"provider": "gemini", "at": "registration"},
+              client_ip(request))
     notify(db, user.id, "Welcome to HireSense!", "Upload your resume to get personalised interview practice.",
            "info", "/student/resume")
     user.last_login_at = datetime.now(timezone.utc)
@@ -105,23 +122,20 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
     """Check email and password and set the session cookie.
 
     Brute-force protection: after MAX_FAILED wrong passwords for one email within WINDOW_SECONDS, further attempts
-    get 429 (kept in memory, so it resets when the server restarts). Pending, suspended and deactivated accounts get
+    get 429 (in memory, or in Redis when REDIS_URL is set). Pending, suspended and deactivated accounts get
     403 with a reason. Returns the user's profile; the token is also returned for API clients.
     """
     email = body.email.lower()
-    now = datetime.now(timezone.utc).timestamp()
-    attempts = [t for t in _failed.get(email, []) if now - t < WINDOW_SECONDS]
-    if len(attempts) >= MAX_FAILED:
+    if limiter.count(_login_key(email), WINDOW_SECONDS) >= MAX_FAILED:
         raise HTTPException(429, "Too many failed attempts. Please wait 15 minutes and try again.")
     user = db.scalar(select(User).where(User.email == email))
     if not user or not verify_password(body.password, user.password_hash):
-        attempts.append(now)
-        _failed[email] = attempts
+        limiter.add(_login_key(email), WINDOW_SECONDS)
         if user:
             audit(db, user.id, "auth.login_failed", "user", user.id, {}, client_ip(request))
             db.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid email or password")
-    _failed.pop(email, None)
+    limiter.clear(_login_key(email))
     if user.status == "pending":
         raise HTTPException(403, "Your account is awaiting administrator approval")
     if user.status in ("suspended", "deactivated"):
@@ -138,7 +152,7 @@ def login(body: LoginIn, request: Request, response: Response, db: Session = Dep
 @router.post("/logout")
 def logout(response: Response):
     """Clear the session cookie. (JWTs are stateless, so there is no server-side session to delete.)"""
-    response.delete_cookie(COOKIE_NAME, path="/")
+    _clear_cookie(response)
     return {"ok": True}
 
 
@@ -146,6 +160,32 @@ def logout(response: Response):
 def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Current user's profile plus AI availability. The frontend calls this on load (auth.jsx) to restore the session."""
     return {"user": profile_out(user), "ai": ai_status(db)}
+
+
+@router.get("/privacy")
+def privacy_info():
+    """Public: which AI provider processes data on this server, and the consent notice when it is hosted."""
+    return consent.info()
+
+
+class AIConsentIn(BaseModel):
+    accept: bool
+
+
+@router.post("/ai-consent")
+def set_ai_consent(body: AIConsentIn, request: Request, user: User = Depends(get_current_user),
+                   db: Session = Depends(get_db)):
+    """Give (accept=true) or withdraw (accept=false) consent to the hosted-AI data notice. Stored with the time."""
+    if body.accept:
+        if user.ai_data_consent_at is None:
+            user.ai_data_consent_at = datetime.now(timezone.utc)
+            audit(db, user.id, "user.ai_consent_given", "user", user.id, {"provider": consent.info()["provider"]},
+                  client_ip(request))
+    elif user.ai_data_consent_at is not None:
+        user.ai_data_consent_at = None
+        audit(db, user.id, "user.ai_consent_withdrawn", "user", user.id, {}, client_ip(request))
+    db.commit()
+    return {"user": profile_out(user), "privacy": consent.info()}
 
 
 class ForgotPasswordIn(BaseModel):
@@ -164,8 +204,7 @@ class DeleteAccountIn(BaseModel):
     confirm: str = Field(max_length=20)
 
 
-# per-email limit on reset requests (in memory, like the login limiter)
-_reset_requests: dict[str, list[float]] = {}
+# per-email limit on reset requests (same limiter as the login lockout)
 MAX_RESET_REQUESTS = 3
 GENERIC_RESET_REPLY = {"ok": True, "message": "If an account exists for that email, a reset link has been sent. "
                        "If email is not set up on this server, ask the placement office for the link."}
@@ -175,11 +214,8 @@ GENERIC_RESET_REPLY = {"ok": True, "message": "If an account exists for that ema
 def forgot_password(body: ForgotPasswordIn, request: Request, db: Session = Depends(get_db)):
     """Start a password reset. Always returns the same reply, so it can't be used to find out who has an account."""
     email = body.email.lower()
-    now = datetime.now(timezone.utc).timestamp()
-    recent = [t for t in _reset_requests.get(email, []) if now - t < WINDOW_SECONDS]
-    if len(recent) >= MAX_RESET_REQUESTS:
+    if not limiter.hit(f"reset:{email}", MAX_RESET_REQUESTS, WINDOW_SECONDS):
         return GENERIC_RESET_REPLY  # silently ignore floods; same reply as always
-    _reset_requests[email] = recent + [now]
     user = db.scalar(select(User).where(User.email == email))
     if not user or user.status in ("deactivated", "pending"):
         return GENERIC_RESET_REPLY
@@ -207,7 +243,7 @@ def reset_password(body: ResetPasswordIn, request: Request, db: Session = Depend
     if not user or not reset_token_matches(payload, user.password_hash) or user.status in ("deactivated", "pending"):
         raise HTTPException(400, "This reset link is invalid or has expired. Please request a new one.")
     user.password_hash = hash_password(body.new_password)  # also invalidates this and any older reset link
-    _failed.pop(user.email, None)
+    limiter.clear(_login_key(user.email))
     audit(db, user.id, "auth.password_reset", "user", user.id, {}, client_ip(request))
     notify(db, user.id, "Your password was changed",
            "Your password was reset using a reset link. If this wasn't you, contact the placement office.", "warning")
@@ -238,7 +274,7 @@ def delete_my_account(body: DeleteAccountIn, request: Request, response: Respons
     folder = Path(get_settings().upload_dir) / str(uid)
     if folder.is_dir() and not any(folder.iterdir()):
         folder.rmdir()
-    response.delete_cookie(COOKIE_NAME, path="/")
+    _clear_cookie(response)
     return {"ok": True, "message": "Your account and data have been deleted."}
 
 

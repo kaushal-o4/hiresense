@@ -369,3 +369,58 @@ def warmup() -> dict:
     st = runtime_status(force=True)
     return {"ok": bool(st["running"] and st["model_ready"]), "already_loaded": True,
             "load_ms": round((time.monotonic() - t) * 1000), "reason": st.get("error")}
+
+
+TRANSCRIBE_SYSTEM = ("You are a speech-to-text engine. Write down exactly what the speaker says in this recording, in "
+                     "English, with normal punctuation. Do not answer, summarise, translate or correct it. If nothing "
+                     "is said, return an empty string.")
+
+
+def transcribe(wav: bytes, prompt: str | None = None) -> str:
+    """Speech-to-text with Gemini (STT_ENGINE=gemini, for hosts without the Whisper packages). The WAV goes to Google
+    with the request and is not stored here. Moves on to the backup models on overload. Raises LLMError."""
+    import base64
+    s = get_settings()
+    status = runtime_status()
+    if not (status["running"] and status["model_ready"]):
+        raise LLMError(status["error"] or "Gemini is not available.", kind="not_running")
+    system = TRANSCRIBE_SYSTEM
+    if prompt:
+        system += ("\n\nThe speaker is answering this interview question (use it only to spell technical words): "
+                   + prompt[:500])
+    schema = {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}
+    audio = base64.b64encode(wav).decode()
+    last_err: LLMError | None = None
+    _http()
+    for use_model in candidate_models(status["model"], status.get("installed") or [status["model"]]):
+        gen: dict = {"temperature": 0.0, "maxOutputTokens": 2048, "responseMimeType": "application/json",
+                     "responseJsonSchema": schema}
+        thinking = _thinking_config(use_model, _initial_form(use_model))
+        if thinking:
+            gen["thinkingConfig"] = thinking
+        body = {"systemInstruction": {"parts": [{"text": system}]},
+                "contents": [{"role": "user", "parts": [{"inlineData": {"mimeType": "audio/wav", "data": audio}}]}],
+                "generationConfig": gen}
+        url = f"{s.gemini_base_url.rstrip('/')}/models/{use_model}:generateContent"
+        try:
+            r = _http().post(url, headers=_headers(), json=body,
+                             timeout=httpx.Timeout(s.gemini_timeout_seconds, connect=5.0))
+        except (httpx.TimeoutException, httpx.TransportError):
+            _mark_busy(use_model, s.gemini_model_cooldown_seconds)
+            last_err = LLMError("The Gemini API took too long to transcribe the recording.", kind="timeout",
+                                status_code=504)
+            continue
+        if r.status_code in _RETRY_STATUS or r.status_code == 404:
+            _mark_busy(use_model, s.gemini_model_cooldown_seconds)
+            last_err = _api_error(r.status_code, r.text)
+            continue
+        if r.status_code != 200:
+            raise _api_error(r.status_code, r.text)
+        try:
+            cand = (r.json().get("candidates") or [{}])[0]
+            raw = "".join(p.get("text", "") for p in (cand.get("content") or {}).get("parts") or []
+                          if not p.get("thought"))
+            return str(json.loads(raw).get("text", "")).strip() if raw.strip() else ""
+        except (ValueError, AttributeError):
+            raise LLMError("The Gemini API returned an unreadable transcription.", kind="bad_output")
+    raise last_err or LLMError("Gemini could not transcribe the recording.", kind="http_error")

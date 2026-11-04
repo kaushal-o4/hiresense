@@ -128,6 +128,7 @@ def test_expired_interview_and_future_timestamps(client, streaming_ai, db):
 
 def test_rate_limit(client, streaming_ai, monkeypatch):
     from app.routers import monitoring
+    from app.services import limiter
     monkeypatch.setattr(monitoring, "RATE_LIMIT", (3, 60.0))
     register_student(client)
     s = _start(client)
@@ -135,7 +136,7 @@ def test_rate_limit(client, streaming_ai, monkeypatch):
     codes = [_events(client, s["id"], {"event_type": "focus_change", "t_ms": i, "duration_ms": 900}).status_code
              for i in range(4)]
     assert codes == [200, 200, 200, 429]
-    monitoring._rate.clear()
+    limiter.reset()
 
 
 def test_reconsent_records_reconnect_and_keeps_the_interview_clock(client, streaming_ai):

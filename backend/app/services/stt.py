@@ -4,6 +4,9 @@ Two engines (STT_ENGINE):
   faster       - faster-whisper (CTranslate2, int8, greedy decoding). Default: several times faster than transformers
                  on this laptop's CPU (numbers: tests_perf/bench_stt.py, README section 2e).
   transformers - the Hugging Face pipeline used before 2026-10-29. Used automatically if faster-whisper is missing.
+  gemini       - hosted: the clip is sent to the Gemini API (services/gemini_llm.transcribe). For servers without
+                 the Whisper/numpy packages (requirements-cloud.txt). Live captions are off with it (one request per
+                 caption would use up the API quota); finished speech segments are still transcribed.
 
 The browser records only while the interview is in its LISTENING state and uploads WAV clips (live pieces while the
 candidate talks, then the last piece). Clips are processed in memory and never written to disk or stored. The model
@@ -50,10 +53,18 @@ _load_error: str | None = None
 _lock = threading.Lock()
 
 
+def _hosted() -> bool:
+    return get_settings().stt_engine.strip().lower() == "gemini"
+
+
 def status() -> dict:
     s = get_settings()
+    if _hosted():
+        has_key = bool(s.gemini_api_key.strip())
+        return {"enabled": s.stt_enabled, "engine": "gemini", "model": "gemini", "loaded": has_key,
+                "error": None if has_key else "GEMINI_API_KEY is not set.", "live_captions": False}
     return {"enabled": s.stt_enabled, "engine": _engine or s.stt_engine, "model": s.stt_model,
-            "loaded": _asr is not None, "error": _load_error}
+            "loaded": _asr is not None, "error": _load_error, "live_captions": True}
 
 
 def reset() -> None:
@@ -121,7 +132,7 @@ def _load():
 
 
 def warmup() -> None:
-    if not get_settings().stt_enabled:
+    if not get_settings().stt_enabled or _hosted():
         return
     try:
         _load()
@@ -148,6 +159,54 @@ def decode_wav(data: bytes):
     if not np.isfinite(audio).all():
         raise BadAudio("The recording contains invalid samples.")
     return audio, len(audio) / TARGET_SR
+
+
+def wav_stats(data: bytes) -> tuple[float, float]:
+    """(duration, speech seconds) of a PCM WAV using only the standard library (hosts without numpy/soundfile)."""
+    import array
+    import sys
+    import wave
+    if len(data) < 44 or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        raise BadAudio("The recording must be a WAV file.")
+    try:
+        with wave.open(io.BytesIO(data)) as w:
+            sr, ch, width, n = w.getframerate(), w.getnchannels(), w.getsampwidth(), w.getnframes()
+            frames = w.readframes(n)
+    except (wave.Error, EOFError):
+        raise BadAudio("The recording could not be read. Please try recording again.")
+    if sr <= 0 or n == 0:
+        raise BadAudio("The recording is empty.")
+    duration = n / sr
+    if width != 2:  # the browser recorder always sends 16-bit PCM; don't guess at other formats
+        return duration, duration
+    samples = array.array("h", frames[: len(frames) // 2 * 2])
+    if sys.byteorder == "big":
+        samples.byteswap()
+    sub = samples[::ch][::max(1, sr // 4000)]  # ~4 kHz is plenty for a loudness measure
+    frame = max(1, int(0.03 * len(sub) / duration))
+    threshold = (10 ** (-45 / 20) * 32768) ** 2  # -45 dBFS, the same level as speech_seconds()
+    loud = sum(1 for i in range(0, len(sub) - frame + 1, frame)
+               if sum(x * x for x in sub[i:i + frame]) / frame > threshold)
+    return duration, loud * 0.03
+
+
+def _transcribe_hosted(data: bytes, prompt: str | None) -> dict:
+    from . import gemini_llm
+    from .local_llm import LLMError
+    s = get_settings()
+    duration, voiced = wav_stats(data)
+    if duration > s.voice_max_answer_seconds + 5:
+        raise BadAudio(f"The recording is longer than {s.voice_max_answer_seconds} seconds.")
+    if voiced < MIN_SPEECH_SECONDS:
+        return {"text": "", "duration": round(duration, 2), "speech_seconds": round(voiced, 2), "engine": "gemini",
+                "note": "No speech was detected. Check that the right microphone is selected and try again."}
+    try:
+        raw = gemini_llm.transcribe(data, prompt)
+    except LLMError as exc:
+        raise STTUnavailable(f"Speech recognition failed: {exc.message}")
+    text = clean_transcript(" ".join(raw.split()), voiced)
+    return {"text": text[:8000], "duration": round(duration, 2), "speech_seconds": round(voiced, 2),
+            "engine": "gemini", "note": None if text else "No clear speech was recognised. Please try again."}
 
 
 def speech_seconds(audio, frame_ms: int = 30, threshold_db: float = -45.0) -> float:
@@ -205,6 +264,8 @@ def transcribe(data: bytes, prompt: str | None = None) -> dict:
     s = get_settings()
     if not s.stt_enabled:
         raise STTUnavailable("Speech recognition is turned off on this server. Please type your answer.")
+    if _hosted():
+        return _transcribe_hosted(data, prompt)
     audio, duration = decode_wav(data)
     if duration > s.voice_max_answer_seconds + 5:
         raise BadAudio(f"The recording is longer than {s.voice_max_answer_seconds} seconds.")

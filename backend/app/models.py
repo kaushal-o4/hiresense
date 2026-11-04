@@ -52,6 +52,8 @@ class User(TimestampMixin, Base):
     preferences: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}", nullable=False)
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_active_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the student agreed that their data may be sent to the hosted AI (services/consent.py); None = not agreed
+    ai_data_consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     student_profile: Mapped["StudentProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     recruiter_profile: Mapped["RecruiterProfile | None"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")

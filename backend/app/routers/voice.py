@@ -6,7 +6,7 @@ scoring, adaptive questions, persistence and rewards are unchanged. Audio is pro
 import json
 import threading
 import time
-from collections import defaultdict, deque
+
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -16,21 +16,14 @@ from ..odm import Session
 from ..database import get_db
 from ..deps import get_current_user, require_student
 from ..models import EnglishSession, InterviewSession, User
-from ..services import local_llm, perf, stt, tts
+from ..services import limiter, local_llm, perf, stt, tts
 
 router = APIRouter(tags=["voice"])
 MAX_AUDIO_BYTES = 12 * 1024 * 1024  # ~6 minutes of 16 kHz mono PCM
 
-_hits: dict[tuple[int, str], deque] = defaultdict(deque)
-
-
 def _rate_limit(user_id: int, kind: str, limit: int, window_s: int = 600) -> None:
-    q, now = _hits[(user_id, kind)], time.monotonic()
-    while q and now - q[0] > window_s:
-        q.popleft()
-    if len(q) >= limit:
+    if not limiter.hit(f"voice:{user_id}:{kind}", limit, window_s):
         raise HTTPException(429, "Too many voice requests. Please wait a few minutes.")
-    q.append(now)
 
 
 class SpeakIn(BaseModel):
@@ -130,6 +123,10 @@ def transcribe_answer(session_id: int, question_id: int = Form(...), audio: Uplo
     current = session.questions[-1] if session.questions else None
     if not current or current.id != question_id or current.answer:
         raise HTTPException(409, "This recording is not for the current question")
+    if live and not stt.status().get("live_captions", True):
+        # Hosted speech recognition: no live captions (each would be an API call). An error, not an empty text: the
+        # browser may reuse the last live caption as the final answer text.
+        raise HTTPException(409, "Live captions are not available on this server")
     if live:
         _rate_limit(user.id, "stt_live", 1500)
     else:
