@@ -1,0 +1,48 @@
+# Rendered by the nginx image at start-up (${API_UPSTREAM} comes from the environment).
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+    client_max_body_size 15m;  # resume uploads (MAX_UPLOAD_MB=5) and voice clips (~12 MB max)
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy same-origin always;
+    # camera/microphone are used by the interview pages of this site only
+    add_header Permissions-Policy "camera=(self), microphone=(self), geolocation=()" always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml application/wasm model/gltf-binary;
+
+    # API: same origin for the browser, so the httpOnly SameSite=Lax login cookie just works
+    location /api/ {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-ID $request_id;
+        # streamed interviewer replies (Server-Sent Events) must not be buffered
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+
+    # Vite's hashed bundles never change: cache for a year
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # large static models (3D avatars, face detection) - cache a week
+    location ~* ^/(avatars|mediapipe|models)/ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800" always;
+        try_files $uri =404;
+    }
+
+    # single-page app: every other path is a client-side route
+    location / {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

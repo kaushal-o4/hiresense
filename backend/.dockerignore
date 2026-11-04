@@ -1,0 +1,16 @@
+venv/
+.venv/
+**/__pycache__/
+.pytest_cache/
+.env
+.env.*
+!.env.cloud.example
+*.db
+*.db-*
+uploads/
+tests/
+tests_e2e/
+tests_integration/
+tests_perf/
+eval/
+*.log

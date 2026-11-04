@@ -1,0 +1,69 @@
+# HireSense on one machine with Docker: MongoDB (with a password) + API + web app.
+#   cp .env.docker.example .env.docker    (fill in the values)
+#   docker compose --env-file .env.docker up -d --build
+#   open http://localhost:8080
+# The API uses the cloud profile (Gemini). For the fully local AI (Ollama, Whisper, Kokoro) run it outside Docker
+# as described in README.md.
+name: hiresense
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:?set MONGO_USER in .env.docker}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:?set MONGO_PASSWORD in .env.docker}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping: 1}).ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # not published to the host: only the API can reach the database
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URL: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017/?authSource=admin
+      MONGODB_DB: hiresense
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env.docker}
+      # true once the site is served over HTTPS (a reverse proxy in front of port 8080); false for plain localhost
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      COOKIE_SAMESITE: lax
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      CORS_ORIGINS: ${FRONTEND_URL:-http://localhost:8080}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@hiresense.app}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+      GEMINI_BACKUP_MODELS: ${GEMINI_BACKUP_MODELS:-gemini-3.5-flash-lite}
+      AI_DAILY_LIMIT_PER_USER: ${AI_DAILY_LIMIT_PER_USER:-60}
+      AI_MAX_CONCURRENT: 4
+      REDIS_URL: ${REDIS_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-HireSense <no-reply@example.com>}
+    volumes:
+      - uploads:/data/uploads
+    stop_grace_period: 30s  # open requests + background jobs (feedback, reports) get time to finish
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_UPSTREAM: backend:8000
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  mongo-data:
+  uploads:
