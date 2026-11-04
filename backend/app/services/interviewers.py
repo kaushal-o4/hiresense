@@ -11,6 +11,18 @@ prompts stay on the server.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+# Frontend files the avatar URLs point at ("/avatars/hd/aria.glb" -> frontend/public/avatars/hd/aria.glb).
+PUBLIC_DIR = Path(__file__).resolve().parents[3] / "frontend" / "public"
+
+
+def asset_exists(url: str | None) -> bool:
+    """True when a site-relative URL such as "/avatars/hd/aria.glb" is a file in frontend/public. Not cached, so HD
+    models added later are picked up without a restart."""
+    if not url or not url.startswith("/") or ".." in url:
+        return False
+    return (PUBLIC_DIR / url.lstrip("/")).is_file()
 
 # Shared by every personality: professional boundaries that a persona can never override.
 BOUNDARIES = (
@@ -69,6 +81,12 @@ class Interviewer:
         d = asdict(self)
         for private in self.PRIVATE:
             d.pop(private)
+        # Advertise the high-detail model only when its file exists. Otherwise the browser requests it, gets a 404 and
+        # only then falls back to the normal model: one wasted request per avatar load.
+        ui = dict(d.get("ui") or {})
+        if not asset_exists(ui.get("hd_model")):
+            ui["hd_model"] = None
+        d["ui"] = ui
         return d
 
     def behaviour_prompt(self) -> str:
