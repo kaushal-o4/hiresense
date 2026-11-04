@@ -97,7 +97,7 @@ def test_transcribe_mocked_then_submit_through_existing_answer_api(client, mock_
     r = client.post(f"/api/student/interviews/{s['id']}/answer", json={
         "question_id": q["id"], "answer": r.json()["text"], "input_mode": "voice"})
     ans = r.json()["session"]["questions"][0]["answer"]
-    assert ans["input_mode"] == "voice" and ans["evaluation_status"] == "scored" and ans["score"] == 70.0
+    assert ans["input_mode"] == "voice" and ans["evaluation_status"] == "scored" and ans["score"] == 66.0  # 14 words: completeness capped at 5, blended in (ai.COMPLETENESS_SHARE)
     assert r.json()["session"]["questions"][1]["text"] == "Why did you choose Flask?"
     # an old recording for the answered question is refused
     assert send(client, s["id"], q["id"]).status_code == 409

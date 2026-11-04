@@ -1,0 +1,374 @@
+{
+ "started": "2026-11-04T17:18:08.667580+00:00",
+ "provider": "gemini",
+ "model": "gemini-3.5-flash",
+ "summary": {
+  "n": 16,
+  "spearman": 0.763,
+  "mean_by_label": {
+   "1": 24.0,
+   "2": 71.4,
+   "3": 88.8,
+   "4": 91.2
+  },
+  "gaps": {
+   "1->2": 47.4,
+   "2->3": 17.4,
+   "3->4": 2.4
+  },
+  "in_band": 0.125,
+  "perfect_100": [
+   "t_index_excellent",
+   "t_rest_good",
+   "t_rest_excellent",
+   "h_conflict_good",
+   "h_conflict_excellent"
+  ],
+  "max_score": 100.0,
+  "min_score": 0.0,
+  "baseline": true,
+  "models": {
+   "gemini:gemini-3.5-flash": 3,
+   "gemini:gemini-3.5-flash-lite": 1,
+   "qwen3:4b": 12
+  }
+ },
+ "rows": [
+  {
+   "id": "t_index_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 35.5,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 6,
+    "correctness": 1,
+    "completeness": 1,
+    "clarity": 3,
+    "communication": 5
+   },
+   "secs": 31.6,
+   "model": "gemini:gemini-3.5-flash",
+   "missing_point": "The answer fails to explain how indexes actually work (e.g., B-trees/hash indexes enabling faster data lookup), incorrectly states that indexes do not affect speed, and completely omits the trade-offs (e.g., increased memory/storage usage and slower write/update operations)."
+  },
+  {
+   "id": "t_index_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 68.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 7,
+    "correctness": 8,
+    "completeness": 4,
+    "clarity": 5,
+    "communication": 7
+   },
+   "secs": 1.6,
+   "model": "gemini:gemini-3.5-flash",
+   "missing_point": "The candidate failed to explain the main trade-offs of database indexes, such as write performance overhead (slower INSERT, UPDATE, DELETE operations) and additional disk storage consumption."
+  },
+  {
+   "id": "t_index_good",
+   "label": 3,
+   "rep": 0,
+   "score": 94.5,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 9,
+    "communication": 10
+   },
+   "secs": 18.0,
+   "model": "gemini:gemini-3.5-flash-lite",
+   "missing_point": "The answer mentions why indexes are good and when to use them, but misses the write-performance trade-off (slower INSERT, UPDATE, DELETE) and storage overhead."
+  },
+  {
+   "id": "t_index_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 9.8,
+   "model": "gemini:gemini-3.5-flash",
+   "missing_point": ""
+  },
+  {
+   "id": "t_rest_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 50.5,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 8,
+    "correctness": 3,
+    "completeness": 4,
+    "clarity": 3,
+    "communication": 7
+   },
+   "secs": 24.6,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "t_rest_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 65.5,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 4,
+    "completeness": 5,
+    "clarity": 5,
+    "communication": 8
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "t_rest_good",
+   "label": 3,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "t_rest_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 0.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 0,
+    "correctness": 0,
+    "completeness": 0,
+    "clarity": 0,
+    "communication": 0
+   },
+   "secs": 1.9,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 72.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 8,
+    "correctness": 7,
+    "completeness": 7,
+    "clarity": 6,
+    "communication": 8
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_good",
+   "label": 3,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.1,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 10.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 1,
+    "completeness": 1,
+    "clarity": 1,
+    "communication": 1
+   },
+   "secs": 1.9,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 80.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 8,
+    "completeness": 7,
+    "clarity": 6,
+    "communication": 8
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_good",
+   "label": 3,
+   "rep": 0,
+   "score": 60.5,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 2,
+    "correctness": 5,
+    "completeness": 2,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 65.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 2,
+    "correctness": 5,
+    "completeness": 2,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  }
+ ]
+}

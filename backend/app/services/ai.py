@@ -25,7 +25,7 @@ from ..odm import Session
 
 from ..config import get_settings
 from ..models import AIUsageLog
-from . import local_llm, model_router, perf
+from . import local_llm, model_router, perf, scoring_bands
 from .common import get_setting
 from .skills import TextIndex
 
@@ -558,6 +558,9 @@ def next_interview_question(db: Session, user_id: int, *, job_role: str, categor
 
 class QuickScore(BaseModel):
     answers_the_question: bool
+    # Named BEFORE the scores so the model looks for gaps first (calibration 2026-11-04). "none" for a complete
+    # answer. Default "" keeps older stored/mocked outputs valid.
+    missing_point: str = ""
     relevance: int
     correctness: int
     completeness: int
@@ -582,6 +585,23 @@ class AnswerFeedback(BaseModel):
 # so the check is only used for technical and project questions.
 OFF_TOPIC_SIMILARITY = 0.20
 SIMILARITY_CHECKED_TYPES = {"technical", "project"}
+# Open questions ("Walk me through your most significant project") share almost no words with a good, concrete
+# answer: calibration (eval/calibration_set.json, 2026-11-04) measured 0.13-0.17 similarity for strong on-topic
+# project answers, inside the off-topic range. A question is "open" when it is close to these generic prompts
+# (measured: open 0.72-0.74, specific questions 0.11-0.49); for open questions only the model's own
+# answers_the_question judgement is used.
+OPEN_QUESTION_TEMPLATES = ("Tell me about a project you have worked on.",
+                           "Describe your most important project and your role in it.")
+OPEN_QUESTION_SIMILARITY = 0.60
+
+
+def question_is_open(question: str) -> bool:
+    from . import embeddings
+    try:
+        v = embeddings.embed([question, *OPEN_QUESTION_TEMPLATES])
+    except embeddings.EmbeddingUnavailable:
+        return False
+    return max(float(v[0] @ t) for t in v[1:]) >= OPEN_QUESTION_SIMILARITY
 _side_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="ai-side")
 
 
@@ -600,13 +620,13 @@ _NON_ANSWERS = re.compile(r"^\s*(i\s*(do\s*not|don'?t)\s*know|no\s*idea|not\s*su
 
 
 def apply_answer_rules(ev: dict, question: str, answer: str, *, question_type: str = "technical",
-                       similarity: float | None = None) -> list[str]:
+                       similarity: float | None = None, open_question: bool = False) -> list[str]:
     """Deterministic checks layered on top of the model's scores. Mutates `ev`; returns notes for the student."""
     notes = []
     for k in CRITERIA:
         ev[k] = int(_clamp(ev.get(k, 0), 0, 10))
-    off_topic_by_meaning = (question_type in SIMILARITY_CHECKED_TYPES and similarity is not None
-                            and similarity < OFF_TOPIC_SIMILARITY)
+    off_topic_by_meaning = (question_type in SIMILARITY_CHECKED_TYPES and not open_question
+                            and similarity is not None and similarity < OFF_TOPIC_SIMILARITY)
     if off_topic_by_meaning or ev.get("answers_the_question") is False:
         ev["relevance"] = min(ev["relevance"], 2)
         ev["completeness"] = min(ev["completeness"], 2)
@@ -633,7 +653,23 @@ def apply_answer_rules(ev: dict, question: str, answer: str, *, question_type: s
     if ev["correctness"] > ev["relevance"] + 3:
         ev["correctness"] = ev["relevance"] + 3
         notes.append("Correctness was limited because the answer was only partly relevant to the question.")
+    # A mostly wrong technical answer can't be "relevant, complete and clear" (calibration 2026-11-04: qwen3:4b gave
+    # "PUT is for putting, PATCH is for patching, I use POST for everything" relevance 8 and 51/100).
+    if (WRONG_ANSWER_CAP and question_type == "technical" and ev["correctness"] <= 3
+            and max(ev["relevance"], ev["completeness"], ev["clarity"]) > ev["correctness"] + 2):
+        for k in ("relevance", "completeness", "clarity"):
+            ev[k] = min(ev[k], ev["correctness"] + 2)
+        notes.append("The answer is mostly incorrect, so relevance, completeness and clarity were limited too.")
+    # The model named something important that is missing: the answer can't be complete (9-10).
+    gap = str(ev.get("missing_point") or "").strip().strip(".").lower()
+    if MISSING_POINT_CAP and gap and gap not in _NO_GAP and ev["completeness"] > 7:
+        ev["completeness"] = 7
     return notes
+
+
+_NO_GAP = {"none", "nothing", "n/a", "na", "-", "nothing important", "nothing important is missing", "no"}
+MISSING_POINT_CAP = True
+WRONG_ANSWER_CAP = True  # eval/calibrate_scoring.py --baseline switches the 2026-11-04 rules off for comparison
 
 
 def next_difficulty(current: str, score: float | None, *, up: float = 75, down: float = 45) -> str:
@@ -660,6 +696,34 @@ EVALUATOR_SYSTEM = ("You are a fair, rigorous interview evaluator. Score honestl
                     "personality never changes how you score. ")
 
 
+# Anchors for every 0-10 criterion. Before them (calibration 2026-11-04, Gemini Flash-Lite) 4 of 16 hand-labelled
+# answers got 100, including one labelled "good" (a key point missing), and "fair" answers averaged 62.
+SCORE_ANCHORS = ("Use the whole scale: 10 = flawless, an expert would add nothing; 8-9 = strong, only a minor gap; "
+                 "6-7 = right idea but a key point, trade-off or concrete example is missing; 4-5 = partly right, "
+                 "vague or generic; 1-3 = mostly wrong, off-topic or empty; 0 = no answer. Give 10 only when nothing "
+                 "important is missing. A short correct answer without depth is a 5-6 on completeness, not 8.")
+# Completeness is scored but is not one of the four default rubric criteria, so without this it never moved the
+# total: a correct-but-shallow answer scored like a complete one. When the rubric gives it no weight, it is blended
+# in at this share of the 0-100 score.
+COMPLETENESS_SHARE = 0.20
+MISSING_POINT_PROMPT = ("Then write missing_point: the single most important thing a top candidate would have added "
+                        "(a key concept, trade-off, concrete example or result), in at most 12 words, or \"none\" if "
+                        "nothing important is missing.\n")
+
+
+def weighted_score(ev: dict, rubric: list[dict]) -> float:
+    """0-100 from the 0-10 criteria: the rubric-weighted average, with completeness blended in when the rubric
+    leaves it out (COMPLETENESS_SHARE)."""
+    weights = {c["name"].lower(): float(c.get("weight", 0)) for c in rubric}
+    if not any(weights.get(k) for k in CRITERIA):
+        weights = {k: 1.0 for k in ("relevance", "correctness", "clarity", "communication")}
+    total_w = sum(weights.get(k, 0) for k in CRITERIA)
+    base = sum(ev[k] * weights.get(k, 0) for k in CRITERIA) / total_w * 10
+    if not weights.get("completeness") and "completeness" in ev:
+        base = base * (1 - COMPLETENESS_SHARE) + ev["completeness"] * 10 * COMPLETENESS_SHARE
+    return round(base, 1)
+
+
 def score_answer(db: Session, user_id: int, *, job_role: str, question: str, question_type: str,
                  answer: str, rubric: list[dict], difficulty: str = "medium", interviewer: str = "aria") -> dict:
     """FAST step (scores only, ~60 output tokens): used to choose the next question right away.
@@ -677,30 +741,34 @@ def score_answer(db: Session, user_id: int, *, job_role: str, question: str, que
         f"Question: {question}\n{fence('answer', answer)}\n\n"
         f"Evaluation rubric:\n{criteria}\n\n"
         "First decide answers_the_question: does the answer actually respond to THIS question (true/false)?\n"
+        f"{MISSING_POINT_PROMPT}"
         "Then score each criterion as an integer 0-10:\n"
         "- relevance: does it answer the question asked?\n"
         "- correctness: are the facts/reasoning right? (for HR/behavioral: soundness and honesty)\n"
         "- completeness: are the key points covered?\n"
         "- clarity: is it well structured, with examples?\n"
-        "- communication: professional, concise language (ignore transcription errors)."
+        "- communication: professional, concise language (ignore transcription errors).\n"
+        f"{SCORE_ANCHORS}"
     )
     # The meaning-similarity check (embeddings, CPU) runs while the model is scoring instead of after it.
     sim_future = _side_pool.submit(lambda: answer_similarity(question, answer))
+    open_future = (_side_pool.submit(lambda: question_is_open(question))
+                   if question_type in SIMILARITY_CHECKED_TYPES else None)
     ev = _structured_call(db, user_id, "answer_scoring", EVALUATOR_SYSTEM + _strictness(db), prompt, QuickScore,
-                          max_tokens=160).model_dump()
+                          max_tokens=200).model_dump()
     sim = sim_future.result()
-    notes = apply_answer_rules(ev, question, answer, question_type=question_type, similarity=sim)
-    weights = {c["name"].lower(): float(c.get("weight", 0)) for c in rubric}
-    if not any(weights.get(k) for k in CRITERIA):
-        weights = {k: 1.0 for k in ("relevance", "correctness", "clarity", "communication")}
-    total_w = sum(weights.get(k, 0) for k in CRITERIA)
-    ev["score"] = round(sum(ev[k] * weights.get(k, 0) for k in CRITERIA) / total_w * 10, 1)
+    open_q = bool(open_future and open_future.result())
+    notes = apply_answer_rules(ev, question, answer, question_type=question_type, similarity=sim,
+                               open_question=open_q)
+    ev["score"] = weighted_score(ev, rubric)
     ev["details"] = {
         "completeness": ev["completeness"],
         "content_score": round((ev["relevance"] + ev["correctness"] + ev["completeness"]) / 3 * 10, 1),
         "communication_score": round((ev["clarity"] + ev["communication"]) / 2 * 10, 1),
         "answers_the_question": ev["answers_the_question"],
         "question_answer_similarity": sim,
+        "open_question": open_q,
+        "band": scoring_bands.band(ev["score"]),
         "next_difficulty": next_difficulty(difficulty, ev["score"], up=persona.difficulty_up,
                                            down=persona.difficulty_down),
         "rule_notes": notes,

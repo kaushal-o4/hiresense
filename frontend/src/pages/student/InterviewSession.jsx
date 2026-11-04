@@ -17,6 +17,7 @@ import InterviewerFeedback from "./InterviewerFeedback";
 import InterviewSetup from "./InterviewSetup";
 import { MonitorBar } from "../../monitoring/MonitorBar";
 import { useTypedMonitoring } from "../../monitoring/useTypedMonitoring";
+import { scoreBand } from "../../components/scoreBand";
 
 export function SampleAnswer({ text }) {
   const [open, setOpen] = useState(false);
@@ -126,7 +127,10 @@ function QuestionRow({ q, defaultOpen }) {
             {q.source === "question_bank" && <Pill tone="amber">question bank</Pill>}
           </span>
         </span>
-        <span className={`num shrink-0 text-lg font-semibold ${scoreText(s)}`}>{s ?? "—"}</span>
+        <span className="shrink-0 text-right">
+          <span className={`num block text-lg font-semibold ${scoreText(s)}`}>{s ?? "—"}</span>
+          {s != null && <span className="block text-[11px] text-slate-500">{scoreBand(s).label}</span>}
+        </span>
         <ChevronDown size={16} className={`mt-1 shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
@@ -161,7 +165,7 @@ export function InterviewReport({ session, onRetry, retrying }) {
   const r = session.report;
   const unevaluated = session.questions.some((q) => q.answer && !["completed", "scored"].includes(q.answer.evaluation_status));
   const score = session.overall_score;
-  const level = score == null ? null : score >= 75 ? "Strong performance" : score >= 50 ? "Solid, with gaps" : "Needs more practice";
+  const level = scoreBand(score)?.text;
   const next = r?.recommended_next;
   const steps = [...(r?.suggestions || []), ...(r?.recommended_practice || [])];
   // open the weakest answer by default so the most useful feedback is visible first
@@ -410,6 +414,7 @@ export default function InterviewSession() {
               {lastFeedback?.score != null ? (
                 <>
                   <p className={`num text-4xl font-semibold tracking-tight ${scoreText(lastFeedback.score)}`}>{lastFeedback.score}<span className="text-sm font-normal text-slate-400">/100</span></p>
+                  <p className="mt-1 text-xs text-slate-500">{scoreBand(lastFeedback.score).text} · AI estimate, a few points either way</p>
                   <div className="mt-3 space-y-2">{lastFeedback.scores && Object.entries(lastFeedback.scores).map(([k, v]) => <ScoreBar key={k} label={k} value={v} max={10} />)}</div>
                   {lastFeedback.feedback
                     ? <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{lastFeedback.feedback}</p>

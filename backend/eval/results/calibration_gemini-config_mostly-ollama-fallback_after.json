@@ -1,0 +1,367 @@
+{
+ "started": "2026-11-04T17:19:34.581313+00:00",
+ "provider": "gemini",
+ "model": "gemini-3.5-flash",
+ "summary": {
+  "n": 16,
+  "spearman": 0.925,
+  "mean_by_label": {
+   "1": 31.7,
+   "2": 57.4,
+   "3": 87.0,
+   "4": 89.5
+  },
+  "gaps": {
+   "1->2": 25.7,
+   "2->3": 29.6,
+   "3->4": 2.5
+  },
+  "in_band": 0.5,
+  "perfect_100": [],
+  "max_score": 90.0,
+  "min_score": 18.0,
+  "baseline": false,
+  "models": {
+   "gemini:gemini-3.5-flash-lite": 1,
+   "qwen3:4b": 15
+  }
+ },
+ "rows": [
+  {
+   "id": "t_index_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 20.4,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 2,
+    "correctness": 1,
+    "completeness": 1,
+    "clarity": 2,
+    "communication": 5
+   },
+   "secs": 27.1,
+   "model": "gemini:gemini-3.5-flash-lite",
+   "missing_point": "Mentions B-trees, read speedup, and write overhead trade-offs."
+  },
+  {
+   "id": "t_index_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 42.8,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 4,
+    "completeness": 5,
+    "clarity": 5,
+    "communication": 7
+   },
+   "secs": 17.9,
+   "model": "qwen3:4b",
+   "missing_point": "Trade-off: faster queries vs. storage cost"
+  },
+  {
+   "id": "t_index_good",
+   "label": 3,
+   "rep": 0,
+   "score": 86.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 8,
+    "communication": 9
+   },
+   "secs": 2.7,
+   "model": "qwen3:4b",
+   "missing_point": "Trade-off: faster queries vs. storage overhead"
+  },
+  {
+   "id": "t_index_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "t_rest_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 33.2,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 3,
+    "completeness": 5,
+    "clarity": 3,
+    "communication": 5
+   },
+   "secs": 2.8,
+   "model": "qwen3:4b",
+   "missing_point": "PUT replaces entire resource, PATCH updates partial"
+  },
+  {
+   "id": "t_rest_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 36.4,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 3,
+    "completeness": 5,
+    "clarity": 3,
+    "communication": 7
+   },
+   "secs": 2.6,
+   "model": "qwen3:4b",
+   "missing_point": "PUT replaces entire resource, PATCH updates partial"
+  },
+  {
+   "id": "t_rest_good",
+   "label": 3,
+   "rep": 0,
+   "score": 86.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 8,
+    "communication": 9
+   },
+   "secs": 2.9,
+   "model": "qwen3:4b",
+   "missing_point": "PUT is idempotent, PATCH is not"
+  },
+  {
+   "id": "t_rest_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 18.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 0,
+    "correctness": 3,
+    "completeness": 2,
+    "clarity": 1,
+    "communication": 3
+   },
+   "secs": 2.9,
+   "model": "qwen3:4b",
+   "missing_point": "Never had conflict with team member - not a real conflict example"
+  },
+  {
+   "id": "h_conflict_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 72.4,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 8,
+    "completeness": 5,
+    "clarity": 6,
+    "communication": 7
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_good",
+   "label": 3,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 55.2,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 8,
+    "correctness": 4,
+    "completeness": 5,
+    "clarity": 5,
+    "communication": 6
+   },
+   "secs": 2.7,
+   "model": "qwen3:4b",
+   "missing_point": "Specific tech stack and scalability challenges"
+  },
+  {
+   "id": "p_project_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 78.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 8,
+    "completeness": 6,
+    "clarity": 7,
+    "communication": 8
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_good",
+   "label": 3,
+   "rep": 0,
+   "score": 86.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 8,
+    "communication": 9
+   },
+   "secs": 2.8,
+   "model": "qwen3:4b",
+   "missing_point": "Nightly cron job impact on scalability"
+  },
+  {
+   "id": "p_project_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 88.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.9,
+   "model": "qwen3:4b",
+   "missing_point": "Trade-off: cache vs. performance for small dataset"
+  }
+ ]
+}

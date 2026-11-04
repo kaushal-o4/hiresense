@@ -1,0 +1,366 @@
+{
+ "started": "2026-11-04T17:16:02.550864+00:00",
+ "provider": "ollama",
+ "model": "qwen3:4b",
+ "summary": {
+  "n": 16,
+  "spearman": 0.951,
+  "mean_by_label": {
+   "1": 13.3,
+   "2": 56.8,
+   "3": 87.0,
+   "4": 89.5
+  },
+  "gaps": {
+   "1->2": 43.5,
+   "2->3": 30.2,
+   "3->4": 2.5
+  },
+  "in_band": 0.562,
+  "perfect_100": [],
+  "max_score": 90.0,
+  "min_score": 0.0,
+  "baseline": false,
+  "models": {
+   "qwen3:4b": 16
+  }
+ },
+ "rows": [
+  {
+   "id": "t_index_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 0.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 0,
+    "correctness": 0,
+    "completeness": 0,
+    "clarity": 0,
+    "communication": 0
+   },
+   "secs": 31.3,
+   "model": "qwen3:4b",
+   "missing_point": "none"
+  },
+  {
+   "id": "t_index_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 39.6,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 4,
+    "completeness": 5,
+    "clarity": 5,
+    "communication": 5
+   },
+   "secs": 3.7,
+   "model": "qwen3:4b",
+   "missing_point": "Trade-off: faster queries vs. storage cost"
+  },
+  {
+   "id": "t_index_good",
+   "label": 3,
+   "rep": 0,
+   "score": 86.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 8,
+    "communication": 9
+   },
+   "secs": 2.9,
+   "model": "qwen3:4b",
+   "missing_point": "Trade-off: faster queries vs. storage overhead"
+  },
+  {
+   "id": "t_index_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "t_rest_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 24.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 3,
+    "completeness": 3,
+    "clarity": 2,
+    "communication": 3
+   },
+   "secs": 2.8,
+   "model": "qwen3:4b",
+   "missing_point": "PUT replaces entire resource, PATCH updates partial"
+  },
+  {
+   "id": "t_rest_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 31.6,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 3,
+    "completeness": 5,
+    "clarity": 3,
+    "communication": 4
+   },
+   "secs": 2.8,
+   "model": "qwen3:4b",
+   "missing_point": "PUT replaces entire resource, PATCH updates partial"
+  },
+  {
+   "id": "t_rest_good",
+   "label": 3,
+   "rep": 0,
+   "score": 86.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 8,
+    "communication": 9
+   },
+   "secs": 2.9,
+   "model": "qwen3:4b",
+   "missing_point": "PUT is idempotent; PATCH is not"
+  },
+  {
+   "id": "t_rest_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 0.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 0,
+    "correctness": 0,
+    "completeness": 0,
+    "clarity": 0,
+    "communication": 0
+   },
+   "secs": 2.4,
+   "model": "qwen3:4b",
+   "missing_point": "none"
+  },
+  {
+   "id": "h_conflict_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 78.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 8,
+    "completeness": 6,
+    "clarity": 7,
+    "communication": 8
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_good",
+   "label": 3,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "h_conflict_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 90.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 8,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 29.2,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 3,
+    "completeness": 4,
+    "clarity": 2,
+    "communication": 5
+   },
+   "secs": 2.7,
+   "model": "qwen3:4b",
+   "missing_point": "Frontend, backend, database components not specified"
+  },
+  {
+   "id": "p_project_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 78.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 8,
+    "completeness": 6,
+    "clarity": 7,
+    "communication": 8
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_good",
+   "label": 3,
+   "rep": 0,
+   "score": 86.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 8,
+    "communication": 9
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b",
+   "missing_point": ""
+  },
+  {
+   "id": "p_project_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 88.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 7,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.8,
+   "model": "qwen3:4b",
+   "missing_point": "Trade-off: cache vs. performance for small dataset"
+  }
+ ]
+}

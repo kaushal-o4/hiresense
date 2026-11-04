@@ -30,6 +30,7 @@ import { MonitorBar, MonitoringSummary } from "../../monitoring/MonitorBar";
 import InterviewerFeedback from "./InterviewerFeedback";
 import InterviewSetup from "./InterviewSetup";
 import { InterviewReport } from "./InterviewSession";
+import { scoreBand } from "../../components/scoreBand";
 
 // Used only if the interviewer list cannot be loaded: the original Aria behaviour.
 const FALLBACK = {
@@ -946,7 +947,7 @@ export default function VoiceInterview() {
             </div>
           )}
           {lastFeedback?.score != null && (
-            <p className="text-center text-sm text-slate-500">Last answer <b className={`num font-semibold ${lastFeedback.score >= 75 ? "text-emerald-700" : lastFeedback.score >= 50 ? "text-amber-700" : "text-rose-700"}`}>{lastFeedback.score}/100</b>{lastFeedback.details?.next_difficulty && <> · next question {lastFeedback.details.next_difficulty}</>}</p>
+            <p className="text-center text-sm text-slate-500">Last answer <b className={`num font-semibold ${lastFeedback.score >= 75 ? "text-emerald-700" : lastFeedback.score >= 50 ? "text-amber-700" : "text-rose-700"}`}>{lastFeedback.score}/100</b> <span className="text-slate-400">({scoreBand(lastFeedback.score).label})</span>{lastFeedback.details?.next_difficulty && <> · next question {lastFeedback.details.next_difficulty}</>}</p>
           )}
           {coaching && lastFeedback?.feedback && (
             <div className="card p-4 text-sm leading-relaxed text-slate-700">
