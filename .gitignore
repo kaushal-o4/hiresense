@@ -20,4 +20,3 @@ backend/tests_perf/results/stt_clips/
 .env.docker
 backend/.env.cloud
 .pytest_tmp/
-.lint/
