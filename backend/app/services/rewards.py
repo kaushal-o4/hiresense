@@ -13,8 +13,9 @@ from ..odm import Session
 
 from ..models import (
     AssessmentResult, Badge, Challenge, ChallengeCompletion, EnglishSession, ImprovementPlan, InterviewSession,
-    PlanGoal, PointTransaction, PracticeExercise, RewardRule, StudentBadge,
+    PlanGoal, PointTransaction, PracticeExercise, RewardRule, StudentBadge, VocabularyReview,
 )
+from . import english_vocab
 from .common import notify
 
 
@@ -130,9 +131,16 @@ def badge_stats(db: Session, student_id: int) -> dict:
         "english_sessions": sum(1 for e in english if e.active_seconds >= 60),
         "english_avg_score": round(sum(english_scores) / len(english_scores), 1) if english_scores else 0,
         "assessments_passed": passed,
+        **english_vocab_stats(db, student_id),
         "streak_days": longest,
         "current_streak": current,
     }
+
+
+def english_vocab_stats(db: Session, student_id: int) -> dict:
+    c = english_vocab.counts(db, student_id)
+    return {"english_words_learned": c["learned"], "english_words_mastered": c["mastered"],
+            "english_plan_days": english_vocab.plan_days_completed(db, student_id)}
 
 
 def evaluate_badges(db: Session, student_id: int) -> list[Badge]:
@@ -229,7 +237,7 @@ def complete_goal(db: Session, student_id: int, goal: PlanGoal) -> None:
 # --------------------------------------------------------------------------- challenges
 
 CHALLENGE_METRICS = ("english_minutes", "english_sessions", "speaking_exercises", "pronunciation_drills",
-                     "interviews_completed", "assessments_passed")
+                     "interviews_completed", "assessments_passed", "english_reviews")
 
 
 def period_bounds(period: str, now: datetime | None = None) -> tuple[datetime, str]:
@@ -260,6 +268,9 @@ def challenge_progress(db: Session, student_id: int, challenge: Challenge) -> fl
         return float(db.scalar(select(func.count(PracticeExercise.id)).where(
             PracticeExercise.student_id == student_id, PracticeExercise.kind == kind,
             PracticeExercise.status == "completed", PracticeExercise.completed_at >= since)) or 0)
+    if m == "english_reviews":
+        return float(db.scalar(select(func.count(VocabularyReview.id)).where(
+            VocabularyReview.student_id == student_id, VocabularyReview.created_at >= since)) or 0)
     if m == "interviews_completed":
         return float(db.scalar(select(func.count(InterviewSession.id)).where(
             InterviewSession.student_id == student_id, InterviewSession.status == "completed",

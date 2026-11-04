@@ -13,10 +13,10 @@ from ..odm import Session
 from .. import database
 from ..database import get_db
 from ..deps import require_student
-from ..models import EnglishMessage, EnglishSession, User
-from ..schemas import EnglishMessageIn, EnglishStart
+from ..models import EnglishMessage, EnglishSession, User, VocabularyItem
+from ..schemas import EnglishMessageIn, EnglishStart, VocabularyReviewIn, VocabularyWordIn
 from ..serializers import english_out
-from ..services import ai, english_companion, english_profile, speech_stream
+from ..services import ai, english_companion, english_profile, english_vocab, speech_stream
 from ..services.common import paginate
 from ..services.insights import record_progress
 from ..services.rewards import after_activity, award_points, rule_requirements, streak_lengths
@@ -153,6 +153,85 @@ def clear_profile(user: User = Depends(require_student), db: Session = Depends(g
     return english_profile.public_profile(db, user.id)
 
 
+# --------------------------------------------------------------------------- vocabulary review, daily plan, progress
+# (declared before /{session_id} so these paths are not read as a session id)
+
+@router.get("/vocabulary")
+def vocabulary(filter: str = "all", user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """The student's word list (newest first) and box counts. filter: all | due | learning | learned | mastered."""
+    items = db.scalars(select(VocabularyItem).where(VocabularyItem.student_id == user.id)
+                       .order_by(VocabularyItem.id.desc())).all()
+    now = datetime.now(timezone.utc)
+    keep = {
+        "due": lambda i: _aware(i.due_at) <= now,
+        "learning": lambda i: i.box < english_vocab.LEARNED_BOX,
+        "learned": lambda i: i.box >= english_vocab.LEARNED_BOX and i.mastered_at is None,
+        "mastered": lambda i: i.mastered_at is not None,
+    }.get(filter, lambda i: True)
+    return {"items": [english_vocab.item_out(i) for i in items if keep(i)],
+            "counts": english_vocab.counts(db, user.id), "intervals_days": english_vocab.INTERVAL_DAYS}
+
+
+@router.post("/vocabulary", status_code=201)
+def add_vocabulary(body: VocabularyWordIn, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    try:
+        item = english_vocab.add_word(db, user.id, body.word, body.meaning, body.example)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+    db.commit()
+    return english_vocab.item_out(item)
+
+
+@router.get("/vocabulary/review")
+def review_queue(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """The cards due now (oldest first, at most REVIEW_BATCH)."""
+    return {"items": [english_vocab.item_out(i) for i in english_vocab.due_items(db, user.id)],
+            "counts": english_vocab.counts(db, user.id)}
+
+
+@router.post("/vocabulary/{item_id}/review")
+def review_card(item_id: int, body: VocabularyReviewIn, user: User = Depends(require_student),
+                db: Session = Depends(get_db)):
+    got = english_vocab.review(db, user.id, item_id, body.knew)
+    if got is None:
+        raise HTTPException(404, "Card not found")
+    item, mastered = got
+    if mastered:
+        award_points(db, user.id, english_vocab.MASTERED_ACTIVITY, "vocabulary_item", item.id,
+                     f"Mastered: {item.back[:60]}")
+    plan = english_vocab.check_plan(db, user.id)
+    new_badges = after_activity(db, user.id)  # badges and challenges (e.g. the weekly review challenge)
+    db.commit()
+    return {"item": english_vocab.item_out(item), "mastered_now": mastered, "plan": plan, "new_badges": new_badges}
+
+
+@router.delete("/vocabulary/{item_id}")
+def delete_vocabulary(item_id: int, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    item = db.get(VocabularyItem, item_id)
+    if not item or item.student_id != user.id:
+        raise HTTPException(404, "Card not found")
+    db.delete(item)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/daily-plan")
+def daily_plan(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    """Today's plan, ticked automatically from what the student did today. Finishing it earns points once a day
+    (awarded here as well, because the interview item is completed outside the English pages)."""
+    plan = english_vocab.daily_plan(db, user.id)
+    if plan["all_done"]:
+        english_vocab.check_plan(db, user.id, plan)
+        after_activity(db, user.id)
+        db.commit()
+    return plan
+
+
+@router.get("/progress")
+def english_progress(user: User = Depends(require_student), db: Session = Depends(get_db)):
+    return english_vocab.progress(db, user.id)
+
+
 @router.get("")
 def list_sessions(page: int = 1, page_size: int = 10, user: User = Depends(require_student),
                   db: Session = Depends(get_db)):
@@ -197,6 +276,7 @@ def _send_message(db: Session, user: User, session_id: int, body: EnglishMessage
                                            corrections=reply["corrections"]))
     session.messages.append(_ai_message(reply))
     english_profile.record_corrections(db, user.id, session.id, reply["corrections"])
+    english_vocab.collect_corrections(db, user.id, session.id, reply["corrections"])
     db.commit()
     return session_out(session)
 
@@ -305,6 +385,7 @@ def end_session(session_id: int, user: User = Depends(require_student), db: Sess
     if session.active_seconds >= min_active:
         award_points(db, user.id, "english_session", "english", session.id,
                      f"{round(session.active_seconds / 60)} minutes of English practice")
+    english_vocab.check_plan(db, user.id)
     new_badges = after_activity(db, user.id, "english_practice")
     db.commit()
     return {"session": session_out(session), "evaluation_error": error, "new_badges": new_badges,
