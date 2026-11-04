@@ -1158,6 +1158,12 @@ def student_recommendations(db: Session, user_id: int, *, snapshot: dict) -> dic
     system = ("You are a placement mentor. Based on a student's real performance data, identify weak areas "
               "(technical skills, communication, interview technique) and recommend 3-6 concrete practice "
               "activities. Ground every point in the data provided.")
+    # Measured 2026-11-04 with qwen3:4b: without these rules the weak areas came back as category labels
+    # ("technical_skills") and every activity was a mock interview, even for weak assessment topics.
+    system += (" Name each weak area specifically, using the topic or criterion from the data (for example "
+               "'SQL joins' or 'answer completeness'), never a bare category. Pick the activity_type that fits each "
+               "weakness: assessment for weak test topics, english_practice for language scores, mock_interview "
+               "for interview technique, resume_update for resume gaps.")
     prompt = fence("student_data", json.dumps(snapshot, default=str, indent=1))
     return _structured_call(db, user_id, "recommendations", system, prompt, StudentRecommendations).model_dump()
 
@@ -1175,15 +1181,22 @@ class GeneratedAssessment(BaseModel):
     questions: list[MCQ]
 
 
+_OPTION_LABEL = re.compile(r"^\s*(?:\(?[A-Da-d1-4][\.\):]|\([A-Da-d1-4]\))\s+")
+
+
 def generate_assessment(db: Session, user_id: int, *, topic: str, count: int, difficulty: str) -> list[dict]:
     system = "You write accurate multiple-choice questions for campus placement aptitude and technical tests."
     prompt = (f"Topic: {topic}\nDifficulty: {difficulty}\nWrite exactly {count} questions, each with exactly 4 "
-              "options, the 0-based index of the single correct option, and a one-sentence explanation.")
+              "options, the 0-based index of the single correct option, and a one-sentence explanation. Before answering, "
+              "check every question: exactly one option is correct, the marked index points to it, and the "
+              "explanation agrees with it. Rewrite any question that fails this check.")
     qs = _structured_call(db, user_id, "assessment_generation", system, prompt, GeneratedAssessment,
                           max_tokens=4096).questions
     out = []
     for q in qs:
-        if len(q.options) >= 2 and 0 <= q.answer_index < len(q.options):
+        # Small models sometimes number the options themselves ("1: LEFT JOIN", "B) ..."); the UI adds its own.
+        q.options = [_OPTION_LABEL.sub("", o).strip() for o in q.options]
+        if len(q.options) >= 2 and 0 <= q.answer_index < len(q.options) and all(q.options):
             out.append(q.model_dump())
     if not out:
         raise AIUnavailable("The AI did not return valid questions. Please try again.")
@@ -1194,6 +1207,9 @@ def generate_assessment(db: Session, user_id: int, *, topic: str, count: int, di
 
 class TestCaseVerdict(BaseModel):
     case: int
+    # Asked for BEFORE the verdict so the model traces the code first (2026-11-04: without it Gemini Flash-Lite
+    # passed a buggy solution on a case it fails).
+    traced_output: str
     likely_passes: bool
     reason: str
 
@@ -1210,7 +1226,9 @@ def evaluate_code(db: Session, user_id: int, *, question: str, language: str, co
     """AI code review. The code is NOT executed; the model reasons about each test case."""
     system = ("You are a programming instructor grading a student's solution for a placement coding test. The code "
               "is not executed; reason carefully about whether it would produce the expected output for each test "
-              "case, including edge cases and syntax errors. " + _strictness(db))
+              "case, including edge cases and syntax errors. For each test case, trace the code by hand on that "
+              "exact input, write down the value it returns, and compare it with the expected output; the case "
+              "passes only if they are equal. " + _strictness(db))
     cases = "\n".join(f"{i + 1}. input={json.dumps(t.get('input'))} expected={json.dumps(t.get('expected'))}"
                       for i, t in enumerate(test_cases)) or "(no test cases given - judge correctness from the task)"
     prompt = (f"Task:\n{question}\n\nLanguage: {language}\nTest cases:\n{cases}\n\n"
