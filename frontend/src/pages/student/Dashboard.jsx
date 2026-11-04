@@ -10,6 +10,7 @@ import { ArrowUpRight, Award, Briefcase, CalendarClock, CheckCircle2, Circle, Fi
 import { get, post } from "../../api";
 import { useAuth } from "../../auth";
 import { ProgressChart } from "../../components/charts";
+import DailyPlan from "../../components/DailyPlan";
 import InterviewerStage from "../../components/InterviewerStage";
 import { ReadinessCard } from "../../components/Readiness";
 import {
@@ -169,6 +170,8 @@ export default function StudentDashboard() {
         <Card title="Learning progress" className="lg:col-span-2" actions={<Link className="text-sm text-brand-600 hover:underline" to="/student/progress">Details</Link>}>
           <ProgressChart series={data.progress} />
         </Card>
+        <div className="space-y-6">
+        <DailyPlan compact />
         <Card title="Upcoming">
           {upcomingCount === 0 ? <EmptyState icon={CalendarClock} title="Nothing scheduled" message="Mentor sessions, job interviews and goals will appear here." /> : (
             <ul className="space-y-3 text-sm">
@@ -187,6 +190,7 @@ export default function StudentDashboard() {
             </ul>
           )}
         </Card>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">

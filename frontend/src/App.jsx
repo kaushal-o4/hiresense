@@ -23,6 +23,7 @@ import InterviewSession from "./pages/student/InterviewSession";
 import VoiceInterview from "./pages/student/VoiceInterview";
 import English from "./pages/student/English";
 import EnglishSession from "./pages/student/EnglishSession";
+import Vocabulary from "./pages/student/Vocabulary";
 import StudentAssessments from "./pages/student/Assessments";
 import Rewards from "./pages/student/Rewards";
 import Applications from "./pages/student/Applications";
@@ -101,6 +102,7 @@ export default function App() {
         <Route path="/student/interviews/:id" element={r("student", <InterviewSession />)} />
         <Route path="/student/interviews/:id/live" element={r("student", <VoiceInterview />)} />
         <Route path="/student/english" element={r("student", <English />)} />
+        <Route path="/student/english/vocabulary" element={r("student", <Vocabulary />)} />
         <Route path="/student/english/:id" element={r("student", <EnglishSession />)} />
         <Route path="/student/assessments" element={r("student", <StudentAssessments />)} />
         <Route path="/student/progress" element={r("student", <ProgressHub />)} />
