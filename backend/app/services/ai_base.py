@@ -55,6 +55,63 @@ def fence(tag: str, text: str) -> str:
     return f"<{tag}>\n{cleaned}\n</{tag}>"
 
 
+# "2-4 specific strengths", "3-5 concrete improvement suggestions": a count range followed by a short noun phrase.
+_COUNT_PHRASE = re.compile(r"^\(?\d+\s*(?:-|–|to)\s*\d+\)?\s+[a-z][a-z0-9 ,()/-]*$", re.IGNORECASE)
+
+
+def _norm(s: str) -> str:
+    return " ".join(re.sub(r"[^\w\s-]", " ", s.lower()).split())
+
+
+def _strings(value, path: str = ""):
+    """Yield (path, string) for every string in a nested dict/list structure."""
+    if isinstance(value, str):
+        yield path, value
+    elif isinstance(value, dict):
+        for k, v in value.items():
+            yield from _strings(v, f"{path}.{k}" if path else str(k))
+    elif isinstance(value, list):
+        for i, v in enumerate(value):
+            yield from _strings(v, f"{path}[{i}]")
+
+
+def echoed_placeholders(data) -> list[str]:
+    """Field paths whose values look like the prompt's template copied back instead of real content.
+
+    Small local models sometimes answer "Write a 2-4 sentence summary, 2-4 strengths ..." with
+    {"summary": "2-4 sentence summary", "strengths": ["2-4 specific strengths", ...]}. Flags:
+      * count-range phrases such as "2-4 specific strengths" (a range plus a short noun phrase, nothing else),
+        but only when they occur in 2+ different fields - one alone can be real ("2-3 mock interviews per week");
+      * a list of 2+ items that are all the same text.
+    Returns [] when the output looks genuine. (Matching values against the prompt text was tried and rejected:
+    conversational replies legitimately repeat the student's own words and the topic.)
+    """
+    bad: list[str] = []
+    phrases = [path for path, s in _strings(data)
+               if _COUNT_PHRASE.match(s.strip()) and len(s.split()) <= 10]
+    if len({re.sub(r"\[\d+\]$", "", p) for p in phrases}) >= 2:
+        bad.extend(phrases)
+
+    def lists(value, path=""):
+        if isinstance(value, dict):
+            for k, v in value.items():
+                yield from lists(v, f"{path}.{k}" if path else str(k))
+        elif isinstance(value, list):
+            yield path, value
+            for i, v in enumerate(value):
+                yield from lists(v, f"{path}[{i}]")
+
+    for path, items in lists(data):
+        texts = [_norm(x) for x in items if isinstance(x, str)]
+        if len(texts) >= 2 and len(texts) == len(items) and len(set(texts)) == 1 and texts[0]:
+            bad.append(path)
+    return sorted(set(bad))
+
+
+ECHO_RETRY_NOTE = ("\n\nYour previous reply copied these instructions instead of writing real content. Write the "
+                   "actual feedback about this candidate's answers in your own words; every list item must be different.")
+
+
 def ai_status(db: Session) -> dict:
     """Whether AI features can be used right now: the provider (Gemini, or Ollama with the model pulled) ready, and AI enabled both
     in .env and in admin settings. Also reports the embedding model's status. Shown in the UI and used to pick
@@ -107,10 +164,11 @@ def _structured_call(db: Session, user_id: int | None, feature: str, system: str
     schema = output_model.model_json_schema()
     full_system = (system + "\n\n" + UNTRUSTED_NOTE +
                    "\nAnswer with a single JSON object that matches the required schema. Write in English.")
+    attempt_prompt = prompt
     for attempt in (1, 2):
         t0 = time.perf_counter()
         try:
-            result = local_llm.chat_json(full_system, prompt, schema, max_tokens=max_tokens, temperature=temperature,
+            result = local_llm.chat_json(full_system, attempt_prompt, schema, max_tokens=max_tokens, temperature=temperature,
                                          priority=priority, on_delta=on_delta,
                                          model=model_router.configured_model(feature))
         except local_llm.LLMError as exc:
@@ -129,6 +187,14 @@ def _structured_call(db: Session, user_id: int | None, feature: str, system: str
             where = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['type']}" for e in exc.errors()[:6])
             _log(db, user_id, feature, "error", f"invalid_output attempt {attempt}: {where}", result.latency_ms, result)
             perf.record(f"llm.{feature}", result.latency_ms, False, status="bad_json", attempt=attempt, **details)
+            continue
+        echoed = echoed_placeholders(parsed.model_dump())
+        if echoed:
+            # The model copied the instructions (seen with small local models on the interview report). Paths only.
+            _log(db, user_id, feature, "error", f"echoed_placeholder attempt {attempt}: {', '.join(echoed[:6])}",
+                 result.latency_ms, result)
+            perf.record(f"llm.{feature}", result.latency_ms, False, status="echoed", attempt=attempt, **details)
+            attempt_prompt = prompt + ECHO_RETRY_NOTE
             continue
         _log(db, user_id, feature, "success", None, result.latency_ms, result)
         perf.record(f"llm.{feature}", result.latency_ms, True, attempt=attempt, **details)

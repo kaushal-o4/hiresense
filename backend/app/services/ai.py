@@ -487,11 +487,18 @@ def interview_report(db: Session, user_id: int, *, job_role: str, category: str,
         f"\nScore: {x.get('score')}/100"
         for i, x in enumerate(qa))
     prompt = (f"Role: {job_role}\nFocus: {category}\n\n{body}\n\n"
-              "Write a 2-4 sentence summary, 2-4 strengths, 2-4 weaknesses, 3-5 concrete improvement suggestions "
-              "and 2-3 recommended practice activities (e.g. 'Practise 3 SQL join questions'). Each list item is ONE "
-              "specific sentence naming the question or topic it refers to. Base everything on the answers above.\n"
-              f"Also write closing_remarks: 2-3 short spoken sentences (plain text, under 60 words) that {p.name}, "
-              f"the interviewer, says to the candidate at the end. Tone: {p.feedback_style}")
+              "Fill every field with real feedback about THIS candidate's answers above, in your own words:\n"
+              "- summary: how the interview went overall and the most important thing to fix (two to four "
+              "sentences).\n"
+              "- strengths: things the candidate did well (two to four items).\n"
+              "- weaknesses: gaps or mistakes in the answers (two to four items).\n"
+              "- suggestions: concrete ways to improve (three to five items).\n"
+              "- recommended_practice: practice activities, e.g. 'Practise 3 SQL join questions' (two or three "
+              "items).\n"
+              "Each list item is one specific sentence that names the question or topic it refers to, and no two "
+              "items are the same. Never repeat these instructions as content.\n"
+              f"- closing_remarks: what {p.name}, the interviewer, says to the candidate at the end, as plain spoken "
+              f"text of two or three short sentences (under 60 words). Tone: {p.feedback_style}")
     out = _structured_call(db, user_id, "interview_report", system, prompt, InterviewReport,
                            max_tokens=900).model_dump()
     out["closing_remarks"] = _speakable(out["closing_remarks"])[:600]
