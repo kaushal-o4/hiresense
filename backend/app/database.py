@@ -1,4 +1,4 @@
-"""MongoDB connection and session setup (see odm.py for the data layer).
+"""MongoDB connection and session setup (see the odm package for the data layer).
 """
 
 from . import odm
@@ -16,7 +16,7 @@ def SessionLocal() -> Session:  # noqa: N802 - called everywhere as a session fa
     return Session(get_database())
 
 
-odm.fallback_session_factory = lambda: SessionLocal()
+odm.set_fallback_session_factory(lambda: SessionLocal())
 
 _indexes_ready: set[str] = set()
 
