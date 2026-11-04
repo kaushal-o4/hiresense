@@ -29,6 +29,9 @@ BADGES = [
     ("english_regular", "English Regular", "Completed 10 English practice sessions.", "📚", "english_sessions", 10, 60),
     ("assessment_ace", "Assessment Ace", "Passed 3 skill assessments.", "✅", "assessments_passed", 3, 60),
     ("interview_10", "Interview Veteran", "Completed 10 mock interviews.", "🎯", "interviews_completed", 10, 100),
+    ("word_collector", "Word Collector", "Learned 25 words or phrases in your review list.", "🔤", "english_words_learned", 25, 50),
+    ("vocabulary_builder", "Vocabulary Builder", "Mastered 10 words or phrases (known at every review box).", "📖", "english_words_mastered", 10, 80),
+    ("daily_planner", "Daily Planner", "Finished your daily English plan on 7 days.", "🗓️", "english_plan_days", 7, 70),
 ]
 
 REWARD_RULES = [
@@ -38,6 +41,8 @@ REWARD_RULES = [
     ("assessment_passed", "Pass a skill assessment (first pass of each assessment only)", 25, 5, {}),
     ("score_improvement", "Beat your previous best interview score", 40, 1, {"min_improvement": 10}),
     ("goal_completed", "Complete a goal set by your mentor", 30, 5, {}),
+    ("english_daily_plan", "Finish every item of today's English plan", 15, 1, {}),
+    ("english_word_mastered", "Master a word or phrase in your review list", 5, 10, {}),
 ]
 
 CHALLENGES = [
@@ -45,6 +50,7 @@ CHALLENGES = [
      "english_minutes", 15, "daily", 20),
     ("Interview week", "Complete 3 mock interviews this week.", "interviews_completed", 3, "weekly", 50),
     ("Test yourself", "Pass 2 assessments this week.", "assessments_passed", 2, "weekly", 40),
+    ("Word workout", "Review 30 words from your English list this week.", "english_reviews", 30, "weekly", 30),
 ]
 
 CATEGORIES = [

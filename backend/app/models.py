@@ -891,3 +891,43 @@ class EnglishMistakePattern(TimestampMixin, Base):
     example_original: Mapped[str | None] = mapped_column(String(300))
     example_corrected: Mapped[str | None] = mapped_column(String(300))
     dismissed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+
+# --------------------------------------------------------------------------- English vocabulary (spaced repetition)
+
+class VocabularyItem(TimestampMixin, Base):
+    """A word or phrase in a student's personal review list (services/english_vocab.py). Most come from the
+    corrections Aria gave in practice sessions (front = what the student said, back = the corrected form); students
+    can also add their own. Reviewed with Leitner boxes 1-5: knowing it moves the card up one box (longer gap before
+    the next review), not knowing it sends it back to box 1."""
+    __tablename__ = "english_vocabulary"
+    __table_args__ = (UniqueConstraint("student_id", "key", name="uq_vocab_student_key"),
+                      Index("ix_vocab_student_due", "student_id", "due_at"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    key: Mapped[str] = mapped_column(String(300), nullable=False)  # normalised back text, for de-duplication
+    kind: Mapped[str] = mapped_column(String(20), default="correction", nullable=False)  # correction | word
+    front: Mapped[str] = mapped_column(String(300), nullable=False)  # prompt: the mistake, or the word
+    back: Mapped[str] = mapped_column(String(300), nullable=False)  # answer: the correct form, or the meaning
+    explanation: Mapped[str | None] = mapped_column(String(500))
+    source_session_id: Mapped[int | None] = mapped_column(Integer)
+    box: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    reviews: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    correct: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    last_reviewed: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    mastered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class VocabularyReview(TimestampMixin, Base):
+    """One answer in a review ("I knew it" / "not yet"), kept for accuracy trends, daily plans and challenges."""
+    __tablename__ = "english_vocabulary_reviews"
+    __table_args__ = (Index("ix_vocab_review_student_time", "student_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    student_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    item_id: Mapped[int] = mapped_column(ForeignKey("english_vocabulary.id", ondelete="CASCADE"), index=True, nullable=False)
+    knew: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    box_before: Mapped[int] = mapped_column(Integer, nullable=False)
+    box_after: Mapped[int] = mapped_column(Integer, nullable=False)

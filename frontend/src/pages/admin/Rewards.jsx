@@ -6,7 +6,8 @@ import { get, patch, post, put } from "../../api";
 import { Button, Card, ErrorBox, Field, Modal, PageHeader, Pill, Spinner, Table, useApi, useToast } from "../../components/ui";
 
 const CRITERIA = ["interviews_completed", "english_minutes", "avg_interview_score", "technical_best_score", "streak_days",
-  "assessments_passed", "english_sessions", "high_score_interviews", "english_avg_score"];
+  "assessments_passed", "english_sessions", "high_score_interviews", "english_avg_score",
+  "english_words_learned", "english_words_mastered", "english_plan_days"];
 
 export default function AdminRewards() {
   const toast = useToast();

@@ -472,10 +472,21 @@ class BadgeIn(BaseModel):
     icon: str = Field(default="🏅", max_length=20)
     criteria_type: Literal["interviews_completed", "english_minutes", "avg_interview_score", "technical_best_score",
                            "streak_days", "assessments_passed", "english_sessions", "high_score_interviews",
-                           "english_avg_score"]
+                           "english_avg_score", "english_words_learned", "english_words_mastered",
+                           "english_plan_days"]
     threshold: float = Field(ge=0)
     points: int = Field(default=50, ge=0, le=10000)
     active: bool = True
+
+
+class VocabularyWordIn(BaseModel):
+    word: str = Field(min_length=1, max_length=120)
+    meaning: str = Field(min_length=1, max_length=300)
+    example: str | None = Field(default=None, max_length=300)
+
+
+class VocabularyReviewIn(BaseModel):
+    knew: bool
 
 
 class RewardRuleUpdate(BaseModel):

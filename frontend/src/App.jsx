@@ -27,6 +27,7 @@ const InterviewSession = lazy(() => import("./pages/student/InterviewSession"));
 const VoiceInterview = lazy(() => import("./pages/student/VoiceInterview"));
 const English = lazy(() => import("./pages/student/English"));
 const EnglishSession = lazy(() => import("./pages/student/EnglishSession"));
+const Vocabulary = lazy(() => import("./pages/student/Vocabulary"));
 const StudentAssessments = lazy(() => import("./pages/student/Assessments"));
 const Rewards = lazy(() => import("./pages/student/Rewards"));
 const Applications = lazy(() => import("./pages/student/Applications"));
@@ -105,6 +106,7 @@ export default function App() {
         <Route path="/student/interviews/:id" element={r("student", <InterviewSession />)} />
         <Route path="/student/interviews/:id/live" element={r("student", <VoiceInterview />)} />
         <Route path="/student/english" element={r("student", <English />)} />
+        <Route path="/student/english/vocabulary" element={r("student", <Vocabulary />)} />
         <Route path="/student/english/:id" element={r("student", <EnglishSession />)} />
         <Route path="/student/assessments" element={r("student", <StudentAssessments />)} />
         <Route path="/student/progress" element={r("student", <ProgressHub />)} />

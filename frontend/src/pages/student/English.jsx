@@ -1,12 +1,15 @@
 /*
  * English conversation practice home: start a new conversation (topic, style, learning mode, text or
- * voice) with POST /student/english, and see companion stats and past sessions.
+ * voice) with POST /student/english, today's plan, the word-list summary, progress, and past sessions.
+ * `?mode=<learning mode>` (linked from the daily plan) preselects the learning mode.
  */
 
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { BookOpen, HeartHandshake, MessageCircle, MessagesSquare } from "lucide-react";
 import { get, post } from "../../api";
+import DailyPlan from "../../components/DailyPlan";
+import EnglishProgress from "../../components/EnglishProgress";
 import MistakeProfile from "../../components/MistakeProfile";
 import { useAuth } from "../../auth";
 import {
@@ -39,12 +42,16 @@ export default function English() {
   const toast = useToast();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
-  const [form, setForm] = useState({ topic: TOPICS.free_talk[0], mode: "voice", style: "free_talk", learning_mode: "free_conversation" });
+  const [params] = useSearchParams();
+  const askedMode = params.get("mode");
+  const [form, setForm] = useState({ topic: TOPICS.free_talk[0], mode: "voice", style: "free_talk",
+    learning_mode: FALLBACK_MODES.some((m) => m.id === askedMode) ? askedMode : "free_conversation" });
   const setStyle = (style) => setForm((f) => ({ ...f, style, topic: TOPICS[f.style].includes(f.topic) ? TOPICS[style][0] : f.topic }));
   const [busy, setBusy] = useState(false);
   const { data: companion } = useApi(() => get("/student/english/companion"), []);
   const modes = companion?.modes || FALLBACK_MODES;
   const { data, error, loading, reload } = useApi(() => get("/student/english", { page }), [page]);
+  const { data: words } = useApi(() => get("/student/english/vocabulary/review"), []);
   const totalMinutes = data ? Math.round(data.items.reduce((s, x) => s + x.active_seconds, 0) / 60) : 0;
 
   const start = async (e) => {
@@ -118,6 +125,24 @@ export default function English() {
         </form>
         <p className="mt-3 text-xs text-slate-500">Practice time is verified: only time spent actively replying (with real sentences) counts, and pauses longer than 2 minutes are not counted.</p>
       </Card>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <DailyPlan />
+        <Card title="My words" actions={<Link className="text-sm text-brand-600 hover:underline" to="/student/english/vocabulary">Open</Link>}>
+          {!words ? <Spinner /> : (
+            <>
+              <p className="text-sm text-slate-700">
+                <span className="num text-2xl font-semibold text-slate-950">{words.counts.due}</span> due for review ·{" "}
+                {words.counts.total} in your list · {words.counts.learned} learned
+              </p>
+              <p className="mt-2 text-xs text-slate-500">Aria's corrections are saved here as cards. A few minutes of review a day moves them into long-term memory.</p>
+              <div className="mt-4">
+                <Button onClick={() => navigate("/student/english/vocabulary")}>{words.counts.due ? "Review now" : "See my words"}</Button>
+              </div>
+            </>
+          )}
+        </Card>
+      </div>
+      <EnglishProgress />
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard label="Sessions (this page)" value={data?.total ?? "—"} icon={MessagesSquare} />
         <StatCard label="Verified practice (this page)" value={`${totalMinutes} min`} icon={MessagesSquare} tone="sky" />
