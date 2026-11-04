@@ -40,7 +40,18 @@ def audit(db: Session, actor_id: int | None, action: str, entity_type: str | Non
 
 
 def notify(db: Session, user_id: int, title: str, message: str, kind: str = "info", link: str | None = None) -> None:
+    """Queue an in-app notification. Open browser tabs of that user are told once the caller commits."""
     db.add(Notification(user_id=user_id, title=title, message=message, kind=kind, link=link))
+    signal_notifications(db, user_id, "notification")
+
+
+def signal_notifications(db: Session, user_id: int, kind: str = "sync") -> None:
+    """After the next commit, tell the user's open notification streams to re-fetch (services/live_events.py)."""
+    from . import live_events
+
+    hook = getattr(db, "after_commit", None)
+    if hook:
+        hook(lambda: live_events.publish(user_id, {"type": kind}))
 
 
 def paginate(db: Session, stmt, page: int, page_size: int):

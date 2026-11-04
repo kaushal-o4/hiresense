@@ -1,18 +1,25 @@
 """Endpoints shared by every role: profile and notifications."""
+import asyncio
+import json
+import time
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 from ..odm import func, select, update
 from ..odm import Session
 
-from ..database import get_db
-from ..deps import client_ip, get_current_user
+from ..config import get_settings
+from ..database import SessionLocal, get_db
+from ..deps import _token_from_request, client_ip, get_current_user
 from ..models import MentorProfile, Notification, RecruiterProfile, StudentProfile, User
 from ..schemas import AdminProfileUpdate, MentorProfileUpdate, RecruiterProfileUpdate, StudentProfileUpdate
 from ..serializers import notification_out, profile_out
-from ..services.common import audit, normalize_skills, paginate
+from ..security import decode_access_token
+from ..services import live_events
+from ..services.common import audit, normalize_skills, paginate, signal_notifications
 
 router = APIRouter(prefix="/api", tags=["common"])
 
@@ -116,6 +123,7 @@ def mark_read(notification_id: int, user: User = Depends(get_current_user), db: 
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
     n.read = True
+    signal_notifications(db, user.id)  # other open tabs update their badge
     db.commit()
     return {"ok": True}
 
@@ -124,6 +132,7 @@ def mark_read(notification_id: int, user: User = Depends(get_current_user), db: 
 def mark_all_read(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(update(Notification).where(Notification.user_id == user.id, Notification.read.is_(False))
                .values(read=True))
+    signal_notifications(db, user.id)
     db.commit()
     return {"ok": True}
 
@@ -134,5 +143,55 @@ def delete_notification(notification_id: int, user: User = Depends(get_current_u
     if not n or n.user_id != user.id:
         raise HTTPException(404, "Notification not found")
     db.delete(n)
+    signal_notifications(db, user.id)
     db.commit()
     return {"ok": True}
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+@router.get("/notifications/stream")
+async def notification_stream(request: Request):
+    """Server-Sent Events: `ready` once, then `notification` (a new one arrived) or `sync` (read/deleted elsewhere)
+    whenever the signed-in user's notifications change. Events carry no content; the client re-fetches
+    GET /api/notifications. Heartbeat comments keep proxies from closing the connection, and the stream ends after
+    NOTIFICATIONS_STREAM_MAX_SECONDS (and when the login token expires) so the browser reconnects and is
+    re-authenticated. In-process only: see services/live_events.py for the multi-worker limit."""
+    db = SessionLocal()  # short-lived: the stream must not hold a database session open for minutes
+    try:
+        user = get_current_user(request, db)  # 401/403 exactly like every other endpoint
+        user_id = user.id
+    finally:
+        db.close()
+    exp = (decode_access_token(_token_from_request(request) or "") or {}).get("exp")
+    cfg = get_settings()
+    if live_events.stream_count(user_id) >= live_events.MAX_STREAMS_PER_USER:
+        raise HTTPException(429, "Too many open notification streams. Close some tabs.")
+
+    async def events():
+        deadline = time.monotonic() + cfg.notifications_stream_max_seconds
+        if exp:
+            deadline = min(deadline, time.monotonic() + max(0.0, exp - time.time()))
+        try:
+            with live_events.subscribe(user_id) as q:
+                yield "retry: 3000\n" + _sse("ready", {"heartbeat_seconds": cfg.notifications_heartbeat_seconds})
+                while True:
+                    left = deadline - time.monotonic()
+                    if left <= 0:
+                        yield _sse("bye", {"reason": "reconnect"})
+                        return
+                    try:
+                        ev = await asyncio.wait_for(q.get(), timeout=min(cfg.notifications_heartbeat_seconds, left))
+                        yield _sse(ev.get("type", "sync"), {})
+                    except asyncio.TimeoutError:
+                        if await request.is_disconnected():
+                            return
+                        yield ": ping\n\n"
+        except live_events.TooManyStreams:
+            yield _sse("bye", {"reason": "too_many_streams"})
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no",
+                                      "Connection": "keep-alive"})

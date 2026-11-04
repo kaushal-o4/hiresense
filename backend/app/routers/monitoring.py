@@ -348,6 +348,44 @@ def _may_review(db: Session, user: User, s: InterviewSession, recruiters_on: boo
     return False
 
 
+BAND_ORDER = {"none": 0, "low": 1, "moderate": 2, "high": 3}
+
+
+def integrity_overview(db: Session, viewer: User, student_id: int) -> dict:
+    """Per-candidate roll-up of monitored, completed interviews that `viewer` may review (same rule as the review
+    pages: for recruiters, only applicants who consented under a policy that disclosed recruiter access). Counts
+    only, never event content. Not a performance signal and never a basis for a decision on its own."""
+    sessions = db.scalars(select(InterviewSession).where(
+        InterviewSession.student_id == student_id, InterviewSession.status == "completed")).all()
+    monitored = [s for s in sessions if s.monitoring]
+    recruiters_on = security_config(db).recruiters_can_view if viewer.role == "recruiter" else None
+    visible = [s for s in monitored if _may_review(db, viewer, s, recruiters_on)]
+    out = {"visible": bool(visible), "monitored_sessions": len(visible), "hidden_sessions": len(monitored) - len(visible),
+           "needs_review": 0, "highest_band": None, "sessions": [],
+           "disclaimer": "Integrity signals are approximate, reviewed separately from performance, and must never be "
+                         "the sole basis for any hiring decision."}
+    if not visible:
+        out["reason"] = ("No monitored interviews yet." if not monitored else
+                         "Not shared with recruiters (the candidate's consent or the platform setting does not allow it).")
+        return out
+    events = db.scalars(select(IntegrityEvent).where(IntegrityEvent.session_id.in_([s.id for s in visible]))).all()
+    by_session: dict[int, list] = {}
+    for e in events:
+        by_session.setdefault(e.session_id, []).append(e)
+    best = "none"
+    for s in sorted(visible, key=lambda x: x.id, reverse=True):
+        summ = _summary(s, by_session.get(s.id, []))
+        band = summ["risk"]["band"]
+        if BAND_ORDER.get(band["code"], 0) > BAND_ORDER[best]:
+            best = band["code"]
+        if summ["status"]["code"] == "review":
+            out["needs_review"] += 1
+        out["sessions"].append({"session_id": s.id, "job_role": s.job_role, "band": band,
+                                "status": summ["status"], "events": summ["total"]})
+    out["highest_band"] = {"code": best, "label": integrity.BAND_LABELS[best]}
+    return out
+
+
 def _parse_date(v: str | None, end: bool = False) -> datetime | None:
     if not v:
         return None

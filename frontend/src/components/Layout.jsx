@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../auth";
 import { get, post } from "../api";
+import { subscribeNotifications } from "../live/notificationStream";
 import Logo from "./Logo";
 import { fmtDateTime, Spinner } from "./ui";
 
@@ -74,18 +75,24 @@ function NotificationBell() {
   const load = async () => {
     try {
       setData(await get("/notifications", { page_size: 8 }));
-    } catch { /* ignore polling errors */ }
+    } catch { /* ignore refresh errors; the next signal or poll retries */ }
   };
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 30000);
+    // Live updates over Server-Sent Events, with backoff reconnects and a polling fallback (live/notificationStream.js).
+    let timer = null;
+    const unsubscribe = subscribeNotifications(() => {
+      clearTimeout(timer);
+      timer = setTimeout(load, 150); // coalesce bursts (several notifications in one action)
+    });
     const onClick = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
     return () => {
-      clearInterval(t);
+      unsubscribe();
+      clearTimeout(timer);
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
@@ -213,7 +220,7 @@ export default function Layout() {
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[70] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-slate-900 focus:shadow-pop">
         Skip to content
       </a>
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-slate-200/70 bg-slate-50/70 backdrop-blur-xl lg:block">{sidebar}</aside>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 print:!hidden border-r border-slate-200/70 bg-slate-50/70 backdrop-blur-xl lg:block">{sidebar}</aside>
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={close} />
@@ -223,8 +230,8 @@ export default function Layout() {
           </aside>
         </div>
       )}
-      <div className="flex min-w-0 flex-1 flex-col lg:pl-60">
-        <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-slate-200/70 bg-slate-50/60 px-4 backdrop-blur-xl sm:px-6">
+      <div className="flex min-w-0 flex-1 flex-col lg:pl-60 print:!pl-0">
+        <header className="sticky top-0 z-20 flex h-14 print:!hidden items-center gap-2 border-b border-slate-200/70 bg-slate-50/60 px-4 backdrop-blur-xl sm:px-6">
           <button className="-ml-1.5 rounded-md p-2 text-slate-600 hover:bg-slate-100 lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu"
             aria-expanded={mobileOpen}>
             <Menu size={19} />

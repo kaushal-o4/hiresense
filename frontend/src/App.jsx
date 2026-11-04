@@ -38,6 +38,8 @@ const RecruiterJobs = lazy(() => import("./pages/recruiter/Jobs"));
 const RecruiterJobDetail = lazy(() => import("./pages/recruiter/JobDetail"));
 const Candidates = lazy(() => import("./pages/recruiter/Candidates"));
 const CandidateDetail = lazy(() => import("./pages/recruiter/CandidateDetail"));
+const CompareCandidates = lazy(() => import("./pages/recruiter/CompareCandidates"));
+const CandidateReport = lazy(() => import("./pages/recruiter/CandidateReport"));
 
 const MentorDashboard = lazy(() => import("./pages/mentor/Dashboard"));
 const MentorStudents = lazy(() => import("./pages/mentor/Students"));
@@ -118,6 +120,8 @@ export default function App() {
         <Route path="/recruiter" element={r("recruiter", <RecruiterDashboard />)} />
         <Route path="/recruiter/jobs" element={r("recruiter", <RecruiterJobs />)} />
         <Route path="/recruiter/jobs/:id" element={r("recruiter", <RecruiterJobDetail />)} />
+        <Route path="/recruiter/jobs/:id/compare" element={r("recruiter", <CompareCandidates />)} />
+        <Route path="/recruiter/applications/:id/report" element={r("recruiter", <CandidateReport />)} />
         <Route path="/recruiter/candidates" element={r("recruiter", <Candidates />)} />
         <Route path="/recruiter/candidates/:id" element={r("recruiter", <CandidateDetail />)} />
         <Route path="/recruiter/assessments" element={r("recruiter", <AssessmentManager />)} />

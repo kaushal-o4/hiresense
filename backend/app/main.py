@@ -47,7 +47,7 @@ async def security_headers(request: Request, call_next):
     started = time.perf_counter()
     response = await call_next(request)
     elapsed = time.perf_counter() - started
-    if elapsed > 5 and not request.url.path.endswith(("/turn", "/transcribe", "/speak")):
+    if elapsed > 5 and not request.url.path.endswith(("/turn", "/transcribe", "/speak", "/stream")):
         logger.info("slow request id=%s %s %s %.1fs status=%s", request.state.request_id, request.method,
                     request.url.path, elapsed, response.status_code)  # path only: no query string, no body
     response.headers["X-Request-ID"] = request.state.request_id

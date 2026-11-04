@@ -4,8 +4,8 @@
  */
 
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, CheckCircle2, Scale, Sparkles } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { AlertTriangle, CheckCircle2, FileText, Scale, Sparkles } from "lucide-react";
 import { get, patch, post } from "../../api";
 import { chipClass } from "../shared/chips";
 import {
@@ -13,6 +13,7 @@ import {
   useApi, useToast,
 } from "../../components/ui";
 
+const MAX_COMPARE = 4;
 const STATUSES = ["applied", "shortlisted", "interview_scheduled", "selected", "rejected"];
 const REC_TONE = { strong_fit: "green", potential_fit: "amber", not_a_fit: "red" };
 
@@ -24,7 +25,7 @@ export const MATCH_METHOD = {
   unavailable: { label: "not available", tone: "gray" },
 };
 
-function MatchPanel({ match }) {
+export function MatchPanel({ match }) {
   if (!match) return null;
   const method = MATCH_METHOD[match.method] || { label: match.method, tone: "gray" };
   const missingRequired = match.missing_required_skills ?? match.missing_skills ?? [];
@@ -68,7 +69,7 @@ export default function RecruiterJobDetail() {
   const toast = useToast();
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState([]);
-  const [compare, setCompare] = useState(null);
+  const navigate = useNavigate();
   const [statusModal, setStatusModal] = useState(null);
   const [busy, setBusy] = useState(null);
   const { data, error, loading, reload } = useApi(() => get(`/recruiter/jobs/${id}/applications`, { status: filter }), [id, filter]);
@@ -87,9 +88,7 @@ export default function RecruiterJobDetail() {
     } catch (e) { toast(e.message, "error"); } finally { setBusy(null); }
   };
 
-  const runCompare = async () => {
-    try { setCompare(await post(`/recruiter/jobs/${id}/compare`, { application_ids: selected })); } catch (e) { toast(e.message, "error"); }
-  };
+  const runCompare = () => navigate(`/recruiter/jobs/${id}/compare?ids=${selected.join(",")}`);
 
   const saveStatus = async () => {
     setBusy("status");
@@ -123,13 +122,13 @@ export default function RecruiterJobDetail() {
           <button key={s || "all"} onClick={() => setFilter(s)} aria-pressed={filter === s} className={chipClass(filter === s)}>{s ? s.replace(/_/g, " ") : "All"}</button>
         ))}
       </div>
-      <Notice tone="blue">AI recommendations are advisory. Review the evidence and make the final decision yourself. Select 2-5 candidates to compare side by side.</Notice>
+      <Notice tone="blue">AI recommendations are advisory. Review the evidence and make the final decision yourself. Select 2-4 candidates to compare side by side.</Notice>
       {data.items.length === 0 && <Card><p className="py-6 text-center text-sm text-slate-500">No applications in this view.</p></Card>}
       <div className="space-y-4">
         {data.items.map((a) => (
           <Card key={a.id}>
             <div className="flex flex-wrap items-start gap-3">
-              <input type="checkbox" className="mt-1" aria-label={`Select ${a.student.full_name}`} checked={selected.includes(a.id)} disabled={!selected.includes(a.id) && selected.length >= 5}
+              <input type="checkbox" className="mt-1" aria-label={`Select ${a.student.full_name}`} checked={selected.includes(a.id)} disabled={a.status === "withdrawn" || (!selected.includes(a.id) && selected.length >= MAX_COMPARE)}
                 onChange={(e) => setSelected(e.target.checked ? [...selected, a.id] : selected.filter((x) => x !== a.id))} />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -148,6 +147,7 @@ export default function RecruiterJobDetail() {
               </div>
               <div className="flex flex-col gap-2">
                 <Button size="sm" variant="secondary" loading={busy === a.id} onClick={() => runMatch(a.id)}><Sparkles size={14} /> {["ai", "semantic+ai"].includes(a.match?.method) ? "Re-run AI match" : "AI match"}</Button>
+                {a.status !== "withdrawn" && <Link to={`/recruiter/applications/${a.id}/report`}><Button size="sm" variant="secondary" className="w-full"><FileText size={14} /> Report</Button></Link>}
                 {a.status !== "withdrawn" && <Button size="sm" onClick={() => setStatusModal({ app: a, status: a.status, note: "", interview_at: "" })}>Update status</Button>}
               </div>
             </div>
@@ -172,26 +172,6 @@ export default function RecruiterJobDetail() {
         )}
       </Modal>
 
-      <Modal open={!!compare} onClose={() => setCompare(null)} title="Candidate comparison" wide>
-        {compare && (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">{compare.note}</p>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <tbody className="divide-y divide-slate-100">
-                  {[["Candidate", "name"], ["Status", "status"], ["Match score", "match_score"], ["Method", "match_method"], ["Recommendation", "recommendation"],
-                    ["Required skills covered", "required_skills_covered"], ["CGPA", "cgpa"], ["Interview avg", "interview_avg"], ["Interview best", "interview_best"],
-                    ["Technical avg", "technical_avg"], ["English avg", "english_avg"], ["Assessment avg", "assessment_avg"], ["Resume completeness", "resume_score"]].map(([label, key]) => (
-                    <tr key={key}><th className="th whitespace-nowrap">{label}</th>{compare.candidates.map((c) => <td key={c.application_id} className="td font-medium">{c[key] ?? "—"}</td>)}</tr>
-                  ))}
-                  <tr><th className="th">Missing skills</th>{compare.candidates.map((c) => <td key={c.application_id} className="td text-xs">{c.missing_skills.join(", ") || "—"}</td>)}</tr>
-                  <tr><th className="th">Why</th>{compare.candidates.map((c) => <td key={c.application_id} className="td text-xs">{c.explanation || "Run an AI match for an explanation"}</td>)}</tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 }

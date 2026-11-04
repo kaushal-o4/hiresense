@@ -440,33 +440,104 @@ def ai_match(application_id: int, user: User = Depends(require_recruiter), db: S
     return {**application_out(app, include_student=True), "ai_error": ai_error}
 
 
+def _match_breakdown(match: dict | None) -> dict:
+    m = match or {}
+    return {k: m.get(k) for k in ("criteria_scores", "weights", "matched_skills", "partially_matched_skills",
+                                  "missing_required_skills", "missing_preferred_skills", "eligible",
+                                  "eligibility_issues", "relevant_projects")}
+
+
+def _recent_interviews(db: Session, student_id: int, limit: int = 5) -> list[dict]:
+    rows = db.scalars(select(InterviewSession).where(InterviewSession.student_id == student_id,
+                                                     InterviewSession.status == "completed")
+                      .order_by(InterviewSession.id.desc()).limit(limit)).all()
+    return [{"id": i.id, "job_role": i.job_role, "category": i.category, "difficulty": i.difficulty,
+             "score": i.overall_score, "flagged": bool(i.flagged), "completed_at": iso(i.completed_at)} for i in rows]
+
+
+def _compare_row(db: Session, user: User, job: Job, app: JobApplication) -> dict:
+    from .monitoring import integrity_overview  # late import: monitoring is a sibling router
+
+    s = student_summary(db, app.student)
+    req = {r.skill.lower() for r in job.requirements if r.importance == "required"}
+    have = {x.lower() for x in s["student"]["skills"]}
+    m = app.match or {}
+    return {
+        "application_id": app.id, "student_id": app.student_id, "name": app.student.full_name,
+        "status": app.status, "applied_at": iso(app.created_at), "college": s["student"]["college"],
+        "cgpa": s["student"]["cgpa"], "branch": s["student"]["branch"],
+        "graduation_year": s["student"]["graduation_year"],
+        "match_score": m.get("score"), "match_method": m.get("method"), "recommendation": m.get("recommendation"),
+        "required_skills_covered": f"{len(req & have)}/{len(req)}" if req else "n/a",
+        "missing_skills": m.get("missing_skills", []),
+        "match_breakdown": _match_breakdown(app.match),
+        "interview_avg": s["interviews"]["average_score"], "interview_best": s["interviews"]["best_score"],
+        "interview_count": s["interviews"]["completed"],
+        "interview_criteria": s["interviews"]["criteria"], "assessments_taken": s["assessments"]["taken"],
+        "assessments_passed": s["assessments"]["passed"], "assessments_by_topic": s["assessments"]["by_topic"],
+        "technical_avg": s["interviews"]["by_category"].get("technical"),
+        "interviews_by_category": s["interviews"]["by_category"],
+        "recent_interviews": _recent_interviews(db, app.student_id, 3),
+        "english_avg": s["english"]["average_score"], "assessment_avg": s["assessments"]["average_score"],
+        "job_assessments": _assignments_out(db, app),
+        "resume_score": (s["resume"] or {}).get("resume_score"), "readiness": s["readiness"]["score"],
+        "strengths": m.get("strengths", []), "concerns": m.get("concerns", []),
+        "explanation": m.get("explanation"),
+        "integrity": integrity_overview(db, user, app.student_id),
+    }
+
+
 @recruiter_router.post("/jobs/{job_id}/compare")
 def compare(job_id: int, body: CompareIn, user: User = Depends(require_recruiter), db: Session = Depends(get_db)):
+    """Side-by-side view of 2-4 applicants to one of this recruiter's jobs (advisory)."""
     job = _own_job(db, user, job_id)
+    ids = list(dict.fromkeys(body.application_ids))
+    if len(ids) < 2:
+        raise HTTPException(400, "Pick at least two different applications")
     rows = []
-    for aid in body.application_ids:
+    for aid in ids:
         app = _own_application(db, user, aid)
         if app.job_id != job.id:
             raise HTTPException(400, "All applications must belong to this job")
-        s = student_summary(db, app.student)
-        req = {r.skill.lower() for r in job.requirements if r.importance == "required"}
-        have = {x.lower() for x in s["student"]["skills"]}
-        rows.append({
-            "application_id": app.id, "student_id": app.student_id, "name": app.student.full_name,
-            "status": app.status, "cgpa": s["student"]["cgpa"], "branch": s["student"]["branch"],
-            "match_score": (app.match or {}).get("score"), "match_method": (app.match or {}).get("method"),
-            "recommendation": (app.match or {}).get("recommendation"),
-            "required_skills_covered": f"{len(req & have)}/{len(req)}" if req else "n/a",
-            "missing_skills": (app.match or {}).get("missing_skills", []),
-            "interview_avg": s["interviews"]["average_score"], "interview_best": s["interviews"]["best_score"],
-            "technical_avg": s["interviews"]["by_category"].get("technical"),
-            "english_avg": s["english"]["average_score"], "assessment_avg": s["assessments"]["average_score"],
-            "resume_score": (s["resume"] or {}).get("resume_score"),
-            "strengths": (app.match or {}).get("strengths", []), "concerns": (app.match or {}).get("concerns", []),
-            "explanation": (app.match or {}).get("explanation"),
-        })
+        if app.status == "withdrawn":
+            raise HTTPException(400, f"{app.student.full_name} withdrew this application")
+        rows.append(_compare_row(db, user, job, app))
     return {"job": job_out(job), "candidates": rows,
-            "note": "Comparison is advisory. Scores come from recorded platform activity; the final decision is yours."}
+            "note": "Comparison is advisory. Scores come from recorded platform activity; the final decision is yours. "
+                    "Integrity signals are shown separately and are never a basis for a decision on their own."}
+
+
+@recruiter_router.get("/applications/{application_id}/report")
+def candidate_report(application_id: int, request: Request, user: User = Depends(require_recruiter),
+                     db: Session = Depends(get_db)):
+    """Everything a recruiter may see about one applicant to one of their jobs, for the printable report page.
+    Scoped to the application, so the access rule (applied to this recruiter's job) is enforced by construction."""
+    app = _own_application(db, user, application_id)
+    if app.status == "withdrawn":
+        raise HTTPException(404, "Application not found")
+    job, student = app.job, app.student
+    p = student.student_profile
+    resume = current_resume(db, student.id)
+    row = _compare_row(db, user, job, app)
+    row["recent_interviews"] = _recent_interviews(db, student.id, 10)
+    audit(db, user.id, "candidate.report", "application", app.id, None, client_ip(request))
+    db.commit()
+    return {
+        "generated_at": iso(datetime.now(timezone.utc)), "job": job_out(job), "candidate": row,
+        "contact": {"email": student.email, "linkedin_url": p.linkedin_url if p else None,
+                    "github_url": p.github_url if p else None},
+        "profile": _candidate_payload(db, student),
+        "resume": {"filename": resume.filename, "analysis_summary": (resume.analysis or {}).get("candidate_summary"),
+                   "strengths": (resume.analysis or {}).get("strengths", []),
+                   "improvement_areas": (resume.analysis or {}).get("improvement_areas", [])}
+        if resume else None,
+        "cover_letter": app.cover_letter,
+        "history": [{"from": h.from_status, "to": h.to_status, "note": h.note, "at": iso(h.created_at)}
+                    for h in sorted(app.history, key=lambda h: h.id or 0)],
+        "interview_at": iso(app.interview_at),
+        "note": "Generated from recorded HireSense activity. Scores are practice estimates; AI match explanations are "
+                "advisory. Integrity signals are approximate and never a basis for a hiring decision on their own.",
+    }
 
 
 @recruiter_router.get("/candidates")

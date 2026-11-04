@@ -25,8 +25,11 @@ function formatDetail(detail) {
   return JSON.stringify(detail);
 }
 
+/** Full URL of an API path ("/notifications" -> "/api/notifications"). One place to change the API origin. */
+export const apiUrl = (path) => `/api${path}`;
+
 export async function api(path, { method = "GET", body, params, raw = false } = {}) {
-  let url = `/api${path}`;
+  let url = apiUrl(path);
   if (params) {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
