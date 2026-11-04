@@ -137,7 +137,7 @@ export default function StudentDashboard() {
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Reward points" value={s.rewards.points} icon={Award} tone="amber" hint={`${s.rewards.badges} badges earned`} />
-        <StatCard label="Avg interview score" value={s.interviews.average_score ?? "—"} icon={TrendingUp} tone="violet" hint={`${s.interviews.completed} interviews completed`} />
+        <StatCard label="Avg interview score" value={s.interviews.average_score ?? "—"} icon={TrendingUp} tone="violet" hint={`${s.interviews.completed} interview${s.interviews.completed === 1 ? "" : "s"} completed`} />
         <StatCard label="English practice" value={`${s.english.minutes} min`} icon={MessagesSquare} tone="sky" hint={`${s.english.sessions} sessions`} />
         <StatCard label="Practice streak" value={`${s.rewards.current_streak} day${s.rewards.current_streak === 1 ? "" : "s"}`} icon={Flame} tone="red" hint={`Longest: ${s.rewards.longest_streak}`} />
       </div>
