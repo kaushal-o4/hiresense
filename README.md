@@ -706,7 +706,8 @@ backend/
     main.py            FastAPI app, error logging, security headers
     config.py          settings from .env
     database.py        MongoDB connection, sessions, index setup
-    odm.py             MongoDB data layer with a SQLAlchemy-style API (select/where/join, Session)
+    odm/               MongoDB data layer with a SQLAlchemy-style API (select/where/join, Session);
+                       coltypes, expressions, statements, mapping, connection, query, session
     models.py          all collections (users, profiles, resumes, interviews, english,
                        assessments, progress, rewards, jobs, applications, mentoring,
                        notifications, audit/AI/error logs, settings)
@@ -715,7 +716,9 @@ backend/
     security.py        Argon2 hashing, JWT
     deps.py            auth + role guards, mentor-assignment checks
     services/
-      ai.py            every AI feature: prompts, JSON schemas, validation rules, limits, logging
+      ai.py            interview prompts + scoring rules; re-exports every AI feature below
+      ai_base.py       the single model gateway (_structured_call): limits, JSON validation, logging
+      ai_resume.py, ai_english.py, ai_tasks.py   resume analysis, English practice, smaller AI tasks
       local_llm.py     Ollama client (availability check, timeouts, concurrency limit)
       embeddings.py    Sentence Transformers model (loaded once, cached)
       matching.py      semantic job matching with documented weights
@@ -725,8 +728,9 @@ backend/
       insights.py      shared student performance summary used by all portals
       resume_parser.py PDF/DOCX text extraction
       access.py        who may view which student's detailed records
-    routers/           auth, common, students, interviews, english, assessments,
-                       jobs (student + recruiter), mentors, admin
+    routers/           auth, common, students, interviews (+ interview_live: streamed voice turns),
+                       english, assessments, jobs/ (student + recruiter), mentors, admin/, voice,
+                       monitoring
     seed.py            admin, badges, reward rules, categories, question bank, rubrics
   ml/                  training data, training script, saved model, metrics (see ml/README.md)
   tests/               pytest suite (mocked models)

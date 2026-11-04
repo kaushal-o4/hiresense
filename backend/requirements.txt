@@ -1,6 +1,6 @@
 fastapi>=0.115
 uvicorn[standard]>=0.32
-pymongo>=4.10               # MongoDB driver (app/odm.py)
+pymongo>=4.10               # MongoDB driver (app/odm/)
 pydantic>=2.10
 pydantic-settings>=2.6
 email-validator>=2.2

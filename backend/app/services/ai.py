@@ -3,7 +3,7 @@
   ai_base     the model gateway (_structured_call), ai_status, AIUnavailable, shared helpers
   ai_resume   resume analysis
   ai_english  spoken-English practice with Aria
-  ai_tasks    match narrative, recommendations, MCQ generation, code review, role suggestions, speaking feedback
+  ai_tasks    match narrative, recommendations, MCQ generation, code review, role suggestions
 
 Everything is re-exported here, so callers keep using `from ..services import ai` and `ai.<name>`. Tests patch
 interview functions and tunables (SCORE_ANCHORS, answer_similarity, ...) on this module, which is why the interview
@@ -514,6 +514,6 @@ from .ai_resume import (  # noqa: E402,F401
 )
 from .ai_tasks import (  # noqa: E402,F401
     MCQ, CodeReview, GeneratedAssessment, MatchReview, Recommendation, RoleRecommendations, RoleSuggestion,
-    SpeakingFeedback, StudentRecommendations, TestCaseVerdict, evaluate_code, generate_assessment,
-    job_role_recommendations, match_review, speaking_feedback, student_recommendations,
+    StudentRecommendations, TestCaseVerdict, evaluate_code, generate_assessment, job_role_recommendations,
+    match_review, student_recommendations,
 )

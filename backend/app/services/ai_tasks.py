@@ -1,4 +1,4 @@
-"""Smaller AI tasks: match narrative, recommendations, MCQ generation, code review, role suggestions, speaking feedback."""
+"""Smaller AI tasks: match narrative, recommendations, MCQ generation, code review, role suggestions."""
 from __future__ import annotations
 
 import json
@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from ..odm import Session
 
 from .ai_base import AIUnavailable, _clamp, _clean_list, _strictness, _structured_call, fence
-from .ai_english import Correction
 
 
 # =========================================================================== job match narrative
@@ -168,30 +167,4 @@ def job_role_recommendations(db: Session, user_id: int, *, snapshot: dict, inter
     for x in r["roles"]:
         x["fit_score"] = int(_clamp(x["fit_score"], 0, 100))
     r["roles"].sort(key=lambda x: -x["fit_score"])
-    return r
-
-
-# =========================================================================== speaking exercises
-
-class SpeakingFeedback(BaseModel):
-    grammar: int
-    vocabulary: int
-    fluency: int
-    sentence_formation: int
-    relevance: int
-    feedback: str
-    corrections: list[Correction]
-    sample_answer: str
-
-
-def speaking_feedback(db: Session, user_id: int, *, prompt_text: str, transcript: str) -> dict:
-    system = ("You are an English communication coach. The student answered a speaking prompt aloud; you receive "
-              "the speech-recognition transcript, so ignore missing punctuation. Score 0-10 integers honestly. "
-              "Never consider accent or personal characteristics.")
-    prompt = (f"Speaking prompt: {prompt_text}\n{fence('student_message', transcript)}\n\n"
-              "Score grammar, vocabulary, fluency, sentence_formation and relevance to the prompt. Give 2-3 "
-              "sentences of feedback, up to 5 corrections, and a natural sample answer (60-120 words).")
-    r = _structured_call(db, user_id, "speaking_exercise", system, prompt, SpeakingFeedback).model_dump()
-    for k in ("grammar", "vocabulary", "fluency", "sentence_formation", "relevance"):
-        r[k] = int(_clamp(r[k], 0, 10))
     return r

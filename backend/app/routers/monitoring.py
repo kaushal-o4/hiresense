@@ -126,11 +126,6 @@ def _summary(s: InterviewSession, events: list[IntegrityEvent]) -> dict:
             "risk": integrity.risk_summary(events, _session_config(s))}
 
 
-def monitoring_summary(db: Session, s: InterviewSession) -> dict:
-    events = db.scalars(select(IntegrityEvent).where(IntegrityEvent.session_id == s.id)).all()
-    return _summary(s, events)
-
-
 # --------------------------------------------------------------------------- student
 
 @router.get("/api/monitoring/policy")
