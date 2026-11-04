@@ -362,7 +362,7 @@ class AssignAssessmentIn(BaseModel):
 
 
 class CompareIn(BaseModel):
-    application_ids: list[int] = Field(min_length=2, max_length=5)
+    application_ids: list[int] = Field(min_length=2, max_length=4)
 
 
 # --------------------------------------------------------------------------- mentoring

@@ -33,6 +33,8 @@ import RecruiterJobs from "./pages/recruiter/Jobs";
 import RecruiterJobDetail from "./pages/recruiter/JobDetail";
 import Candidates from "./pages/recruiter/Candidates";
 import CandidateDetail from "./pages/recruiter/CandidateDetail";
+import CompareCandidates from "./pages/recruiter/CompareCandidates";
+import CandidateReport from "./pages/recruiter/CandidateReport";
 
 import MentorDashboard from "./pages/mentor/Dashboard";
 import MentorStudents from "./pages/mentor/Students";
@@ -112,6 +114,8 @@ export default function App() {
         <Route path="/recruiter" element={r("recruiter", <RecruiterDashboard />)} />
         <Route path="/recruiter/jobs" element={r("recruiter", <RecruiterJobs />)} />
         <Route path="/recruiter/jobs/:id" element={r("recruiter", <RecruiterJobDetail />)} />
+        <Route path="/recruiter/jobs/:id/compare" element={r("recruiter", <CompareCandidates />)} />
+        <Route path="/recruiter/applications/:id/report" element={r("recruiter", <CandidateReport />)} />
         <Route path="/recruiter/candidates" element={r("recruiter", <Candidates />)} />
         <Route path="/recruiter/candidates/:id" element={r("recruiter", <CandidateDetail />)} />
         <Route path="/recruiter/assessments" element={r("recruiter", <AssessmentManager />)} />
