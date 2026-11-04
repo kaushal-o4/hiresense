@@ -152,4 +152,4 @@ def test_personality_configs_are_distinct_and_public_part_hides_prompts(client):
     register_student(client)
     for item in client.get("/api/interviewers").json():
         assert "traits" in item and not {"objective", "acknowledgement", "prohibited", "aspect_order"} & set(item)
-        assert item["ui"].get("hd_model")  # kept from the avatar work
+        assert "hd_model" in item["ui"]  # key kept; null until the HD file exists (see test_avatar_assets.py)
