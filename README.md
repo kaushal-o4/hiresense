@@ -783,8 +783,29 @@ FastAPI generates interactive docs at **http://127.0.0.1:8000/docs** (Swagger) a
 
 ## 9. Known limitations
 
-- **A 4B local model is much weaker than a large cloud model.** It is good enough for practice feedback, but it can be generous (a strong answer scored 100/100 in testing), and its question quality varies. Scores are practice estimates, not proof of correctness.
-- **Verified with the real model:** resume analysis, question generation, answer evaluation, simpler follow-ups and match explanations (`tests_integration/`, plus a live end-to-end run). **Not yet verified with the real model:** English conversation/evaluation, speaking exercises, AI MCQ generation, code review, student/mentor recommendations and job-role suggestions. They use the same validated pipeline, but test each once.
+- **A 4B local model is much weaker than a large cloud model.** It is good enough for practice feedback, and its question quality varies. Scores are practice estimates, not proof of correctness. Since the 2026-11-04 calibration (see "Score calibration" below) it no longer gives 100/100, but it still can't tell a good answer from an excellent one (87 vs 90 on average).
+- **Verified with the real model (2026-11-04, `tests_integration/test_real_features.py`, Gemini and Ollama `qwen3:4b`, all 5 tests pass on both):** English conversation and evaluation, AI MCQ generation, code review, student/mentor recommendations (one shared function) and job-role suggestions, plus, from earlier, resume analysis, question generation, answer evaluation, simpler follow-ups and match explanations. Speaking exercises were removed. Problems found and fixed: options numbered by the model ("1: LEFT JOIN"), all-generic recommendations ("technical_skills", every activity a mock interview), Gemini Flash-Lite passing buggy code on a case it fails. **Still possible:** a small model can mark a wrong MCQ answer (seen once with `qwen3:4b`). AI-drafted questions are only a draft that the author reviews before saving.
+- **Gemini quota (2026-11-04):** with the configured key, `gemini-3.5-flash` returned HTTP 429 (rate/quota limit) for most requests, so the app answered with `gemini-3.5-flash-lite` and, after timeouts, with Ollama. A request through the HTTP API (`POST /api/student/role-recommendations`) was confirmed answered by `gemini:gemini-3.5-flash-lite` in 2.8 s (perf_metrics `model` field). For steady Gemini use, a paid tier or a higher quota is needed.
+
+### Score calibration (2026-11-04)
+`backend/eval/calibration_set.json` holds 16 hand-labelled answers (poor / fair / good / excellent; technical, behavioural and project questions), each with the band a fair interviewer would give. `eval/calibrate_scoring.py` scores them with the live scoring function and reports rank correlation (Spearman), the average per label, the share inside its band, and any 100s. `--baseline` switches the changes below off, so before and after run on the same model. Results are in `eval/results/calibration_*.json`.
+
+| Same model (`qwen3:4b`) | Before | After |
+|---|---|---|
+| Spearman (label vs score) | 0.80 | **0.95** |
+| Inside the expected band | 19% | **56%** |
+| Answers scored 100 | 5 | **0** |
+| Average: poor / fair / good / excellent | 29 / 70 / 88 / 91 | **13 / 57 / 87 / 90** |
+
+With Gemini (mostly Flash-Lite) before the changes, the first run measured Spearman 0.83, 38% in band and four 100s, one of them a "good" answer missing a key point. A clean Gemini after-run wasn't possible on 2026-11-04 because of the quota: 15 of 16 calls fell back to Ollama.
+
+What changed (`services/ai.py`):
+- **Anchored 0-10 scale** in the scoring prompt (`SCORE_ANCHORS`): 10 only when nothing important is missing.
+- **`missing_point` before the scores:** the model first names the biggest missing point; if there is one, completeness is capped at 7.
+- **Completeness counts:** it was scored but carried no weight in the default rubric, so a shallow but correct answer scored like a complete one. When the rubric leaves it out, it now makes up 20% of the score (`COMPLETENESS_SHARE`).
+- **Off-topic bug fixed:** strong, concrete answers to open questions ("Walk me through your most significant project") have only 0.13-0.17 meaning similarity to the question, so the off-topic cap set relevance to 2 and scored them 60-65. Open questions (similarity ≥ 0.60 to a generic "tell me about a project" prompt; specific questions measured 0.11-0.49) now rely on the model's own `answers_the_question`.
+- **Mostly wrong technical answers** (correctness ≤ 3) can't keep high relevance, completeness or clarity.
+- **Score bands** appear next to the number: Needs work 0-39, Developing 40-59, Competent 60-74, Strong 75-89, Outstanding 90-100 (`services/scoring_bands.py`, `frontend/src/components/scoreBand.js`). Bands and scores never depend on the interviewer persona.
 - **Speed:** on a laptop CPU/GPU split, resume analysis takes ~1 minute and each interview answer ~20–40 s (evaluation + next question). Only one AI request runs at a time, so several simultaneous users will queue.
 - Skill-name similarity from MiniLM is noisy for very short texts (e.g. Python~Java 0.45). This is why only ≥ 0.50 counts as "partial", and partial matches get half credit.
 - The admin **job-match rubric** is no longer used for scoring. Match weights are set by the `MATCH_WEIGHT_*` settings in `.env`.

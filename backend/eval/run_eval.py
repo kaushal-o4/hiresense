@@ -86,7 +86,8 @@ def register(c, email):
 def add_resume(factory, user_id, resume):
     from app.models import Resume
     db = factory()
-    db.query(Resume).filter(Resume.student_id == user_id).update({"is_current": False})
+    for old in db.query(Resume).filter(Resume.student_id == user_id).all():  # the MongoDB layer has no bulk update
+        old.is_current = False
     db.add(Resume(student_id=user_id, filename="resume.txt", stored_path="-", content_type="text/plain",
                   raw_text=resume["raw_text"], is_current=True, analysis_status="completed",
                   analysis=resume["analysis"], analyzed_at=datetime.now(timezone.utc)))

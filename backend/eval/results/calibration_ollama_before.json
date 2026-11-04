@@ -1,0 +1,356 @@
+{
+ "started": "2026-11-04T17:12:36.434755+00:00",
+ "provider": "ollama",
+ "model": "qwen3:4b",
+ "summary": {
+  "n": 16,
+  "spearman": 0.801,
+  "mean_by_label": {
+   "1": 29.2,
+   "2": 70.4,
+   "3": 88.2,
+   "4": 91.2
+  },
+  "gaps": {
+   "1->2": 41.2,
+   "2->3": 17.8,
+   "3->4": 3.0
+  },
+  "in_band": 0.188,
+  "perfect_100": [
+   "t_index_excellent",
+   "t_rest_good",
+   "t_rest_excellent",
+   "h_conflict_good",
+   "h_conflict_excellent"
+  ],
+  "max_score": 100.0,
+  "min_score": 10.0,
+  "baseline": true,
+  "models": {
+   "qwen3:4b": 16
+  }
+ },
+ "rows": [
+  {
+   "id": "t_index_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 50.5,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 8,
+    "correctness": 3,
+    "completeness": 4,
+    "clarity": 3,
+    "communication": 7
+   },
+   "secs": 27.8,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_index_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 71.5,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 8,
+    "correctness": 6,
+    "completeness": 6,
+    "clarity": 7,
+    "communication": 8
+   },
+   "secs": 2.9,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_index_good",
+   "label": 3,
+   "rep": 0,
+   "score": 92.5,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 9,
+    "completeness": 9,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.1,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_index_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 16.8,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_rest_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 46.5,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 3,
+    "completeness": 1,
+    "clarity": 1,
+    "communication": 5
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_rest_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 55.5,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 3,
+    "completeness": 5,
+    "clarity": 3,
+    "communication": 7
+   },
+   "secs": 2.1,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_rest_good",
+   "label": 3,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "t_rest_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "h_conflict_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 10.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 1,
+    "completeness": 1,
+    "clarity": 1,
+    "communication": 1
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "h_conflict_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 74.5,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 8,
+    "correctness": 7,
+    "completeness": 6,
+    "clarity": 7,
+    "communication": 8
+   },
+   "secs": 2.1,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "h_conflict_good",
+   "label": 3,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "h_conflict_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 100.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 10,
+    "completeness": 10,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "p_project_poor",
+   "label": 1,
+   "rep": 0,
+   "score": 10.0,
+   "band": [
+    0,
+    30
+   ],
+   "in_band": true,
+   "criteria": {
+    "relevance": 1,
+    "correctness": 1,
+    "completeness": 1,
+    "clarity": 1,
+    "communication": 1
+   },
+   "secs": 2.1,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "p_project_fair",
+   "label": 2,
+   "rep": 0,
+   "score": 80.0,
+   "band": [
+    35,
+    60
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 10,
+    "correctness": 8,
+    "completeness": 7,
+    "clarity": 6,
+    "communication": 8
+   },
+   "secs": 2.1,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "p_project_good",
+   "label": 3,
+   "rep": 0,
+   "score": 60.5,
+   "band": [
+    65,
+    84
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 2,
+    "correctness": 5,
+    "completeness": 2,
+    "clarity": 9,
+    "communication": 9
+   },
+   "secs": 2.0,
+   "model": "qwen3:4b"
+  },
+  {
+   "id": "p_project_excellent",
+   "label": 4,
+   "rep": 0,
+   "score": 65.0,
+   "band": [
+    85,
+    97
+   ],
+   "in_band": false,
+   "criteria": {
+    "relevance": 2,
+    "correctness": 5,
+    "completeness": 2,
+    "clarity": 10,
+    "communication": 10
+   },
+   "secs": 2.2,
+   "model": "qwen3:4b"
+  }
+ ]
+}

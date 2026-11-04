@@ -70,7 +70,7 @@ def test_coding_assessment_pending_then_ai_review(client, new_client, monkeypatc
 
     from app.services import ai
     monkeypatch.setattr(ai, "evaluate_code", lambda db, uid, **kw: {
-        "score": 90, "verdicts": [{"case": 1, "likely_passes": True, "reason": "ok"}], "feedback": "Correct",
+        "score": 90, "verdicts": [{"case": 1, "traced_output": "3", "likely_passes": True, "reason": "ok"}], "feedback": "Correct",
         "improved_solution": code})
     r = client.post(f"/api/student/assessments/results/{started['result_id']}/evaluate").json()
     assert r["result"]["marks_obtained"] == 2 + 7.2 and r["result"]["score"] == 92.0 and r["result"]["passed"]
