@@ -10,14 +10,14 @@
 
 import { Suspense, lazy, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Camera, CameraOff, Keyboard, Lightbulb, Mic, MicOff, Pause, PhoneOff, Play, RotateCcw, Send, Settings2, Timer, Volume2, VolumeX } from "lucide-react";
+import { Lightbulb, Play, RotateCcw, Timer } from "lucide-react";
 import { api, del, get, post } from "../../api";
 import { usePrefs } from "../../components/useSpeech";
-import { Button, ConfirmButton, ErrorBox, Notice, Spinner, useToast } from "../../components/ui";
+import { Button, ErrorBox, Notice, Spinner, useToast } from "../../components/ui";
 import Avatar from "../../voice/Avatar";
 // three.js is large: load the 3D interviewer only when this page is opened.
 const Avatar3D = lazy(() => import("../../voice/Avatar3D"));
-import { AVATAR_QUALITY, AVATAR_STATE_LABEL, avatarStateFor, saveQuality, storedQuality } from "../../voice/avatarStates";
+import { AVATAR_STATE_LABEL, avatarStateFor, storedQuality } from "../../voice/avatarStates";
 import { S, STATUS_LABEL, initialState, transition } from "../../voice/interviewMachine";
 import { MicRecorder } from "../../voice/recorder";
 import { SpeechPlayer } from "../../voice/speechPlayer";
@@ -32,43 +32,13 @@ import InterviewSetup from "./InterviewSetup";
 import { InterviewReport } from "./InterviewSession";
 import { scoreBand } from "../../components/scoreBand";
 
-// Used only if the interviewer list cannot be loaded: the original Aria behaviour.
-const FALLBACK = {
-  id: "aria", name: "Aria", title: "Friendly interviewer", tts_voice: undefined, tts_speed: 1, interrupts: false,
-  answer_seconds: 180, browser_voice: { gender: "female", lang: "en-US", pitch: 1.05 },
-  ui: { accent: "#0ea5e9", model: "/avatars/interviewer.glb", badge: "Friendly" },
-  greeting: "Hi, I'm Aria, and I'll be your interviewer today for the {role} role. Take your time with each answer. Let's begin.",
-  reactions: ["Thank you. Let me think about that for a moment.", "Okay, thanks for that. Give me a second."],
-  closing: "Thank you, that was my last question. When you are ready, press Finish and I will prepare your feedback.",
-};
-const INTERJECTION = "Let me stop you there. I have what I need.";
-const REACTION_MS = 1800; // how long the avatar visibly reacts after an answer before it starts "thinking"
-const SUB_SIZE = { sm: "text-sm", md: "text-base", lg: "text-lg sm:text-xl" };
-// endOfSpeechMs: null = the default for the chosen response mode (from /voice/status). autoSend: submit the
-// transcript right after it is ready instead of waiting for the Submit button.
-// Settings version 2 (2026-10-29): answers are sent automatically by default, like talking to a live interviewer;
-// "autoSend" saved by an older version is dropped once so the new default applies.
-const DEFAULT_SETTINGS = { v: 2, voiceOn: true, rate: 1, captions: true, subtitleSize: "md", autoMic: true, endOfSpeechMs: null, autoSend: true };
-function savedSettings(raw) {
-  const saved = JSON.parse(raw || "{}");
-  if (saved.v !== 2) { delete saved.autoSend; delete saved.v; }
-  return saved;
-}
-const splitSentences = (t) => (t || "").split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
-const turnId = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
-
-const fmtClock = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-const store = (kind) => ({
-  get: (k) => { try { return window[kind].getItem(k); } catch { return null; } },
-  set: (k, v) => { try { window[kind].setItem(k, v); } catch { /* private mode */ } },
-});
-const session_ = store("sessionStorage");
-const local = store("localStorage");
-
-function currentQuestion(session) {
-  const q = session?.questions?.[session.questions.length - 1];
-  return q && !q.answer ? q : null;
-}
+import { DEFAULT_SETTINGS, FALLBACK, INTERJECTION, REACTION_MS, currentQuestion, fmtClock, localStore as local, savedSettings,
+  sessionStore as session_, splitSentences, turnId } from "../../voice/roomUtils";
+import { SubtitleLine } from "../../voice/RoomParts";
+import AnswerDock from "../../voice/AnswerDock";
+import ControlBar from "../../voice/ControlBar";
+import RoomSettingsPanel from "../../voice/RoomSettingsPanel";
+import RoomSidePanels from "../../voice/RoomSidePanels";
 
 export default function VoiceInterview() {
   const { id } = useParams();
@@ -775,7 +745,6 @@ export default function VoiceInterview() {
   const talking = st.status === S.SPEAKING && lipsync !== "silent";
   const showSubs = settings.captions || !settings.voiceOn;
   const timeLeft = answerLimit - recSeconds;
-  const answered = session.questions.filter((q) => q.answer);
 
   return (
     <div className="mx-auto max-w-7xl space-y-3">
@@ -872,44 +841,9 @@ export default function VoiceInterview() {
 
           {/* answer dock */}
           {[S.LISTENING, S.TRANSCRIBING, S.REVIEWING, S.EVALUATING].includes(st.status) && (
-            <div className="card p-4">
-              {st.status === S.LISTENING && inputMode === "voice" && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-200" role="meter" aria-label="Microphone level" aria-valuenow={Math.round(micLevel * 900)} aria-valuemin={0} aria-valuemax={100}>
-                    <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgb(16_185_129/0.7)] transition-[width] duration-75" style={{ width: `${Math.min(100, micLevel * 900)}%` }} />
-                  </div>
-                  <span className="text-xs text-slate-500">{st.recording
-                    ? `Recording - it stops after a ${(eosMs / 1000).toFixed(1)} s pause (change in Settings), or press the microphone button when you're done.`
-                    : "Microphone is off. Press the microphone button to answer."}</span>
-                  <Button size="sm" variant="ghost" className="ml-auto" onClick={typeInstead}><Keyboard size={14} /> Type instead</Button>
-                  {st.recording && (appendTo.current || partial) && (
-                    <p className="w-full rounded-lg border border-slate-200 bg-slate-100/50 px-3 py-2 text-sm italic text-slate-700" aria-live="polite">
-                      <span className="text-xs font-semibold not-italic text-slate-500">Heard so far: </span>{[appendTo.current, partial].filter(Boolean).join(" ")}
-                    </p>
-                  )}
-                </div>
-              )}
-              {st.status === S.LISTENING && inputMode === "text" && (
-                <div className="flex items-center gap-3">
-                  <Button onClick={() => dispatch({ type: "TYPE_INSTEAD" })}><Keyboard size={16} /> Write my answer</Button>
-                  {voice?.stt?.enabled && <Button variant="ghost" onClick={() => setInputMode("voice")}><Mic size={14} /> Use microphone</Button>}
-                </div>
-              )}
-              {st.status === S.TRANSCRIBING && <Spinner label={partial ? "Finishing the transcript…" : "Transcribing your answer locally…"} />}
-              {st.status === S.REVIEWING && (
-                <div>
-                  <label className="label" htmlFor="answer">{inputMode === "voice" ? "Your answer (transcribed - correct any mistakes)" : "Your answer"}</label>
-                  <textarea id="answer" className="input" rows={5} maxLength={8000} value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <Button onClick={submit} disabled={!draft.trim()}><Send size={16} /> Submit answer</Button>
-                    {voice?.stt?.enabled && draft.trim() && <Button variant="secondary" onClick={() => { appendTo.current = draft.trim(); setInputMode("voice"); dispatch({ type: "RERECORD" }); }}><Mic size={14} /> Continue speaking</Button>}
-                    {voice?.stt?.enabled && <Button variant="ghost" onClick={() => { appendTo.current = ""; setInputMode("voice"); setDraft(""); dispatch({ type: "RERECORD" }); }}><RotateCcw size={14} /> Record again</Button>}
-                    <span className="ml-auto text-xs text-slate-500">{draft.trim() ? draft.trim().split(/\s+/).length : 0} words</span>
-                  </div>
-                </div>
-              )}
-              {st.status === S.EVALUATING && <Spinner label={stage === "question" ? `${p.name} is preparing the next question…` : `${p.name} is considering your answer…`} />}
-            </div>
+            <AnswerDock st={st} dispatch={dispatch} inputMode={inputMode} setInputMode={setInputMode} micLevel={micLevel} eosMs={eosMs}
+              typeInstead={typeInstead} appendTo={appendTo} partial={partial} sttEnabled={voice?.stt?.enabled} draft={draft}
+              setDraft={setDraft} submit={submit} stage={stage} interviewerName={p.name} />
           )}
 
           {st.status === S.WRAP_UP && (
@@ -922,29 +856,10 @@ export default function VoiceInterview() {
 
           {/* control bar */}
           {live && ![S.COMPLETING, S.WRAP_UP].includes(st.status) && (
-            <div className="mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 rounded-full border border-snow/10 bg-night-800/90 p-2 shadow-pop backdrop-blur-xl" role="toolbar" aria-label="Interview controls">
-              <RoundButton label={st.recording ? "Stop recording (I'm done)" : "Turn microphone on"} active={st.recording} danger={st.recording}
-                disabled={!st.recording && !(st.status === S.LISTENING && voice?.stt?.enabled)} onClick={toggleMic}>
-                {st.recording ? <MicOff size={18} /> : <Mic size={18} />}
-              </RoundButton>
-              <RoundButton label="Repeat question" disabled={![S.LISTENING, S.REVIEWING].includes(st.status)} onClick={replay}><Volume2 size={18} /></RoundButton>
-              {st.status === S.PAUSED
-                ? <RoundButton label="Resume" onClick={resume}><Play size={18} /></RoundButton>
-                : <RoundButton label="Pause" disabled={![S.PREPARING_SPEECH, S.SPEAKING, S.LISTENING, S.REVIEWING].includes(st.status)} onClick={() => pause()}><Pause size={18} /></RoundButton>}
-              <RoundButton label={settings.voiceOn ? "Turn interviewer voice off" : "Turn interviewer voice on"} onClick={toggleVoice}>
-                {settings.voiceOn ? <Volume2 size={18} /> : <VolumeX size={18} />}
-              </RoundButton>
-              {/* The camera runs only when the candidate opted into monitoring at setup; this hides/shows the self-view. */}
-              {monitoredCamera && (
-                <RoundButton label={camHidden ? "Show my self-view (camera stays on for monitoring)" : "Hide my self-view (camera stays on for monitoring - use Stop monitoring to turn it off)"} onClick={toggleCamera}>
-                  {camHidden ? <Camera size={18} /> : <CameraOff size={18} />}
-                </RoundButton>
-              )}
-              <RoundButton label="Settings" active={showSettings} onClick={() => setShowSettings((v) => !v)}><Settings2 size={18} /></RoundButton>
-              <ConfirmButton size="sm" variant="danger" className="ml-1 rounded-full"
-                message={session?.answered ? "End the interview now and get feedback on the answers so far?" : "End this interview? No answers have been given, so it will be discarded."}
-                onConfirm={endInterview}><PhoneOff size={14} /> End</ConfirmButton>
-            </div>
+            <ControlBar st={st} sttEnabled={voice?.stt?.enabled} toggleMic={toggleMic} replay={replay} resume={resume} pause={pause}
+              voiceOn={settings.voiceOn} toggleVoice={toggleVoice} monitoredCamera={monitoredCamera} camHidden={camHidden}
+              toggleCamera={toggleCamera} showSettings={showSettings} setShowSettings={setShowSettings}
+              answered={session?.answered} endInterview={endInterview} />
           )}
           {lastFeedback?.score != null && (
             <p className="text-center text-sm text-slate-500">Last answer <b className={`num font-semibold ${lastFeedback.score >= 75 ? "text-emerald-700" : lastFeedback.score >= 50 ? "text-amber-700" : "text-rose-700"}`}>{lastFeedback.score}/100</b> <span className="text-slate-400">({scoreBand(lastFeedback.score).label})</span>{lastFeedback.details?.next_difficulty && <> · next question {lastFeedback.details.next_difficulty}</>}</p>
@@ -963,139 +878,13 @@ export default function VoiceInterview() {
         {/* right panel */}
         <aside className="space-y-3">
           {showSettings && (
-            <Panel title="Settings">
-              <div className="space-y-3 text-sm">
-                <Toggle label="Interviewer voice" checked={settings.voiceOn} onChange={toggleVoice} />
-                <Toggle label="Subtitles / captions" checked={settings.captions || !settings.voiceOn} disabled={!settings.voiceOn}
-                  onChange={(v) => setSetting({ captions: v })} hint={!settings.voiceOn ? "Always on while the voice is off." : null} />
-                <label className="block">
-                  <span className="text-slate-600">Speech speed: {settings.rate.toFixed(2)}×</span>
-                  <input type="range" min="0.75" max="1.3" step="0.05" value={settings.rate} className="w-full"
-                    onChange={(e) => setSetting({ rate: Number(e.target.value) })} aria-label="Speech speed" />
-                  <span className="text-xs text-slate-400">Applies from the next question.</span>
-                </label>
-                <div>
-                  <span className="text-slate-600">Subtitle size</span>
-                  <div className="mt-1 flex gap-1">
-                    {["sm", "md", "lg"].map((z) => (
-                      <button key={z} type="button" onClick={() => setSetting({ subtitleSize: z })} aria-pressed={settings.subtitleSize === z}
-                        className={`rounded border px-3 py-1 text-xs ${settings.subtitleSize === z ? "border-brand-400/60 bg-brand-500 text-snow shadow-glow" : "border-slate-300"}`}>
-                        {{ sm: "Small", md: "Medium", lg: "Large" }[z]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <Toggle label="Turn the microphone on automatically" checked={settings.autoMic} onChange={(v) => setSetting({ autoMic: v })} />
-                <label className="block">
-                  <span className="text-slate-600">Stop recording after a pause of {(eosMs / 1000).toFixed(1)} s</span>
-                  <input type="range" min="600" max="4000" step="100" value={eosMs} className="w-full"
-                    onChange={(e) => setSetting({ endOfSpeechMs: Number(e.target.value) })} aria-label="Pause that ends an answer (milliseconds)" />
-                  <span className="text-xs text-slate-400">Raise it if you get cut off while thinking. You can always press "Continue speaking" to add more.
-                    {settings.endOfSpeechMs && <button type="button" className="ml-1 underline" onClick={() => setSetting({ endOfSpeechMs: null })}>Use the default</button>}</span>
-                </label>
-                <Toggle label="Send my answer automatically when I stop talking (turn off to check the text first)" checked={settings.autoSend} onChange={(v) => setSetting({ autoSend: v })}
-                  hint="Off: you can read and correct the text first." />
-                {use3d && (
-                  <div>
-                    <span className="text-slate-600">Interviewer graphics</span>
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {Object.entries(AVATAR_QUALITY).map(([q, name]) => (
-                        <button key={q} type="button" onClick={() => { saveQuality(q); setAvatarQuality(q); }} aria-pressed={avatarQuality === q}
-                          className={`rounded border px-3 py-1 text-xs ${avatarQuality === q ? "border-brand-400/60 bg-brand-500 text-snow shadow-glow" : "border-slate-300"}`}>
-                          {name}
-                        </button>
-                      ))}
-                    </div>
-                    <span className="text-xs text-slate-400">Use Performance if the interviewer stutters. Changing it reloads the 3D view.</span>
-                  </div>
-                )}
-                <label className="block">
-                  <span className="text-slate-600">Language</span>
-                  <select className="input mt-1" value="en" disabled aria-describedby="lang-note"><option value="en">English</option></select>
-                  <span id="lang-note" className="text-xs text-slate-400">The local speech models (Kokoro voice, Whisper base.en) support English only.</span>
-                </label>
-              </div>
-            </Panel>
+            <RoomSettingsPanel settings={settings} setSetting={setSetting} toggleVoice={toggleVoice} eosMs={eosMs} use3d={use3d}
+              avatarQuality={avatarQuality} setAvatarQuality={setAvatarQuality} />
           )}
-          <Panel title="Progress">
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <Stat label="Question" value={`${Math.min(qNumber, total)}/${total}`} />
-              <Stat label="Answered" value={session.answered || 0} />
-              <Stat label="Duration" value={fmtClock(elapsed)} />
-            </div>
-          </Panel>
-          <Panel title="Transcript">
-            <ol className="max-h-72 space-y-3 overflow-y-auto pr-1 text-sm" aria-live="polite">
-              {session.questions.map((q) => (
-                <li key={q.id}>
-                  <p className="text-xs font-semibold text-slate-900">{p.name} <span className="font-normal text-slate-400">· Q{q.position}{q.is_followup ? " · follow-up" : ""}</span></p>
-                  <p className="text-slate-800">{q.text}</p>
-                  {q.answer
-                    ? <p className="mt-1 rounded bg-slate-50 px-2 py-1 text-slate-600"><span className="text-xs font-semibold text-slate-500">You: </span>{q.answer.text}</p>
-                    : st.status === S.REVIEWING && draft && <p className="mt-1 rounded border border-dashed border-slate-300 px-2 py-1 italic text-slate-500">{draft}</p>}
-                </li>
-              ))}
-              {!answered.length && !current && <li className="text-slate-400">The conversation will appear here.</li>}
-            </ol>
-          </Panel>
-          <Panel title="My notes (private)">
-            <textarea className="input text-sm" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={4000}
-              placeholder="Jot down points to remember. Notes stay in this browser and are never sent or scored." aria-label="Interview notes" />
-          </Panel>
-          <Link to={`/student/interviews/${id}`} className="block text-center text-xs text-slate-500 hover:underline">Switch to text view</Link>
+          <RoomSidePanels id={id} session={session} interviewerName={p.name} qNumber={qNumber} total={total} elapsed={elapsed}
+            reviewingDraft={st.status === S.REVIEWING && draft} hasCurrent={!!current} notes={notes} setNotes={setNotes} />
         </aside>
       </div>
     </div>
-  );
-}
-
-/** Subtitles: exactly what is being said (greeting included); the word being spoken is highlighted. */
-function SubtitleLine({ text: full, pos, size, speaking }) {
-  let body = <span>{full}</span>;
-  if (speaking && pos != null) {
-    const at = Math.round(pos * full.length);
-    const startIdx = full.lastIndexOf(" ", Math.max(0, at - 1)) + 1;
-    const endIdx = full.indexOf(" ", at);
-    const end = endIdx === -1 ? full.length : endIdx;
-    body = (
-      <>
-        <span className="text-snow">{full.slice(0, startIdx)}</span>
-        <span className="rounded bg-snow/20 px-0.5 text-snow">{full.slice(startIdx, end)}</span>
-        <span className="text-slate-600">{full.slice(end)}</span>
-      </>
-    );
-  }
-  return <p className={`rounded-lg bg-black/75 px-4 py-2 text-center leading-snug text-snow backdrop-blur-sm ${SUB_SIZE[size] || SUB_SIZE.md}`} aria-live="polite">{body}</p>;
-}
-
-function RoundButton({ label, children, onClick, disabled, active, danger }) {
-  return (
-    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label} aria-pressed={active || undefined}
-      className={`flex h-11 w-11 items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 disabled:cursor-not-allowed disabled:opacity-40 ${
-        danger ? "bg-rose-600 text-snow shadow-[0_0_20px_rgb(244_63_94/0.65)] hover:bg-rose-500" : active ? "bg-gradient-to-br from-brand-500 to-violet-500 text-snow shadow-glow" : "bg-snow/[0.07] text-snow ring-1 ring-inset ring-snow/10 hover:bg-snow/15"}`}>
-      {children}
-    </button>
-  );
-}
-
-function Panel({ title, children }) {
-  return (
-    <section className="card p-4">
-      <h2 className="mb-3 text-[13px] font-semibold text-slate-900">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Stat({ label, value }) {
-  return <div className="rounded-lg bg-slate-50 py-2"><p className="num text-lg font-semibold text-slate-900">{value}</p><p className="text-[11px] text-slate-500">{label}</p></div>;
-}
-
-function Toggle({ label, checked, onChange, disabled, hint }) {
-  return (
-    <label className={`flex items-start gap-2 ${disabled ? "opacity-60" : ""}`}>
-      <input type="checkbox" className="mt-0.5" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
-      <span>{label}{hint && <span className="block text-xs text-slate-400">{hint}</span>}</span>
-    </label>
   );
 }

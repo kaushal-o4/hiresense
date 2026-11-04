@@ -67,7 +67,7 @@ All routes are under `/api`. Interactive documentation: `http://127.0.0.1:8000/d
 
 | File | Purpose | Main functions | Used by | Feature affected |
 |---|---|---|---|---|
-| `ai.py` | **All language-model features** (prompts + validation) | `_structured_call` (single gateway to the LLM), `ai_status`, `analyze_resume`, `next_interview_question`, `score_answer` (fast), `answer_feedback` (slow, background), `evaluate_answer`, `apply_answer_rules`, `next_difficulty`, `interview_report`, `english_reply`, `english_evaluate`, `match_review`, `generate_assessment`, `evaluate_code`, recommendations | Routers | Resume, interviews, English, matching, assessments |
+| `ai.py` + `ai_base.py`, `ai_resume.py`, `ai_english.py`, `ai_tasks.py` | **All language-model features** (prompts + validation); `ai.py` holds the interview prompts and re-exports the rest | `_structured_call` (single gateway to the LLM), `ai_status`, `analyze_resume`, `next_interview_question`, `score_answer` (fast), `answer_feedback` (slow, background), `evaluate_answer`, `apply_answer_rules`, `next_difficulty`, `interview_report`, `english_reply`, `english_evaluate`, `match_review`, `generate_assessment`, `evaluate_code`, recommendations | Routers | Resume, interviews, English, matching, assessments |
 | `local_llm.py` | Client for Ollama | `chat_json` (JSON-schema output, streaming), `runtime_status`, `warmup`, `interactive_hold` (pauses background AI work while a student waits) | `ai.py`, `interviews.py` | Every AI call |
 | `interview_engine.py` | Interview logic that does **not** use the LLM | `candidate_context`, `coverage`, `stage`, `answer_signals`, `is_duplicate`, `validate_question`, `fallback_question` | `interviews.py`, `ai.py` | Question quality, no repeats, fallbacks |
 | `interviewers.py` | The 4 interviewer personalities (Aria, Victor, Marcus, Elena) | `INTERVIEWERS`, `get()`; voice, style, difficulty thresholds | `interviews.py`, `ai.py` | Interviewer behaviour (not scores) |
@@ -239,7 +239,8 @@ Scores never depend on which interviewer was chosen.
 - Voice features have **not been tested with a real human microphone**, only with automated fake-microphone tests.
 - Some AI features are not yet verified with the real model (see README §9 "Known limitations").
 - Speaking drills ("English Learning") were removed from the student portal; the old route redirects to English
-  conversation, and `ai.speaking_feedback` / the `PracticeExercise` table are kept but unused.
+  conversation. The `PracticeExercise` table (and its old data) is kept; `ai.speaking_feedback` was removed
+  on 2026-11-04 as dead code.
 
 ---
 
