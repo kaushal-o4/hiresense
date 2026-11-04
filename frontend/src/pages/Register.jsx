@@ -9,13 +9,15 @@ import { post } from "../api";
 import { useAuth } from "../auth";
 import { Button, ErrorBox, Field, Notice, Tabs } from "../components/ui";
 import AuthShell from "./AuthShell";
+import { usePrivacyInfo } from "../components/AIConsent";
 
 export default function Register() {
   const { refresh } = useAuth();
+  const privacy = usePrivacyInfo();
   const navigate = useNavigate();
   const [role, setRole] = useState("student");
   const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm: "", college: "", branch: "",
-    graduation_year: "", company_name: "", designation: "", company_website: "", industry: "", share: false });
+    graduation_year: "", company_name: "", designation: "", company_website: "", industry: "", share: false, aiConsent: false });
   const [error, setError] = useState(null);
   const [pending, setPending] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -30,7 +32,8 @@ export default function Register() {
       const base = { full_name: form.full_name.trim(), email: form.email.trim(), password: form.password };
       const body = role === "student"
         ? { ...base, college: form.college || null, branch: form.branch || null,
-            graduation_year: form.graduation_year ? Number(form.graduation_year) : null, share_with_recruiters: form.share }
+            graduation_year: form.graduation_year ? Number(form.graduation_year) : null, share_with_recruiters: form.share,
+            ai_consent: !!(privacy?.consent_required && form.aiConsent) }
         : { ...base, company_name: form.company_name, designation: form.designation || null,
             company_website: form.company_website || null, industry: form.industry || null };
       const res = await post(`/auth/register/${role}`, body);
@@ -100,6 +103,14 @@ export default function Register() {
           <label className="flex items-start gap-2 text-sm text-slate-600">
             <input type="checkbox" className="mt-1" checked={form.share} onChange={(e) => setForm({ ...form, share: e.target.checked })} />
             <span>Share my profile with recruiters on HireSense (you can change this anytime in Settings).</span>
+          </label>
+        )}
+        {role === "student" && privacy?.consent_required && (
+          <label className="flex items-start gap-2 text-sm text-slate-600">
+            <input type="checkbox" className="mt-1" checked={form.aiConsent} onChange={(e) => setForm({ ...form, aiConsent: e.target.checked })} />
+            <span>I agree that my resume, interview answers{privacy.speech_to_google ? ", voice recordings" : ""} and English practice
+              messages are processed by Google Gemini to power the AI features (<Link className="text-brand-600 hover:underline" to="/privacy">privacy notice</Link>).
+              Optional now - you will be asked again before your first AI feature.</span>
           </label>
         )}
         <Button type="submit" size="lg" className="w-full" loading={busy}>Create account</Button>

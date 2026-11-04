@@ -1,6 +1,6 @@
 // Client for POST /api/student/interviews/{id}/turn (Server-Sent Events over fetch, so it can carry a JSON body
 // and the auth cookie). Calls handlers[eventName](data) as events arrive; resolves when the stream ends.
-import { ApiError } from "../api";
+import { ApiError, apiUrl } from "../api";
 
 /** Pure SSE parser: feed text chunks, get complete {event, data} objects back. */
 export function createSseParser() {
@@ -37,7 +37,7 @@ export async function streamPost(url, body, handlers,
   { signal, interruptedMessage = "The connection to the interviewer was interrupted." } = {}) {
   let res;
   try {
-    res = await fetch(url, {
+    res = await fetch(apiUrl(url), {
       method: "POST", credentials: "include", signal,
       headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
       body: JSON.stringify(body),

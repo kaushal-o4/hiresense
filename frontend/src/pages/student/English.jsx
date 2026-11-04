@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen, HeartHandshake, MessageCircle, MessagesSquare } from "lucide-react";
 import { get, post } from "../../api";
 import MistakeProfile from "../../components/MistakeProfile";
+import AIConsentGate from "../../components/AIConsent";
 import { useAuth } from "../../auth";
 import {
   Button, Card, ErrorBox, Field, Notice, PageHeader, Pagination, Spinner, StatCard, StatusPill, Table, fmtDateTime,
@@ -63,6 +64,7 @@ export default function English() {
   return (
     <div className="space-y-6">
       <PageHeader title="English communication practice" subtitle="Chat with Aria about anything you enjoy - games, films, cricket, technology, college life. She follows your interests, remembers what you said, and helps your English at the pace you choose." />
+      <AIConsentGate action="practise English with Aria" />
       {ai && !ai.available && <Notice>English practice needs the local AI, which is not available right now{ai.setup_hint ? ` (${ai.setup_hint})` : ""}. Please try again later or tell your administrator.</Notice>}
       <Card title="Start a conversation">
         <form onSubmit={start} className="space-y-5">

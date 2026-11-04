@@ -13,6 +13,7 @@ import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
+import Privacy from "./pages/Privacy";
 import ProgressHub from "./pages/student/ProgressHub";
 import Opportunities from "./pages/student/Opportunities";
 
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
@@ -83,6 +85,7 @@ export default function App() {
       <Route path="/register" element={<Navigate to={HOME[user.role]} replace />} />
       <Route path="/forgot-password" element={<Navigate to="/settings" replace />} />
       <Route path="/reset-password" element={<ResetPassword />} />{/* a reset link may be opened while signed in */}
+      <Route path="/privacy" element={<Privacy />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to={HOME[user.role]} replace />} />
         <Route path="/profile" element={<Profile />} />

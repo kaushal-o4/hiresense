@@ -15,6 +15,7 @@ import {
 } from "../../components/ui";
 import { findInterviewer, useInterviewers } from "../../voice/useInterviewers";
 import InterviewerPicker from "./InterviewerPicker";
+import AIConsentGate from "../../components/AIConsent";
 
 const CATEGORIES = [
   { value: "mixed", label: "Mixed (technical + HR + behavioral)" },
@@ -63,6 +64,7 @@ export default function Interviews() {
   return (
     <div className="space-y-6">
       <PageHeader title="AI mock interviews" subtitle="Practise with questions generated from your resume and target role. Questions get harder when you answer well and simpler when you struggle." />
+      <AIConsentGate action="start an AI interview" />
       {ai && !ai.available && (
         <Notice>The local AI is not available right now{ai.setup_hint ? ` (${ai.setup_hint})` : ""}. Interviews will use the admin question bank, and answers will be evaluated once AI is available.</Notice>
       )}
