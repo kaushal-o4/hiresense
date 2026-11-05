@@ -13,9 +13,6 @@ jobs:
       mongodb:
         image: mongo:8
         ports: ["27017:27017"]
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping: 1})'" --health-interval 5s --health-timeout 5s
-          --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -49,9 +46,6 @@ jobs:
       mongodb:
         image: mongo:8
         ports: ["27017:27017"]
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping: 1})'" --health-interval 5s --health-timeout 5s
-          --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -104,9 +98,6 @@ jobs:
       mongodb:
         image: mongo:8
         ports: ["27017:27017"]
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand({ping: 1})'" --health-interval 5s --health-timeout 5s
-          --health-retries 10
     env:
       MONGODB_URL: mongodb://localhost:27017
       MONGODB_DB: hiresense_e2e
