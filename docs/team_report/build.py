@@ -88,12 +88,13 @@ body { margin:0; }
 
 SECTIONS = [  # (id, number, title, subtitles)
     ("desc", "1", "Project Description", []),
-    ("dist", "2", "Team Work Distribution", [f"2.{i+1}  {m['name']} — {m['role']}" for i, m in enumerate(C.MEMBERS)]),
-    ("timeline", "3", "Project Timeline", []),
-    ("collab", "4", "Team Collaboration", []),
-    ("arch", "5", "Project Architecture", []),
-    ("learn", "6", "Individual Learning Outcomes", []),
-    ("concl", "7", "Conclusion", []),
+    ("how", "2", "How HireSense Works — Simple Architecture and Workflow", []),
+    ("dist", "3", "Team Work Distribution", [f"3.{i+1}  {m['name']} — {m['role']} ({m['pct']}%)" for i, m in enumerate(C.MEMBERS)]),
+    ("timeline", "4", "Project Timeline", []),
+    ("collab", "5", "Team Collaboration", []),
+    ("arch", "6", "Project Architecture (Technical Detail)", []),
+    ("learn", "7", "Individual Learning Outcomes", []),
+    ("concl", "8", "Conclusion", []),
 ]
 
 
@@ -168,6 +169,87 @@ def arch_svg():
         'fill="#374151">routers + services', 'fill="#cfe0ff">routers + services')
 
 
+def simple_arch_svg():
+    """Three-layer architecture: browser -> backend -> data and AI. Large text, readable when printed."""
+    W = 720
+
+    def layer(y, h, title, color):
+        return (f'<rect x="10" y="{y}" width="{W-20}" height="{h}" rx="12" fill="{color}" stroke="#9db4e0" stroke-width="1.2"/>'
+                f'<text x="28" y="{y+24}" font-size="14" font-weight="800" fill="#0b1f3a">{title}</text>')
+
+    def box(x, y, w, h, t, s="", dark=False):
+        fill, stroke, tc, sc = ("#0b1f3a", "#0b1f3a", "#ffffff", "#cfe0ff") if dark else ("#ffffff", "#1d4ed8", "#0b1f3a", "#374151")
+        out = f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="{fill}" stroke="{stroke}" stroke-width="1.6"/>'
+        if s:
+            out += (f'<text x="{x+w/2}" y="{y+h/2-3}" text-anchor="middle" font-size="13" font-weight="700" fill="{tc}">{t}</text>'
+                    f'<text x="{x+w/2}" y="{y+h/2+14}" text-anchor="middle" font-size="10.5" fill="{sc}">{s}</text>')
+        else:
+            out += f'<text x="{x+w/2}" y="{y+h/2+5}" text-anchor="middle" font-size="13" font-weight="700" fill="{tc}">{t}</text>'
+        return out
+
+    def arrow(x, y1, y2, label):
+        return (f'<line x1="{x}" y1="{y1}" x2="{x}" y2="{y2}" stroke="#1d4ed8" stroke-width="2.2" marker-end="url(#ah)"/>'
+                f'<line x1="{x+14}" y1="{y2}" x2="{x+14}" y2="{y1}" stroke="#1d4ed8" stroke-width="2.2" marker-end="url(#ah)"/>'
+                f'<text x="{x+26}" y="{(y1+y2)/2+4}" font-size="11.5" font-weight="600" fill="#1e3a8a">{label}</text>')
+
+    p = ['<svg viewBox="0 0 720 560" width="100%" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah" markerWidth="9" '
+         'markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#1d4ed8"/></marker></defs>']
+    p.append(layer(10, 130, "1. USER'S BROWSER  (what people see)", "#eef3fc"))
+    for i, (t, s) in enumerate([("Student", "portal"), ("Recruiter", "portal"), ("Mentor", "portal"), ("Admin", "portal")]):
+        p.append(box(28 + i * 118, 46, 106, 52, t, s))
+    p.append(box(510, 46, 190, 52, "Camera + Mic", "voice interview"))
+    p.append('<text x="28" y="124" font-size="11" fill="#4b5563">React website · 3D interviewer (three.js) · face check on the device (MediaPipe)</text>')
+    p.append(arrow(330, 142, 188, "HTTPS requests / JSON replies"))
+    p.append(layer(190, 150, "2. BACKEND SERVER  (the rules of the system) — FastAPI, Python", "#e4ecfa"))
+    for i, (t, s) in enumerate([("Login and", "security"), ("Interview", "engine"), ("Resume and", "job matching"),
+                                ("English", "coach"), ("Live", "notifications")]):
+        p.append(box(28 + i * 136, 228, 124, 62, t, s, dark=True))
+    p.append('<text x="28" y="320" font-size="11" fill="#4b5563">Checks who is logged in · decides what each role may see · calls the AI · saves results</text>')
+    p.append(arrow(150, 342, 388, "saves and reads data"))
+    p.append(arrow(470, 342, 388, "prompts / scores"))
+    p.append(layer(390, 160, "3. DATA AND AI", "#eef3fc"))
+    p.append(box(28, 428, 200, 100, "MongoDB database", "users, interviews, jobs, scores"))
+    p.append(box(250, 428, 215, 46, "Gemini (online AI)", "main model"))
+    p.append(box(250, 482, 215, 46, "Ollama (on the laptop)", "backup AI model"))
+    p.append(box(485, 428, 215, 46, "Whisper", "speech → text"))
+    p.append(box(485, 482, 215, 46, "Kokoro", "text → interviewer voice"))
+    p.append("</svg>")
+    return "".join(p)
+
+
+def flow_svg(steps, cols):
+    """Numbered boxes in a snake layout with arrows: left-to-right, then right-to-left on the next row."""
+    bw, bh, gx, gy = 178, 62, 40, 44
+    rows = (len(steps) + cols - 1) // cols
+    W = cols * bw + (cols - 1) * gx + 20
+    H = rows * bh + (rows - 1) * gy + 20
+    pos = []
+    for i in range(len(steps)):
+        r, c = divmod(i, cols)
+        if r % 2:
+            c = cols - 1 - c
+        pos.append((10 + c * (bw + gx), 10 + r * (bh + gy)))
+    p = [f'<svg viewBox="0 0 {W} {H}" width="100%" xmlns="http://www.w3.org/2000/svg"><defs><marker id="fh" markerWidth="9" '
+         'markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#1d4ed8"/></marker></defs>']
+    for i in range(len(steps) - 1):
+        (x1, y1), (x2, y2) = pos[i], pos[i + 1]
+        if y1 == y2:
+            if x2 > x1:
+                p.append(f'<line x1="{x1+bw}" y1="{y1+bh/2}" x2="{x2-4}" y2="{y2+bh/2}" stroke="#1d4ed8" stroke-width="2" marker-end="url(#fh)"/>')
+            else:
+                p.append(f'<line x1="{x1}" y1="{y1+bh/2}" x2="{x2+bw+4}" y2="{y2+bh/2}" stroke="#1d4ed8" stroke-width="2" marker-end="url(#fh)"/>')
+        else:
+            p.append(f'<line x1="{x1+bw/2}" y1="{y1+bh}" x2="{x2+bw/2}" y2="{y2-4}" stroke="#1d4ed8" stroke-width="2" marker-end="url(#fh)"/>')
+    for i, ((t, s), (x, y)) in enumerate(zip(steps, pos)):
+        p.append(f'<rect x="{x}" y="{y}" width="{bw}" height="{bh}" rx="9" fill="#ffffff" stroke="#1d4ed8" stroke-width="1.6"/>'
+                 f'<circle cx="{x+15}" cy="{y+15}" r="10" fill="#1d4ed8"/>'
+                 f'<text x="{x+15}" y="{y+19}" text-anchor="middle" font-size="11" font-weight="800" fill="#fff">{i+1}</text>'
+                 f'<text x="{x+bw/2+10}" y="{y+(28 if s else 37)}" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0b1f3a">{e(t)}</text>'
+                 + (f'<text x="{x+bw/2}" y="{y+47}" text-anchor="middle" font-size="10.5" fill="#4b5563">{e(s)}</text>' if s else ""))
+    p.append("</svg>")
+    return "".join(p)
+
+
 def body(pages):
     out = [f'<div>{toc(pages)}</div>']
     # 1. description
@@ -188,34 +270,52 @@ def body(pages):
         f'<figure><img class="shot" src="data:image/png;base64,{base64.b64encode((SHOTS / f).read_bytes()).decode()}"><figcaption>{c}</figcaption></figure>' for f, c in shots)
         + "</div></div></div>")
 
-    # 2. distribution
-    out.append('<div class="section" id="dist"><h1>2. Team Work Distribution</h1>')
-    out.append('<p class="lead">The project was divided into five balanced parts by module, so that each member owns a '
-               'complete area end to end (backend logic, user interface, tests and documentation for that area) and can '
-               'explain it independently. Each member contributed an equal share of 20%.</p>')
+    # 2. simple architecture and workflow
+    out.append('<div class="section" id="how"><h1>2. How HireSense Works — Simple Architecture and Workflow</h1>'
+               '<div class="callout"><b>In one sentence:</b> the student uses a website, the website asks the backend server, '
+               'and the server saves data in MongoDB and asks the AI models for questions, scores and feedback.</div>'
+               '<h2>2.1 Simple architecture (three layers)</h2>'
+               f'<div class="card keep" style="padding:2mm 3mm"><div style="width:84%;margin:0 auto">{simple_arch_svg()}</div></div>'
+               '<h3>What the diagram shows</h3><ol style="font-size:9.6pt">' + "".join(f"<li>{e(t)}</li>" for t in C.SIMPLE_ARCH_TEXT) + '</ol></div>')
+    out.append('<div class="section"><h2 style="margin-top:0">2.2 Main workflow: the student journey</h2>'
+               f'<div class="card keep" style="padding:3mm 4mm">{flow_svg(C.STUDENT_FLOW, 4)}</div>'
+               '<h3>Step by step</h3><ol>' + "".join(f"<li>{e(t)}</li>" for t in C.STUDENT_FLOW_TEXT) + '</ol></div>')
+    out.append('<div class="section"><h2 style="margin-top:0">2.3 Recruiter and admin workflows</h2><h3>Recruiter</h3>'
+               f'<div class="card keep" style="padding:3mm 4mm">{flow_svg(C.RECRUITER_FLOW, 3)}</div><h3>Admin</h3>'
+               f'<div class="card keep" style="padding:3mm 4mm">{flow_svg(C.ADMIN_FLOW, 3)}</div>'
+               '<h3>Step by step</h3><ol>' + "".join(f"<li>{e(t)}</li>" for t in C.OTHER_FLOW_TEXT) + '</ol></div>')
+
+    # 3. distribution
+    pct_line = " · ".join(f'{m["name"]} {m["pct"]}%' for m in C.MEMBERS)
+    out.append('<div class="section" id="dist"><h1>3. Team Work Distribution</h1>')
+    out.append('<p class="lead">The project was divided into five parts by module, so that each member owns a complete '
+               'area end to end and can explain it independently. Yash and Kaushal owned the largest areas (AI engine, '
+               'testing and documentation; voice interview, English module and three portals); Samrath, Aryan and '
+               f'Shardha owned the backend, the frontend foundation and the student pages. Shares: {pct_line}.</p>')
     out.append('<table><tr><th style="width:14%">Member</th><th>Role</th><th style="width:20%">Contribution</th><th style="width:8%">%</th></tr>'
-               + "".join(f'<tr><td><b>{m["name"]}</b></td><td>{e(m["role"])}</td><td><div class="bar"><div style="width:20%"></div></div></td><td><b>20%</b></td></tr>'
+               + "".join(f'<tr><td><b>{m["name"]}</b></td><td>{e(m["role"])}</td><td><div class="bar"><div style="width:{m["pct"]}%"></div></div></td><td><b>{m["pct"]}%</b></td></tr>'
                          for m in C.MEMBERS)
                + '<tr><td colspan="3" style="text-align:right"><b>Total</b></td><td><b>100%</b></td></tr></table>')
     out.append('<h2>Module responsibility matrix</h2><table><tr><th>Module</th><th>Owner</th><th>Supporting</th></tr>' + "".join(
         f"<tr><td>{e(a)}</td><td><b>{b}</b></td><td>{c}</td></tr>" for a, b, c in [
-            ("System architecture, configuration, integration", "Kaushal", "All"),
-            ("AI engine: Gemini/Ollama, interview engine, scoring, resume, matching", "Kaushal", "Samrath"),
-            ("Design system and student portal frontend", "Yash", "Shardha"),
-            ("Database (MongoDB data layer), models, seed", "Samrath", "Kaushal"),
-            ("Authentication, security, access control, notifications", "Samrath", "Shardha"),
-            ("Live voice interview, speech, 3D avatars", "Aryan", "Yash"),
-            ("Interview monitoring and security module", "Aryan", "Samrath"),
-            ("English learning, vocabulary, daily plan, rewards", "Shardha", "Kaushal"),
-            ("Mentor, recruiter and admin portals", "Shardha", "Samrath, Yash"),
-            ("Testing, CI and documentation", "Shardha", "All"),
-            ("Deployment (Docker, Render, Vercel)", "Kaushal", "Samrath"),
+            ("System architecture, configuration, integration", "Yash", "All"),
+            ("AI engine: Gemini/Ollama, interview engine, scoring, resume, matching", "Yash", "Samrath"),
+            ("Testing, CI and documentation", "Yash", "All"),
+            ("Deployment (Docker, Render, Vercel)", "Yash", "Samrath"),
+            ("Live voice interview, speech, 3D avatars", "Kaushal", "Yash"),
+            ("Interview monitoring and security module", "Kaushal", "Samrath"),
+            ("English learning, vocabulary, daily plan, rewards", "Kaushal", "Yash"),
+            ("Mentor, recruiter and admin portals", "Kaushal", "Samrath, Shardha"),
+            ("Database (MongoDB data layer), models, seed", "Samrath", "Yash"),
+            ("Authentication, security, access control, notifications", "Samrath", "Aryan"),
+            ("Frontend setup, design system, layout, API client", "Aryan", "Shardha"),
+            ("Student portal pages and frontend tests", "Shardha", "Aryan"),
         ]) + "</table></div>")
 
     for i, m in enumerate(C.MEMBERS):
         out.append(f'<div class="section" id="m{i}">')
-        out.append(f'<div class="member-head"><div class="pct"><b>20%</b><span>contribution</span></div>'
-                   f'<div class="num">2.{i+1} · Team member {i+1} of 5</div><div class="name">{m["name"]}</div>'
+        out.append(f'<div class="member-head"><div class="pct"><b>{m["pct"]}%</b><span>contribution</span></div>'
+                   f'<div class="num">3.{i+1} · Team member {i+1} of 5</div><div class="name">{m["name"]}</div>'
                    f'<div class="role">{e(m["role"])}</div></div>')
         out.append(f'<p class="lead">{e(m["summary"])}</p>')
         out.append("<h3>Responsibilities</h3><ol>" + "".join(f"<li>{fmt(r)}</li>" for r in m["responsibilities"]) + "</ol>")
@@ -225,57 +325,58 @@ def body(pages):
         out.append("<h3>Workflow</h3><ol>" + "".join(f"<li>{fmt(w)}</li>" for w in m["workflow"]) + "</ol>")
         out.append('<h3>Challenges Faced and Solutions Implemented</h3><table><tr><th style="width:4%">#</th><th style="width:46%">Challenge faced</th><th>Solution implemented</th></tr>'
                    + "".join(f"<tr><td>{j+1}</td><td>{fmt(c)}</td><td>{fmt(s)}</td></tr>" for j, (c, s) in enumerate(m["challenges"])) + "</table>")
-        out.append('<div class="callout keep"><b>Contribution percentage: 20%</b> of the total project work, one of five '
-                   'equal shares (Kaushal 20% · Yash 20% · Samrath 20% · Aryan 20% · Shardha 20% = 100%).</div>')
+        out.append(f'<div class="callout keep"><b>Contribution percentage: {m["pct"]}%</b> of the total project work '
+                   f'({pct_line} = 100%).</div>')
         out.append("</div>")
 
     # 3. timeline
-    out.append('<div class="section" id="timeline"><h1>3. Project Timeline</h1>'
+    out.append('<div class="section" id="timeline"><h1>4. Project Timeline</h1>'
                '<p>The project ran from 9 October to 5 November 2026. Phases overlapped because members built their modules in parallel; the lead owned each phase and the supporting members reviewed and helped.</p>'
                '<table class="tight" style="font-size:8.8pt"><tr><th style="width:5%">#</th><th>Phase</th><th style="width:22%">Period</th><th style="width:13%">Lead</th><th style="width:18%">Support</th></tr>'
                + "".join(f"<tr><td>{j+1}</td><td>{e(p)}</td><td>{e(d)}</td><td><b>{l}</b></td><td>{e(s)}</td></tr>"
                          for j, (p, d, l, s) in enumerate(C.TIMELINE)) + "</table>")
     phases = ["Requirements", "Design", "Development", "AI integration", "Testing", "Documentation", "Deployment"]
-    involve = {"Kaushal": "●●●●○●●", "Yash": "○●●○●●○", "Samrath": "○●●●●○●", "Aryan": "○●●●●●○", "Shardha": "●●●○●●○"}
+    involve = {"Yash": "●●●●●●●", "Kaushal": "●●●●●●○", "Samrath": "○●●●●○●", "Aryan": "○●●○○●○", "Shardha": "●○●○●●○"}
     out.append('<h2>Who worked on which phase</h2><table class="tight" style="font-size:8.6pt"><tr><th>Member</th>' + "".join(f'<th style="text-align:center">{p}</th>' for p in phases) + "</tr>"
                + "".join(f'<tr><td><b>{n}</b></td>' + "".join(f'<td style="text-align:center;color:#1d4ed8">{"●" if c == "●" else "–"}</td>' for c in involve[n]) + "</tr>" for n in C.TEAM)
                + '</table><p style="font-size:9pt;color:#4b5563">● = actively involved in the phase.</p></div>')
 
     # 4. collaboration
-    out.append('<div class="section" id="collab"><h1>4. Team Collaboration</h1><p>All five members worked on one shared code base, so clear agreements on communication, ownership and integration were essential.</p>'
+    out.append('<div class="section" id="collab"><h1>5. Team Collaboration</h1><p>All five members worked on one shared code base, so clear agreements on communication, ownership and integration were essential.</p>'
                + '<div class="grid2">' + "".join(f'<div class="card"><h4>{e(a)}</h4><p style="margin:0;text-align:left">{e(b)}</p></div>' for a, b in C.COLLABORATION) + "</div>"
-               + '<h2>Integration points between members</h2><table><tr><th>Interface</th><th>Between</th><th>Agreement</th></tr>'
+               + '<h2>Integration points between members</h2><table class="tight" style="font-size:8.8pt"><tr><th>Interface</th><th>Between</th><th>Agreement</th></tr>'
                + "".join(f"<tr><td>{e(a)}</td><td>{e(b)}</td><td>{e(c)}</td></tr>" for a, b, c in [
-                   ("REST API contract (/api/...)", "Samrath ↔ Yash, Shardha", "Pydantic schemas and the generated Swagger page at /docs"),
-                   ("AI gateway functions", "Kaushal ↔ Aryan, Shardha", "Every AI call goes through services/ai_base.py with a JSON schema"),
-                   ("Interview session data", "Kaushal ↔ Aryan ↔ Yash", "Same session and answer records for typed and voice interviews"),
-                   ("Access rules", "Samrath ↔ Shardha", "services/access.py decides who may see which student"),
-                   ("Design system", "Yash ↔ all frontend work", "Colours as CSS variables, shared components in components/ui.jsx"),
+                   ("REST API contract (/api/...)", "Samrath ↔ Aryan, Shardha, Kaushal", "Pydantic schemas and the generated Swagger page at /docs"),
+                   ("AI gateway functions", "Yash ↔ Kaushal", "Every AI call goes through services/ai_base.py with a JSON schema"),
+                   ("Interview session data", "Yash ↔ Kaushal ↔ Shardha", "Same session and answer records for typed and voice interviews and the report page"),
+                   ("Access rules", "Samrath ↔ Kaushal", "services/access.py decides who may see which student in the mentor, recruiter and admin portals"),
+                   ("Design system", "Aryan ↔ all frontend work", "Colours as CSS variables, shared components in components/ui.jsx"),
+                   ("Tests before merge", "Yash ↔ all", "Full backend and frontend suites must pass on GitHub Actions"),
                ]) + "</table></div>")
 
     # 5. architecture
-    out.append('<div class="section" id="arch"><h1>5. Project Architecture</h1><p>HireSense is a three-tier web application: a React single-page app in the browser, a FastAPI backend, and a MongoDB database, with AI models behind one gateway.</p>'
+    out.append('<div class="section" id="arch"><h1>6. Project Architecture (Technical Detail)</h1><div class="callout"><b>Plain summary:</b> this is the same three-layer system as in Section 2 (website, backend server, database and AI), shown with the real technologies. Read Section 2 first; this page is for technical questions in the viva.</div>'
                f'<div class="card" style="padding:4mm">{arch_svg()}</div>'
                + "".join(f"<h3>{e(a)}</h3><p>{fmt(b)}</p>" for a, b in C.ARCHITECTURE)
                + '<h2>Request flow: one typed interview answer</h2><ol>'
-               '<li>The student submits an answer in the interview page (Yash) or the voice room (Aryan).</li>'
+               '<li>The student submits an answer in the interview page (Shardha) or the voice room (Kaushal), through the shared API client (Aryan).</li>'
                '<li>The backend checks the login cookie and the student\'s access (Samrath).</li>'
-               '<li>The answer is saved in MongoDB and scored by the AI engine through the gateway (Kaushal).</li>'
+               '<li>The answer is saved in MongoDB and scored by the AI engine through the gateway (Yash).</li>'
                '<li>The score decides the difficulty of the next question; detailed feedback runs in the background.</li>'
-               '<li>The report, rewards and progress records are updated, and the mentor and recruiter views read the same data (Shardha).</li></ol></div>')
+               '<li>The report, rewards and progress records are updated, and the mentor and recruiter views read the same data (Kaushal).</li></ol></div>')
 
     # 6. learning outcomes
-    out.append('<div class="section" id="learn"><h1>6. Individual Learning Outcomes</h1>')
+    out.append('<div class="section" id="learn"><h1>7. Individual Learning Outcomes</h1>')
     for m in C.MEMBERS:
-        out.append(f'<div class="card" style="margin-bottom:4mm"><h4>{m["name"]} — {e(m["role"])}</h4><table style="margin:1mm 0 0">'
+        out.append(f'<div class="card" style="margin-bottom:4mm"><h4>{m["name"]} — {e(m["role"])} ({m["pct"]}%)</h4><table style="margin:1mm 0 0">'
                    + "".join(f'<tr><td style="width:30%"><b>{e(k)}</b></td><td>{e(v)}</td></tr>' for k, v in m["learning"].items())
                    + "</table></div>")
     out.append("</div>")
 
     # 7. conclusion
-    out.append('<div class="section" id="concl"><h1>7. Conclusion</h1>' + "".join(f"<p>{e(p)}</p>" for p in C.CONCLUSION)
+    out.append('<div class="section" id="concl"><h1>8. Conclusion</h1>' + "".join(f"<p>{e(p)}</p>" for p in C.CONCLUSION)
                + '<h2>Summary of contributions</h2><table><tr><th>Member</th><th>Main contribution</th><th>%</th></tr>'
-               + "".join(f'<tr><td><b>{m["name"]}</b></td><td>{e(m["role"])}</td><td>20%</td></tr>' for m in C.MEMBERS)
+               + "".join(f'<tr><td><b>{m["name"]}</b></td><td>{e(m["role"])}</td><td>{m["pct"]}%</td></tr>' for m in C.MEMBERS)
                + '</table><h2>Declaration</h2><p>We declare that the work described in this report was carried out by the team members named above, and that the division of work reflects each member\'s responsibilities in the project.</p>'
                '<table style="margin-top:8mm"><tr><th>Member</th><th>Signature</th><th>Date</th></tr>'
                + "".join(f'<tr><td style="height:7mm"><b>{n}</b></td><td></td><td></td></tr>' for n in C.TEAM)
@@ -312,7 +413,7 @@ def find_pages(pdf_bytes):
     texts = [p.extract_text() or "" for p in reader.pages]
     found = {}
     keys = [(sid, f"{num}. {title}") for sid, num, title, _ in SECTIONS]
-    keys += [(f"m{i}", f"2.{i+1} · Team member {i+1} of 5") for i in range(len(C.MEMBERS))]
+    keys += [(f"m{i}", f"3.{i+1} · Team member {i+1} of 5") for i in range(len(C.MEMBERS))]
     for sid, needle in keys:
         n = re.sub(r"\s+", "", needle).lower()
         for idx, t in enumerate(texts):

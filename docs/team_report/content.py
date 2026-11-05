@@ -4,7 +4,7 @@ PROJECT = "HireSense"
 SUBTITLE = "AI-Powered Intelligent Interview and Placement Assessment System"
 DATE = "5 November 2026"
 
-TEAM = ["Kaushal", "Yash", "Samrath", "Aryan", "Shardha"]
+TEAM = ["Yash", "Kaushal", "Samrath", "Aryan", "Shardha"]
 
 DESCRIPTION = {
     "Introduction": [
@@ -74,10 +74,12 @@ TECH_TABLE = [
 
 MEMBERS = [
     {
-        "name": "Kaushal",
-        "role": "Project Lead, System Architect and AI Engine Developer",
-        "summary": "Kaushal designed the overall architecture, built the AI engine that every feature depends on, "
-                   "and owned integration, the GitHub repository, continuous integration and deployment.",
+        "name": "Yash",
+        "pct": 30,
+        "role": "Project Lead, System Architect, AI Engine, Testing and Documentation",
+        "summary": "Yash designed the overall architecture, built the AI engine that every feature depends on, owned "
+                   "integration, the GitHub repository and deployment, and led testing, continuous integration and "
+                   "documentation.",
         "responsibilities": [
             "Defined the overall architecture: four portals, one FastAPI backend, one MongoDB database, one AI gateway.",
             "Set up the FastAPI application, router registration, security headers, request IDs and the global error handler (app/main.py).",
@@ -91,34 +93,39 @@ MEMBERS = [
             "Built AI resume analysis (services/ai_resume.py, resume_parser.py) with a check that removes anything not found in the resume text.",
             "Built explainable job matching with sentence embeddings and skill weights (services/matching.py, embeddings.py).",
             "Added a validator that rejects AI replies which copy the prompt's instructions instead of answering.",
+            "Led the backend test suite with pytest: 369 tests on a separate MongoDB test database (backend/tests/).",
+            "Wrote Playwright browser tests, including the CI smoke test that opens 15 pages (tests_e2e/ci_smoke_browser.py).",
             "Created the GitHub repository, branch workflow and GitHub Actions pipeline (.github/workflows/tests.yml).",
             "Prepared deployment: slim cloud requirements, Dockerfiles, docker-compose.yml, render.yaml and frontend/vercel.json.",
-            "Coordinated integration between all members' modules and ran the final end-to-end demo.",
+            "Kept the regression list, verified fixes before each merge and ran the final end-to-end demo.",
+            "Wrote the project documentation (README.md, docs/AI_MODELS_AND_SCORING.md, docs/TESTING.md, docs/FEATURE_STATUS.md).",
         ],
         "modules": [
             "backend/app/main.py, config.py",
             "backend/app/services/ai.py, ai_base.py, ai_resume.py, ai_tasks.py, gemini_llm.py, local_llm.py, model_router.py",
             "backend/app/services/interview_engine.py, scoring_bands.py, matching.py, embeddings.py, question_classifier.py",
             "backend/eval/ (run_eval.py, calibrate_scoring.py, calibration_set.json), backend/ml/",
+            "backend/tests/, backend/tests_e2e/, backend/tests_perf/, docs/",
             ".github/workflows/tests.yml, backend/Dockerfile, docker-compose.yml, render.yaml, frontend/vercel.json",
         ],
         "deliverables": [
             "Working AI gateway with Gemini → Gemini backup → Ollama fallback chain",
             "Adaptive interview engine and calibrated scoring (rank correlation 0.80 → 0.95; answers scored 100: 5 → 0)",
             "Resume analysis (56 s → 5.3 s on Gemini) and explainable job matching",
-            "Public GitHub repository with CI, plus Docker / Render / Vercel deployment configuration",
-            "Architecture notes and the AI section of the documentation (docs/AI_MODELS_AND_SCORING.md)",
+            "Test suites: 369 backend tests (2 Redis-only skipped), browser end-to-end tests and the CI smoke test",
+            "Public GitHub repository with CI on every push, plus Docker / Render / Vercel deployment configuration",
+            "README and project documentation, feature status and test reports",
         ],
         "tech": ["Python 3.14", "FastAPI", "Pydantic", "Google Gemini API", "Ollama (qwen3:4b)", "Sentence Transformers",
-                 "scikit-learn", "httpx", "Git / GitHub", "GitHub Actions", "Docker"],
+                 "scikit-learn", "httpx", "pytest", "Playwright", "Git / GitHub", "GitHub Actions", "Docker", "Markdown"],
         "workflow": [
             "Studied the project specification and drew the module and data-flow architecture.",
             "Set up the repository, the FastAPI skeleton and configuration so others could start in parallel.",
             "Built the AI gateway first, then each AI feature on top of it (resume, questions, scoring, matching).",
             "Measured every AI step with benchmark scripts (backend/tests_perf/) and optimised the slowest.",
             "Calibrated scoring with a fixed labelled set and compared before/after numbers.",
-            "Integrated the other modules, reviewed pull requests and ran the full test suites before each merge.",
-            "Prepared CI and deployment files and documented the setup.",
+            "Wrote tests for each feature, especially access rules, and ran the full suites before every merge.",
+            "Prepared CI and deployment files and wrote the documentation after each feature was finished.",
         ],
         "challenges": [
             ("Gemini returned HTTP 429 (quota) or 503 (overloaded) on many requests, so every call waited about 20 s.",
@@ -129,76 +136,90 @@ MEMBERS = [
              "Anchored scale, \"name the missing point first\", completeness weight and rule caps, verified on the calibration set."),
             ("A model sometimes copied the prompt's instructions (\"2-4 sentence summary\") into the report.",
              "Prompt rewritten and a generic validator rejects echoed placeholders, retries once, else shows \"unavailable\"."),
+            ("Tests sometimes failed on Windows because of temp-folder permissions, and MongoDB 8 would not start on the CI machines.",
+             "A pytest.ini with a project-local temp folder, and MongoDB 7 in CI, so the tests run everywhere."),
         ],
         "learning": {
-            "Skills learned": "LLM integration, prompt design, JSON-schema validation, API design, CI/CD, Docker.",
-            "Technical knowledge": "Model fallback strategies, embeddings for semantic matching, calibration with rank correlation, latency profiling.",
-            "Contribution to success": "Every AI feature of the platform runs through the gateway and engine Kaushal built.",
-            "Personal improvement": "Leading a team, splitting work so members can work in parallel, and reviewing code.",
+            "Skills learned": "LLM integration, prompt design, JSON-schema validation, API design, test design, CI/CD, Docker.",
+            "Technical knowledge": "Model fallback strategies, embeddings for semantic matching, calibration with rank correlation, latency profiling, browser automation.",
+            "Contribution to success": "Every AI feature runs through the gateway and engine Yash built, and the tests keep the whole system working.",
+            "Personal improvement": "Leading a team, splitting work so members can work in parallel, reviewing code and writing clearly.",
         },
     },
     {
-        "name": "Yash",
-        "role": "Frontend Developer and UI/UX Designer (Student Portal)",
-        "summary": "Yash built the React frontend foundation, the design system and the complete student portal, "
-                   "and made the application fast to load.",
+        "name": "Kaushal",
+        "pct": 30,
+        "role": "Voice Interview, 3D Avatars, Monitoring, English Learning and Portals Developer",
+        "summary": "Kaushal built the live voice interview room with the 3D interviewers and disclosed monitoring, the English "
+                   "learning module, and the mentor, recruiter and admin portals.",
         "responsibilities": [
-            "Set up the React 18 + Vite + Tailwind CSS project, routing and role-based route guards (frontend/src/App.jsx).",
-            "Designed the \"Dark premium\" visual theme with all colours as CSS variables, so the theme changes in one place (src/index.css).",
-            "Built the shared component library: cards, buttons, tables, tabs, status pills, empty states, spinners (components/ui.jsx, Tabs.jsx).",
-            "Built the application layout with a grouped sidebar, header, notification bell and user menu (components/Layout.jsx, Logo.jsx).",
-            "Built the student dashboard: greeting, readiness score, quick actions, stat cards and challenges (pages/student/Dashboard.jsx).",
-            "Built the mock-interview pages: setup form, interviewer picker, typed interview session and history.",
-            "Built the interview report page: overall score with band, skill breakdown, strengths, weaknesses and per-question feedback.",
-            "Built the resume page: upload, AI analysis view and student corrections (pages/student/Resume.jsx).",
-            "Built jobs, placement drives, applications and opportunities pages with eligibility and match explanations.",
-            "Built the progress hub and rewards pages with charts (components/charts.jsx, Recharts).",
-            "Wrote the thin API client with httpOnly-cookie authentication and error handling (src/api.js, auth.jsx).",
-            "Made every page load on demand (React.lazy) and split vendor chunks: first load 1,130 kB → 236 kB.",
-            "Made the layout responsive and accessible (labels, focus states, keyboard navigation).",
-            "Wrote frontend unit tests with Vitest for state logic and helpers.",
+            "Built the live voice interview room and its state machine (pages/student/VoiceInterview.jsx, voice/interviewMachine.js).",
+            "Integrated local speech-to-text with faster-whisper and live captions every ~1.2 s (services/stt.py, voice/recorder.js).",
+            "Integrated local text-to-speech with Kokoro-82M and sentence-by-sentence playback (services/tts.py, voice/speechPlayer.js).",
+            "Built the streamed interview turn: the next question is spoken while it is still being written (routers/interview_live.py, services/speech_stream.py).",
+            "Built the 3D interviewer renderer with three.js: lip sync from visemes, blinking, idle motion (voice/Avatar3D.jsx, visemes.js, faceRig.js).",
+            "Converted Rocketbox avatars with Blender and created the four interviewer personalities: Aria, Victor, Marcus, Elena (services/interviewers.py).",
+            "Compressed the avatar models with meshopt and WebP: 16.5 MB → 5.4 MB (frontend/avatar-src/compress_avatars.py).",
+            "Built camera monitoring with MediaPipe in the browser: face visible, more than one face, approximate gaze (monitoring/faceMonitor.js).",
+            "Built phone/notes detection in a Web Worker and the integrity event engine with a risk summary (services/integrity.py, routers/monitoring.py).",
+            "Built the visual attention percentage (services/attention.py, monitoring/attentionMeter.js).",
+            "Built the English conversation companion with three learning modes and topic memory (services/english_companion.py).",
+            "Built spaced-repetition vocabulary review with five boxes (1, 2, 4, 7, 14 days) and the self-ticking daily plan (services/english_vocab.py, pages/student/Vocabulary.jsx).",
+            "Built the rewards system: points, badges, streaks, challenges and reward rules (services/rewards.py).",
+            "Built the mentor portal: assigned students, feedback, private notes, improvement plans, sessions, alerts (routers/mentors.py, pages/mentor/).",
+            "Built the recruiter portal, the side-by-side candidate comparison and the printable candidate report (routers/jobs/, pages/recruiter/).",
+            "Built the admin portal: analytics, users and approvals, interview setup, assessments, settings, audit logs, reports (routers/admin/, pages/admin/).",
+            "Built timed MCQ assessments with server-side grading (routers/assessments.py).",
+            "Measured and reduced voice latency: answer → next question from 19 s to about 4-7 s on the local model.",
         ],
         "modules": [
-            "frontend/src/App.jsx, main.jsx, api.js, auth.jsx, index.css, tailwind.config.js, vite.config.js",
-            "frontend/src/components/ (ui.jsx, Layout.jsx, Logo.jsx, Tabs.jsx, charts.jsx, Readiness.jsx, scoreBand.js)",
-            "frontend/src/pages/student/ (Dashboard, Interviews, InterviewSetup, InterviewSession, PerformanceReport, Resume, Jobs, Drives, Applications, ProgressHub, Rewards)",
-            "frontend/src/pages/ (Login, Register, AuthShell, Profile, Settings, NotFound)",
+            "frontend/src/voice/ (interviewMachine, recorder, speechPlayer, turnStream, Avatar3D, visemes, faceRig, room components)",
+            "frontend/src/monitoring/; backend/app/services/stt.py, tts.py, speech_stream.py, interviewers.py, integrity.py, attention.py",
+            "backend/app/routers/voice.py, interview_live.py, monitoring.py; frontend/public/avatars/",
+            "backend/app/services/english_companion.py, english_profile.py, english_vocab.py, ai_english.py, rewards.py",
+            "backend/app/routers/english.py, mentors.py, assessments.py, jobs/, admin/",
+            "frontend/src/pages/student/English*.jsx, Vocabulary.jsx; pages/mentor/, recruiter/, admin/",
         ],
         "deliverables": [
-            "Complete student portal (about 20 pages) in a consistent design system",
-            "Reusable UI component library used by all four portals",
-            "Bundle optimisation: initial JavaScript 1,130 kB → 236 kB (76 kB gzipped)",
-            "Frontend part of the 141 Vitest tests and the UI screenshots in docs/screenshots/",
+            "Live voice interview with four 3D interviewer personalities and live captions",
+            "Local speech pipeline: a 16 s answer transcribed in 0.8 s (was 4.2-4.9 s)",
+            "On-device, disclosed interview monitoring with a reviewer view and risk summary",
+            "English module: conversation companion, vocabulary review, daily plan, progress and rewards",
+            "Mentor, recruiter and admin portals including candidate comparison and the printable report",
+            "Documentation: docs/VOICE_INTERVIEW.md, docs/INTERVIEW_SECURITY.md, docs/ENGLISH.md",
         ],
-        "tech": ["React 18", "Vite 6", "Tailwind CSS", "React Router 6", "Recharts", "lucide-react icons",
-                 "JavaScript (ES2022)", "Vitest", "Figma-style mock-ups", "Chrome DevTools"],
+        "tech": ["three.js", "WebGL", "Blender", "faster-whisper", "Kokoro-82M", "Web Audio API", "MediaPipe Tasks Vision",
+                 "Web Workers", "Server-Sent Events", "React", "FastAPI", "Recharts", "Playwright"],
         "workflow": [
-            "Collected the student-side requirements from the specification and sketched page layouts.",
-            "Built the design tokens and component library first, then the pages on top of them.",
-            "Connected pages to Samrath's and Kaushal's APIs using the shared API client.",
-            "Reviewed each page in the browser at desktop and mobile widths and fixed layout issues.",
-            "Measured the bundle with the Vite build report and introduced lazy loading and chunk splitting.",
-            "Wrote unit tests and fixed issues found in team reviews.",
+            "Built the voice room as a state machine first, with typed answers, so the flow could be tested without audio.",
+            "Added text-to-speech, then speech-to-text, then streaming between them, then the 3D avatar with lip sync.",
+            "Added monitoring as independent detectors that send events through one event engine.",
+            "Built the English module and the three portals backend-first, then the pages on the shared components.",
+            "Measured each step with benchmark scripts and optimised the slowest part each time.",
+            "Tested everything with Playwright using a fake camera and microphone.",
         ],
         "challenges": [
-            ("The first version looked generic (\"AI-style\" gradients, inconsistent colours) and was rated poorly in review.",
-             "A full redesign with one design system: colours as CSS variables, one brand colour, consistent components."),
-            ("The whole app (1.13 MB of JavaScript) downloaded before the login page appeared.",
-             "Route-level lazy loading with React.lazy and Suspense, plus separate chunks for React, three.js and charts."),
-            ("The logo gradient disappeared when the logo appeared twice on a page.",
-             "Each logo instance gets a unique SVG gradient id with React's useId."),
-            ("Long AI texts and many numbers made report pages hard to read.",
-             "Score bands, skill bars, two-column strengths/weaknesses and collapsible per-question details."),
+            ("Whisper sometimes \"heard\" repeated phrases in silence (hallucination loops).",
+             "A transcript cleaner removes repeated loops, and the question text is passed as a prompt (fixes words like \"FastAPI\")."),
+            ("Transcription took 4-5 s after the student stopped speaking.",
+             "Switched to faster-whisper and reused the last live caption, so the transcript is ready immediately."),
+            ("Phone detection blocked the page for ~73 ms every second and made the avatar stutter.",
+             "Moved detection to a Web Worker; avatar frame pacing and automatic quality step-down."),
+            ("The English companion repeated itself and copied the student's sentences.",
+             "Higher temperature (0.2 → 0.7) and a duplicate-reply check with one retry."),
+            ("Recruiters must never see other companies' applicants or non-consented integrity data.",
+             "Central access rules plus tests: another recruiter gets 404, a student gets 403, unshared sessions stay hidden."),
         ],
         "learning": {
-            "Skills learned": "Component-based UI architecture, design systems, responsive layout, performance optimisation.",
-            "Technical knowledge": "React hooks and context, code splitting, CSS variables theming, accessibility basics.",
-            "Contribution to success": "The student portal is the main face of HireSense; every demo starts on Yash's pages.",
-            "Personal improvement": "Turning feedback into design decisions and keeping a large UI consistent.",
+            "Skills learned": "Real-time audio, 3D graphics and computer vision in the browser, full-stack feature development.",
+            "Technical knowledge": "Speech recognition and synthesis, visemes and lip sync, MediaPipe, Web Workers, spaced repetition, gamification.",
+            "Contribution to success": "The live 3D voice interview that makes HireSense stand out, plus three of the four portals.",
+            "Personal improvement": "Measuring before optimising, and designing monitoring that respects privacy.",
         },
     },
     {
         "name": "Samrath",
+        "pct": 14,
         "role": "Backend Developer and Database Engineer",
         "summary": "Samrath built the data layer on MongoDB, authentication and security, access control and the core "
                    "REST APIs, plus live notifications.",
@@ -215,8 +236,6 @@ MEMBERS = [
             "Built the shared rate limiter with optional Redis and in-memory fallback (services/limiter.py).",
             "Built AI-data consent recording and the privacy endpoint (services/consent.py).",
             "Built live notifications over Server-Sent Events with heartbeat and per-user limits (services/live_events.py).",
-            "Added health checks (/api/health/live, /api/health/ready), request IDs and the error log.",
-            "Wrote backend tests for authentication, permissions and workflows.",
         ],
         "modules": [
             "backend/app/odm/ (connection, session, query, statements, mapping, expressions, coltypes)",
@@ -229,7 +248,7 @@ MEMBERS = [
             "Secure authentication with lockout, password reset and role-based access control",
             "Core REST API used by all four portals, documented automatically at /docs (Swagger)",
             "Live notifications (a new application reached the recruiter's open page in about 25 ms in testing)",
-            "Database documentation (docs/DATABASE.md) and the authentication and permission tests",
+            "Health checks (/api/health/live, /api/health/ready) and database documentation (docs/DATABASE.md)",
         ],
         "tech": ["Python 3.14", "FastAPI", "MongoDB", "pymongo", "Pydantic", "JWT", "Argon2", "Redis (optional)",
                  "Server-Sent Events", "SMTP", "pytest"],
@@ -260,144 +279,131 @@ MEMBERS = [
     },
     {
         "name": "Aryan",
-        "role": "Voice Interview, 3D Avatar and Monitoring Developer",
-        "summary": "Aryan built the live voice interview room: speech in and out, the 3D interviewers, and the "
-                   "disclosed on-device interview monitoring.",
+        "pct": 13,
+        "role": "Frontend Foundation and Design System Developer",
+        "summary": "Aryan set up the React frontend, built the design system and shared components used by all four "
+                   "portals, the API layer, and made the application fast to load.",
         "responsibilities": [
-            "Built the live voice interview room and its state machine (pages/student/VoiceInterview.jsx, voice/interviewMachine.js).",
-            "Integrated local speech-to-text with faster-whisper and live captions every ~1.2 s (services/stt.py, voice/recorder.js).",
-            "Integrated local text-to-speech with Kokoro-82M and sentence-by-sentence playback (services/tts.py, voice/speechPlayer.js).",
-            "Built the streamed interview turn: the next question is spoken while it is still being written (routers/interview_live.py, services/speech_stream.py).",
-            "Built the 3D interviewer renderer with three.js: lip sync from visemes, blinking, idle motion (voice/Avatar3D.jsx, visemes.js, faceRig.js).",
-            "Converted Rocketbox avatars with Blender and created the four interviewer personalities: Aria, Victor, Marcus, Elena (services/interviewers.py).",
-            "Built the avatar behaviour states: listening, thinking, speaking (voice/avatarStates.js).",
-            "Compressed the avatar models with meshopt and WebP: 16.5 MB → 5.4 MB (frontend/avatar-src/compress_avatars.py).",
-            "Built camera monitoring with MediaPipe in the browser: face visible, more than one face, approximate gaze (monitoring/faceMonitor.js).",
-            "Built phone/notes detection in a Web Worker so it does not freeze the avatar (public/mediapipe/object-worker.js).",
-            "Built the integrity event engine and risk summary on the backend (services/integrity.py, routers/monitoring.py).",
-            "Built the visual attention percentage (services/attention.py, monitoring/attentionMeter.js).",
-            "Added tab, fullscreen, paste and second-voice signals, which never change the score.",
-            "Measured and reduced latency: answer → next question from 19 s to about 4-7 s on the local model.",
+            "Set up the React 18 + Vite + Tailwind CSS project and the build configuration (vite.config.js, tailwind.config.js).",
+            "Built routing for the four portals with role-based route guards (frontend/src/App.jsx).",
+            "Made every page load on demand with React.lazy and split vendor chunks: first load 1,130 kB → 236 kB.",
+            "Designed the \"Dark premium\" theme with all colours as CSS variables, so the theme changes in one place (src/index.css).",
+            "Built the shared component library: cards, buttons, tables, tabs, status pills, empty states, spinners (components/ui.jsx, Tabs.jsx).",
+            "Built the application layout with a grouped sidebar, header, notification bell and user menu (components/Layout.jsx, Logo.jsx).",
+            "Built the chart components used on dashboards and reports (components/charts.jsx, Recharts).",
+            "Wrote the API client with httpOnly-cookie authentication and error handling (src/api.js).",
+            "Built the login state and session handling for the whole app (src/auth.jsx).",
+            "Built the live-notification client: one stream per tab, reconnect with backoff, polling fallback (live/notificationStream.js).",
+            "Built the sign-in, registration and password-reset screens (pages/Login.jsx, Register.jsx, AuthShell.jsx).",
+            "Made the layout responsive and accessible (labels, focus states, keyboard navigation).",
         ],
         "modules": [
-            "frontend/src/voice/ (interviewMachine, recorder, speechPlayer, speechQueue, turnStream, Avatar3D, visemes, faceRig, motion, room components)",
-            "frontend/src/monitoring/ (faceMonitor, objectMonitor, interviewMonitor, attentionMeter, audioMonitor, guards)",
-            "backend/app/services/stt.py, tts.py, speech_stream.py, interviewers.py, integrity.py, attention.py",
-            "backend/app/routers/voice.py, interview_live.py, monitoring.py; frontend/public/avatars/",
+            "frontend/src/App.jsx, main.jsx, api.js, auth.jsx, index.css, tailwind.config.js, vite.config.js",
+            "frontend/src/components/ (ui.jsx, Layout.jsx, Logo.jsx, Tabs.jsx, charts.jsx)",
+            "frontend/src/live/notificationStream.js",
+            "frontend/src/pages/ (Login, Register, AuthShell, ForgotPassword, ResetPassword, NotFound)",
         ],
         "deliverables": [
-            "Live voice interview with four 3D interviewer personalities and live captions",
-            "Local speech pipeline: 16 s answer transcribed in 0.8 s (was 4.2-4.9 s)",
-            "On-device, disclosed interview monitoring with a reviewer view and risk summary",
-            "Browser end-to-end tests for the voice room and monitoring (backend/tests_e2e/)",
-            "Documentation: docs/VOICE_INTERVIEW.md, docs/INTERVIEW_SECURITY.md, docs/ATTENTION_MONITORING.md",
+            "Frontend project setup, routing and route guards for four portals",
+            "Design system and reusable UI component library used by every page",
+            "Bundle optimisation: initial JavaScript 1,130 kB → 236 kB (76 kB gzipped)",
+            "API client, authentication state and live-notification client",
         ],
-        "tech": ["three.js", "WebGL", "Blender", "faster-whisper", "Kokoro-82M", "Web Audio API", "MediaPipe Tasks Vision",
-                 "Web Workers", "Server-Sent Events", "Playwright", "JavaScript", "Python"],
+        "tech": ["React 18", "Vite 6", "Tailwind CSS", "React Router 6", "Recharts", "lucide-react icons",
+                 "JavaScript (ES2022)", "EventSource (SSE)", "Chrome DevTools"],
         "workflow": [
-            "Built the room as a state machine first, with typed answers, so the flow could be tested without audio.",
-            "Added text-to-speech, then speech-to-text, then streaming between them.",
-            "Added the 3D avatar and connected lip sync to the audio.",
-            "Added monitoring as independent detectors that send events through one event engine.",
-            "Measured each step with benchmark scripts and optimised the slowest part each time.",
-            "Tested everything with Playwright using a fake camera and microphone.",
+            "Set up the project and the folder structure so other members could add pages.",
+            "Built the design tokens and component library first, then the layout and routing.",
+            "Wrote the API client and authentication state against Samrath's endpoints.",
+            "Measured the bundle with the Vite build report and introduced lazy loading and chunk splitting.",
+            "Reviewed pages at desktop and mobile widths and fixed shared-component issues.",
         ],
         "challenges": [
-            ("Whisper sometimes \"heard\" repeated phrases in silence (hallucination loops).",
-             "A transcript cleaner removes repeated loops, and the question text is passed as a prompt (fixes words like \"FastAPI\")."),
-            ("Transcription took 4-5 s after the student stopped speaking.",
-             "Switched to faster-whisper and reused the last live caption, so the transcript is ready immediately."),
-            ("Phone detection blocked the page for ~73 ms every second and made the avatar stutter.",
-             "Moved detection to a Web Worker; avatar frame pacing and automatic quality step-down."),
-            ("Headless browser tests were 3-20× slower than real use because the 3D avatar was software-rendered.",
-             "GPU flag for tests (HS_E2E_GPU=1) and timing measured on the server side instead."),
+            ("The first version looked generic (\"AI-style\" gradients, inconsistent colours) and was rated poorly in review.",
+             "A full redesign with one design system: colours as CSS variables, one brand colour, consistent components."),
+            ("The whole app (1.13 MB of JavaScript) downloaded before the login page appeared.",
+             "Route-level lazy loading with React.lazy and Suspense, plus separate chunks for React, three.js and charts."),
+            ("The logo gradient disappeared when the logo appeared twice on a page.",
+             "Each logo instance gets a unique SVG gradient id with React's useId."),
         ],
         "learning": {
-            "Skills learned": "Real-time audio, 3D graphics in the browser, computer vision in the browser, latency engineering.",
-            "Technical knowledge": "Speech recognition and synthesis models, visemes and lip sync, MediaPipe, Web Workers.",
-            "Contribution to success": "The live 3D voice interview is the feature that makes HireSense stand out.",
-            "Personal improvement": "Measuring before optimising, and designing monitoring that respects privacy.",
+            "Skills learned": "Component-based UI architecture, design systems, routing, performance optimisation.",
+            "Technical knowledge": "React hooks and context, code splitting, CSS-variable theming, cookie-based auth in the browser.",
+            "Contribution to success": "Every page of all four portals is built on Aryan's components, layout and API layer.",
+            "Personal improvement": "Keeping a large UI consistent and measuring performance before optimising.",
         },
     },
     {
         "name": "Shardha",
-        "role": "English Learning, Portals (Mentor/Recruiter/Admin) and Quality Assurance Lead",
-        "summary": "Shardha built the English learning module, the mentor, recruiter and admin portals, and led "
-                   "testing and documentation.",
+        "pct": 13,
+        "role": "Student Portal Pages and Frontend Testing",
+        "summary": "Shardha built the student portal pages that students use every day and the frontend unit tests.",
         "responsibilities": [
-            "Built the English conversation companion with three learning modes and topic memory (services/english_companion.py).",
-            "Built the recurring-mistake profile from English sessions (services/english_profile.py).",
-            "Built spaced-repetition vocabulary review with five boxes (1, 2, 4, 7, 14 days) (services/english_vocab.py, pages/student/Vocabulary.jsx).",
-            "Built the daily plan that ticks itself off and the English progress view (components/DailyPlan.jsx, EnglishProgress.jsx).",
-            "Built the rewards system: points, badges, streaks, challenges and reward rules (services/rewards.py).",
-            "Built the mentor portal: assigned students, feedback, private notes, improvement plans, sessions, alerts (routers/mentors.py, pages/mentor/).",
-            "Built the recruiter portal: jobs, applicants, explainable screening and status updates (routers/jobs/, pages/recruiter/).",
-            "Built the side-by-side candidate comparison (2-4 candidates) and the printable candidate report.",
-            "Built the admin portal: analytics, users and approvals, interview setup, assessments, rewards, settings, audit logs, reports (routers/admin/, pages/admin/).",
-            "Built timed MCQ assessments with server-side grading (routers/assessments.py).",
-            "Led the backend test suite with pytest: 369 tests on a separate MongoDB test database.",
-            "Wrote Playwright browser tests, including the CI smoke test that opens 15 pages (tests_e2e/ci_smoke_browser.py).",
-            "Kept the regression list and verified fixes before each merge.",
-            "Wrote the user and project documentation (README.md, docs/ENGLISH.md, docs/TESTING.md, docs/FEATURE_STATUS.md).",
+            "Built the student dashboard: greeting, readiness score, quick actions, stat cards and challenges (pages/student/Dashboard.jsx).",
+            "Built the mock-interview pages: setup form, interviewer picker, typed interview session and history.",
+            "Built the interview report page: overall score with band, skill breakdown, strengths, weaknesses and per-question feedback.",
+            "Built the resume page: upload, AI analysis view and student corrections (pages/student/Resume.jsx).",
+            "Built the jobs, placement drives, applications and opportunities pages with eligibility and match explanations.",
+            "Built the progress hub with charts of interview, English and assessment progress (pages/student/ProgressHub.jsx).",
+            "Built the student rewards page: points, badges and challenges (pages/student/Rewards.jsx).",
+            "Built the profile, account settings and notifications pages (pages/Profile.jsx, Settings.jsx, Notifications.jsx).",
+            "Built the privacy page and the AI-consent notice shown before AI features (pages/Privacy.jsx).",
+            "Built score-band display helpers used on reports (components/scoreBand.js).",
+            "Wrote frontend unit tests with Vitest: 141 tests for state machines and helpers.",
         ],
         "modules": [
-            "backend/app/services/english_companion.py, english_profile.py, english_vocab.py, ai_english.py, rewards.py, insights.py",
-            "backend/app/routers/english.py, mentors.py, assessments.py, jobs/, admin/",
-            "frontend/src/pages/student/English*.jsx, Vocabulary.jsx; pages/mentor/, recruiter/, admin/; src/english/",
-            "backend/tests/, backend/tests_e2e/ci_smoke_browser.py, docs/",
+            "frontend/src/pages/student/ (Dashboard, Interviews, InterviewSetup, InterviewerPicker, InterviewSession, PerformanceReport, Resume, Jobs, Drives, Applications, Opportunities, ProgressHub, Rewards)",
+            "frontend/src/pages/ (Profile, Settings, Notifications, Privacy)",
+            "frontend/src/components/ (Readiness.jsx, scoreBand.js); frontend/src/**/*.test.js",
         ],
         "deliverables": [
-            "English module: conversation companion, vocabulary review, daily plan, progress and rewards",
-            "Mentor, recruiter and admin portals including candidate comparison and printable report",
-            "Test suites: 369 backend tests (2 Redis-only skipped), CI browser smoke test",
-            "User documentation, feature status and test reports",
+            "Complete student portal (about 20 pages) on the shared design system",
+            "Interview report page with score bands and per-question feedback",
+            "Frontend unit tests (141 Vitest tests) and the UI screenshots in docs/screenshots/",
         ],
-        "tech": ["Python", "FastAPI", "React", "Tailwind CSS", "Recharts", "pytest", "Vitest", "Playwright",
-                 "GitHub Actions", "Markdown"],
+        "tech": ["React 18", "Tailwind CSS", "React Router 6", "Recharts", "JavaScript (ES2022)", "Vitest",
+                 "Chrome DevTools"],
         "workflow": [
-            "Listed the mentor, recruiter and admin requirements and the English-learning features from the specification.",
-            "Built the backend endpoints and services first, then the pages, using the shared component library.",
-            "Wrote tests for each feature, especially access rules (who can see which student).",
-            "Ran the full test suites before every merge and tracked regressions.",
-            "Wrote and updated documentation after each feature was finished.",
+            "Collected the student-side requirements from the specification and sketched page layouts.",
+            "Built each page on Aryan's components and connected it to the backend APIs.",
+            "Checked each page in the browser with real data and fixed layout and wording issues.",
+            "Wrote unit tests for page logic and helpers and fixed issues found in team reviews.",
         ],
         "challenges": [
-            ("The English companion repeated itself and copied the student's sentences.",
-             "Higher temperature (0.2 → 0.7) and a duplicate-reply check with one retry."),
-            ("Recruiters must never see other companies' applicants or non-consented integrity data.",
-             "Central access rules plus tests: another recruiter gets 404, a student gets 403, unshared sessions stay hidden."),
-            ("Daily-plan items completed outside the English pages (e.g. an interview) were not detected.",
-             "The plan is evaluated when it is viewed and pays points at most once per day."),
-            ("Tests sometimes failed on Windows because of temp-folder permissions.",
-             "A pytest.ini with a project-local temp folder, so a plain \"pytest tests\" works on every machine."),
+            ("Long AI texts and many numbers made report pages hard to read.",
+             "Score bands, skill bars, two-column strengths/weaknesses and collapsible per-question details."),
+            ("Daily-plan items completed outside the English pages (e.g. an interview) were not shown as done.",
+             "The plan is evaluated when it is viewed, so the dashboard card always shows the current state."),
+            ("AI features must not run before the student agrees to send data to the AI provider.",
+             "A consent notice on interview, resume and English pages, with a toggle in Settings to withdraw."),
         ],
         "learning": {
-            "Skills learned": "Full-stack feature development, test design, documentation writing.",
-            "Technical knowledge": "Spaced repetition, gamification design, access control testing, browser automation.",
-            "Contribution to success": "Three of the four portals and the quality checks that keep the whole system working.",
-            "Personal improvement": "Thinking like a user and a tester, and explaining features clearly in writing.",
+            "Skills learned": "Building data-driven pages, user-friendly report design, frontend testing.",
+            "Technical knowledge": "React state and effects, API integration, charts, unit testing with Vitest.",
+            "Contribution to success": "The student portal is the main face of HireSense; every demo starts on Shardha's pages.",
+            "Personal improvement": "Thinking like a user and turning review feedback into clearer pages.",
         },
     },
 ]
 
 TIMELINE = [  # phase, dates, lead, support
-    ("Requirement analysis and specification", "9-10 Oct 2026", "Kaushal", "All members"),
-    ("Architecture and database design", "10 Oct", "Kaushal", "Samrath"),
-    ("UI design and design system", "10-12 Oct", "Yash", "Shardha"),
-    ("Backend core, authentication and APIs", "10-14 Oct", "Samrath", "Kaushal"),
-    ("AI integration (resume, questions, scoring, matching)", "10-25 Oct", "Kaushal", "Samrath"),
-    ("Student portal frontend", "10-20 Oct", "Yash", "Aryan"),
-    ("Live voice interview and 3D avatars", "10-11 Oct, refined to 29 Oct", "Aryan", "Yash"),
-    ("English learning module", "10-11 Oct, extended 5 Nov", "Shardha", "Kaushal"),
-    ("Recruiter, mentor and admin portals", "12-25 Oct", "Shardha", "Samrath"),
-    ("Interview monitoring and security module", "11-25 Oct", "Aryan", "Samrath"),
-    ("Move from SQLite to MongoDB", "late Oct", "Samrath", "Kaushal"),
-    ("Performance and latency optimisation", "11 Oct - 4 Nov", "Aryan", "Yash, Kaushal"),
-    ("UI redesign (Dark premium theme)", "4 Nov", "Yash", "Shardha"),
-    ("Score calibration and real-model verification", "4-5 Nov", "Kaushal", "Shardha"),
-    ("Testing (unit, API, browser E2E, CI)", "throughout; CI 5 Nov", "Shardha", "All members"),
-    ("Deployment preparation (Docker, Render, Vercel)", "5 Nov", "Kaushal", "Samrath"),
-    ("Documentation and final presentation", "5 Nov", "Shardha", "All members"),
+    ("Requirement analysis and specification", "9-10 Oct 2026", "Yash", "All members"),
+    ("Architecture and database design", "10 Oct", "Yash", "Samrath"),
+    ("Frontend setup, UI design and design system", "10-12 Oct", "Aryan", "Shardha"),
+    ("Backend core, authentication and APIs", "10-14 Oct", "Samrath", "Yash"),
+    ("AI integration (resume, questions, scoring, matching)", "10-25 Oct", "Yash", "Samrath"),
+    ("Student portal pages", "10-20 Oct", "Shardha", "Aryan"),
+    ("Live voice interview and 3D avatars", "10-11 Oct, refined to 29 Oct", "Kaushal", "Yash"),
+    ("English learning module", "10-11 Oct, extended 5 Nov", "Kaushal", "Yash"),
+    ("Recruiter, mentor and admin portals", "12-25 Oct", "Kaushal", "Samrath"),
+    ("Interview monitoring and security module", "11-25 Oct", "Kaushal", "Samrath"),
+    ("Move from SQLite to MongoDB", "late Oct", "Samrath", "Yash"),
+    ("Performance and latency optimisation", "11 Oct - 4 Nov", "Kaushal", "Aryan, Yash"),
+    ("UI redesign (Dark premium theme)", "4 Nov", "Aryan", "Shardha"),
+    ("Score calibration and real-model verification", "4-5 Nov", "Yash", "Kaushal"),
+    ("Testing (unit, API, browser E2E, CI)", "throughout; CI 5 Nov", "Yash", "All members"),
+    ("Deployment preparation (Docker, Render, Vercel)", "5 Nov", "Yash", "Samrath"),
+    ("Documentation and final presentation", "5 Nov", "Yash", "All members"),
 ]
 
 COLLABORATION = [
@@ -413,6 +419,78 @@ COLLABORATION = [
                        "status Done, Partial, Verified or Not built."),
     ("Code reviews", "Every merge was checked by another member and by the automated test suites on GitHub Actions "
                      "(backend tests, frontend tests and build, cloud-profile check, browser smoke test)."),
+]
+
+# ---- simple architecture and workflow (section 2) ----
+SIMPLE_ARCH_TEXT = [
+    "HireSense has three layers, like most web applications. The first layer is what the user sees: the website in "
+    "the browser. The second is the backend server, which contains the rules of the system. The third is where data "
+    "is stored and where the AI models run.",
+    "The browser layer is a React website with four portals: Student, Recruiter, Mentor and Admin. When a student "
+    "takes a voice interview, the browser also uses the camera and microphone.",
+    "The browser never talks to the database directly. It sends requests (for example \"save this answer\") to the "
+    "backend over HTTPS, and the backend replies with data in JSON format.",
+    "The backend is built with FastAPI (Python). It checks who is logged in, runs the interview engine, analyses "
+    "resumes, matches students to jobs, runs the English coach and sends live notifications.",
+    "All data (users, interviews, answers, jobs, applications, scores) is saved in a MongoDB database.",
+    "For AI work the backend sends a prompt to Google Gemini on the internet. If Gemini is busy or offline, it "
+    "automatically uses Ollama, a smaller AI model running on the laptop. Whisper turns the student's speech into "
+    "text, and Kokoro turns the interviewer's text into a voice.",
+]
+
+STUDENT_FLOW = [
+    ("Register / Login", "Student creates an account"),
+    ("Upload resume", "PDF or text file"),
+    ("AI analyses resume", "skills, projects, gaps"),
+    ("Start mock interview", "choose an interviewer"),
+    ("Interviewer asks", "question spoken in 3D voice"),
+    ("Student answers", "speech becomes text"),
+    ("AI scores answer", "picks the next question"),
+    ("Final report", "score and band"),
+    ("Apply to jobs", "match % shown"),
+    ("Recruiter compares", "candidates side by side"),
+    ("Mentor guides", "feedback and plan"),
+]
+
+STUDENT_FLOW_TEXT = [
+    "The student first creates an account and logs in. Then the student uploads a resume, and the AI reads it and "
+    "lists the skills, projects and weak points.",
+    "Next the student starts a mock interview and chooses one of four interviewers (Aria, Victor, Marcus or Elena). "
+    "The interviewer appears as a 3D character and speaks each question aloud.",
+    "The student answers by speaking. Whisper converts the speech into text, which is shown as live captions.",
+    "The AI scores the answer (relevance, correctness, completeness, clarity) and uses the score to choose the next "
+    "question: harder if the answer was good, easier if it was weak.",
+    "At the end the student gets a report with an overall score, a band such as \"Strong 75-89\", strengths, "
+    "weaknesses and tips for every question.",
+    "The student can then apply to jobs. Each job shows a match percentage and the reason for it. Recruiters compare "
+    "the applicants side by side, and the student's mentor sees the same results and gives guidance.",
+]
+
+RECRUITER_FLOW = [
+    ("Recruiter registers", "admin approves the account"),
+    ("Post a job", "skills and eligibility"),
+    ("Students apply", "match % calculated"),
+    ("Compare candidates", "2-4 side by side"),
+    ("Shortlist / select", "student is notified"),
+]
+
+ADMIN_FLOW = [
+    ("Admin logs in", ""),
+    ("Approve users", "recruiters, mentors"),
+    ("Set up content", "questions, tests, rewards"),
+    ("Watch analytics", "usage, AI speed, errors"),
+    ("Placement reports", "CSV export"),
+]
+
+OTHER_FLOW_TEXT = [
+    "A recruiter registers and waits for the admin to approve the account. The recruiter then posts a job with the "
+    "required skills and eligibility (branch, CGPA, graduation year).",
+    "When students apply, the system calculates a match percentage from the student's skills and experience and "
+    "explains it. The recruiter can compare two to four candidates side by side and print a report as a PDF.",
+    "When the recruiter changes an application status (shortlisted, selected or rejected), the student gets a live "
+    "notification.",
+    "The admin approves new users, sets up the question bank, assessments and rewards, watches the analytics "
+    "dashboard (users, interviews, AI speed and errors) and downloads placement reports.",
 ]
 
 ARCHITECTURE = [
@@ -437,9 +515,10 @@ CONCLUSION = [
     "interviews with a speaking 3D interviewer, receive calibrated and explainable feedback, improve their English, "
     "and apply to jobs, while recruiters, mentors and the placement cell work with the same data. The platform is "
     "backed by 369 backend tests, 141 frontend tests, browser end-to-end tests and automated checks on every push.",
-    "The project was a team effort. Kaushal's architecture and AI engine, Yash's design system and student portal, "
-    "Samrath's database, security and APIs, Aryan's voice interview, avatars and monitoring, and Shardha's English "
-    "module, three portals and quality assurance each form an essential part; no portal works without the others.",
+    "The project was a team effort. Yash's architecture, AI engine, testing and documentation; Kaushal's voice "
+    "interview, 3D avatars, monitoring, English module and three portals; Samrath's database, security and APIs; "
+    "Aryan's frontend foundation and design system; and Shardha's student portal pages and frontend tests each form "
+    "an essential part; no portal works without the others.",
     "Future improvements: testing the voice and camera features with real users and tuning the detector thresholds, "
     "OCR for scanned resumes, more languages for voice practice, a hosted deployment with a paid AI quota, load "
     "testing with many simultaneous users, and a mobile-friendly interview room.",
