@@ -1,9 +1,51 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/InterviewerPicker.jsx
+//
+// FILE PURPOSE:
+// Interviewer selection cards with a live 3D preview and a voice sample.
+//
+// WHAT THIS FILE DOES:
+// 1. Shows one card per interviewer personality with level and style.
+// 2. Filters by interview type.
+// 3. Plays a voice preview (POST /voice/speak) that the avatar lip-syncs.
+// 4. Renders the 3D preview only while the card is visible (LazyAvatar).
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: POST /voice/speak.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewerPicker()
+//        Selection component.
+//    - LazyAvatar()
+//        3D preview rendered only when on screen.
+//    Other helper functions: Avatar3D
+//
+// INPUT:
+// Props: interviewers, value, onSelect, voiceStatus.
+//
+// OUTPUT:
+// The selected interviewer id.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, components/useSpeechAndPreferences.jsx,
+//    voice/Avatar3D.jsx, voice/speechPlayer.js, voice/useInterviewers.js
+//    Used by: pages/student/MockInterviewHome.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Square, Volume2 } from "lucide-react";
-import { post } from "../../api";
-import { usePrefs } from "../../components/useSpeech";
-import { Button, Pill, Spinner, useToast } from "../../components/ui";
+import { post } from "../../apiClient";
+import { usePrefs } from "../../components/useSpeechAndPreferences";
+import { Button, Pill, Spinner, useToast } from "../../components/SharedUiComponents";
 import { SpeechPlayer } from "../../voice/speechPlayer";
 import { FILTERS, browserVoiceOpts, speakBody } from "../../voice/useInterviewers";
 

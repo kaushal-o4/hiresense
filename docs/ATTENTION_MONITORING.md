@@ -68,10 +68,10 @@ It is kept apart from interview scores and is never used to reject, fail or end 
 
 ## Files
 Created: `frontend/src/monitoring/attentionMeter.js`, `attentionMeter.test.js`, `AttentionPanels.jsx`;
-`backend/app/services/attention.py`; `backend/tests/test_attention.py`; `backend/tests_e2e/attention_browser.py`.
+`backend/app/services/monitoring/visual_attention_report.py`; `backend/tests/test_attention.py`; `backend/tests_e2e/attention_browser.py`.
 Modified: `interviewMonitor.js` (meter, 1 s tick, recalibrate, pause, final upload), `eventReporter.js` (upload),
-`MonitorBar.jsx` (live card, student report), `pages/shared/IntegrityReview.jsx` (reviewer report),
-`pages/admin/SecuritySettings.jsx`, `backend/app/routers/monitoring.py`, `schemas.py`, `services/integrity.py`
+`InterviewMonitorBar.jsx` (live card, student report), `pages/shared/IntegrityReview.jsx` (reviewer report),
+`pages/admin/SecuritySettings.jsx`, `backend/app/routers/interview_monitoring_routes.py`, `request_validation_schemas.py`, `services/monitoring/interview_integrity_rules.py`
 (3 thresholds), `frontend/vite.config.js` (`HS_API` override for a second test backend; default unchanged),
 `backend/tests/conftest.py` + `test_latency_and_monitoring.py` (see "Test fix" below).
 

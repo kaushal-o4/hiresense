@@ -1,3 +1,42 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/components/InterviewerStage.jsx
+//
+// FILE PURPOSE:
+// Shows a live 3D interviewer as a decorative hero element on the sign-in page and student dashboard.
+//
+// WHAT THIS FILE DOES:
+// 1. Checks that the browser supports WebGL.
+// 2. Waits until the browser is idle, then lazy-loads Avatar3D in 'lite' mode.
+// 3. Falls back to a plain backdrop if 3D is not possible.
+//
+// HOW THIS FILE WORKS:
+// PEOPLE maps each interviewer id (aria, victor, marcus, elena) to a .glb model. The component plays
+// only the idle/listening animation; no audio or recording.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewerStage()
+//        Container that renders the 3D avatar with a caption.
+//    - webglOk()
+//        Returns true if WebGL is available.
+//    Other helper functions: Avatar3D
+//
+// INPUT:
+// Props: who, mode, className, caption, children.
+//
+// OUTPUT:
+// A 3D animated interviewer or a static backdrop.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/Avatar3D.jsx
+//    Used by: pages/AuthShell.jsx, pages/student/StudentDashboard.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * A live 3D interviewer used as a hero element (sign-in page, student dashboard): the real Avatar3D in `lite` mode
  * (low-power GPU, 20 fps, no HD model), idle/listening animation only - no audio, nothing recorded. Loads lazily,

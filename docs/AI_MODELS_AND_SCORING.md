@@ -2,7 +2,7 @@
 
 How HireSense uses language models: providers (Gemini by default, local Ollama as fallback or for fully offline use), what each AI feature does, the deterministic checks around the model, the interview question engine and the 2026-11-04 score calibration. Model inventory: [AI_MODEL_INVENTORY.md](AI_MODEL_INVENTORY.md).
 
-> **Provider (current):** `backend/.env.example` sets `LOCAL_AI_PROVIDER=gemini`. With a key, prompts go to Google Gemini and Ollama answers only when Gemini fails (`AI_FALLBACK_TO_OLLAMA=true`). Set `LOCAL_AI_PROVIDER=ollama` to keep every prompt on your own computer. Students must accept the AI data notice before the first AI feature when the provider is Gemini (`services/consent.py`, `/privacy`).
+> **Provider (current):** `backend/.env.example` sets `LOCAL_AI_PROVIDER=gemini`. With a key, prompts go to Google Gemini and Ollama answers only when Gemini fails (`AI_FALLBACK_TO_OLLAMA=true`). Set `LOCAL_AI_PROVIDER=ollama` to keep every prompt on your own computer. Students must accept the AI data notice before the first AI feature when the provider is Gemini (`services/platform_support/hosted_ai_consent.py`, `/privacy`).
 
 ## Local AI (Ollama): setup and how each feature works
 
@@ -37,7 +37,7 @@ The first request after starting loads the model and takes 30–70 s longer. `OL
 Requests are processed one at a time (`AI_MAX_CONCURRENT=1`) so a laptop doesn't run out of memory.
 
 ### Per-task models (2026-10-25)
-`OLLAMA_MODEL_FAST` / `OLLAMA_MODEL_STRONG` route tasks to different models (`services/model_router.py`); empty = `OLLAMA_MODEL`.
+`OLLAMA_MODEL_FAST` / `OLLAMA_MODEL_STRONG` route tasks to different models (`services/ai_models/ai_task_model_router.py`); empty = `OLLAMA_MODEL`.
 Measured on this laptop: `qwen3:1.7b` for English chat takes ~2 s per turn instead of ~22 s, but it scores answers far too
 generously, so only chat uses it. Switching models costs 5-8 s on a 4 GB GPU. Details: `docs/PERFORMANCE_BASELINE.md`.
 Health checks: `/api/health/live`, `/api/health/ready`. English replies stream from `POST /api/student/english/{id}/message/stream`.
@@ -53,7 +53,7 @@ Health checks: `/api/health/live`, `/api/health/ready`. English replies stream f
 * **Answer evaluation**: the model scores relevance, correctness, completeness, clarity and communication (0–10).
   **Fixed rules then apply:** empty or "I don't know" answers are capped at 1, answers under 8 words at 3, answers under 25 words get completeness ≤ 5, and correctness can be at most relevance + 3.
   "Content" and "Communication" are shown separately. Accent and speech-recognition errors are explicitly excluded.
-* **Job matching** (`backend/app/services/matching.py`): score = weighted average of required-skill coverage (0.50), preferred-skill coverage (0.15), semantic similarity of profile vs job (0.20) and experience fit (0.15).
+* **Job matching** (`backend/app/services/resume_and_jobs/semantic_job_matcher.py`): score = weighted average of required-skill coverage (0.50), preferred-skill coverage (0.15), semantic similarity of profile vs job (0.20) and experience fit (0.15).
   Then a **gap cap** applies: score ≤ 40 + 60 × required coverage, so similarity can never hide a missing required skill.
   Skills match exactly (with aliases such as JS = JavaScript) or when named in project text. Related skills (embedding similarity ≥ 0.50, e.g. MySQL for PostgreSQL) count as *partial*, at half credit.
   Thresholds were calibrated on real embeddings (comments in the file). "AI match" adds a local-model explanation, but **the model cannot change the score**, and missing required skills are always listed as concerns.
@@ -81,7 +81,7 @@ Setup:
 2. Put it in `backend/.env`: `GEMINI_API_KEY=...` (never commit this file), then restart the backend.
 3. Admin > Monitoring shows `Model: ... (gemini)` and "Gemini API: running".
 
-How it stays fast and reliable (`backend/app/services/gemini_llm.py`, plugged into `local_llm.chat_json`):
+How it stays fast and reliable (`backend/app/services/ai_models/gemini_api_client.py`, plugged into `local_llm.chat_json`):
 - `GEMINI_MODEL=gemini-flash-latest` (Google's alias for the newest Flash). If the key can't use the configured
   model, the newest stable Flash model it can use is picked automatically. Per-task tiers: `GEMINI_MODEL_FAST/_STRONG`.
 - Thinking is turned down (`GEMINI_THINKING=minimal`) - the app asks for JSON with a schema, so it isn't needed.
@@ -103,7 +103,7 @@ technologies or the candidate's part); repeats were detected by wording only (`d
 paraphrases passed; nothing recorded what each question had already covered; personalities differed mainly in prompt
 wording.
 
-**Interview engine** (`backend/app/services/interview_engine.py`, wired into `routers/interviews.py`):
+**Interview engine** (`backend/app/services/interview/interview_intelligence_rules.py`, wired into `routers/interview_routes.py`):
 * *Candidate facts*: projects with description, technologies and role, internships, education, skills. The prompt
   says these are the only experience the interviewer may refer to; missing details must be asked, not assumed.
 * *Answer signals* (deterministic): vague team answers ("we did it"), unmeasured claims ("improved performance"),
@@ -121,11 +121,11 @@ wording.
   text) are stored in the question's `meta`.
 * *Output checks*: stock praise ("Great answer!", "Excellent!") and greetings are removed, internal numbering
   ("your answer for Q3"), metadata/JSON and over-long questions are rejected.
-* *Personalities* (`services/interviewers.py`): each has its own objective, traits (shown on the card), question
+* *Personalities* (`services/interview/interviewer_personalities.py`): each has its own objective, traits (shown on the card), question
   length limit, aspect order, follow-up preference, acknowledgement and transition style and prohibited behaviours.
   Choosing Marcus shows a clear stress-interview notice. Scoring is still identical for every interviewer.
 
-**English conversation companion** (`services/english_companion.py`): a separate personality from the interviewers
+**English conversation companion** (`services/english/english_companion_memory.py`): a separate personality from the interviewers
 (Aria's avatar and voice, no interview pressure). Three learning modes chosen on the start screen:
 *Free conversation* (at most one on-screen tip, spaced out, never spoken), *English learning* (a short spoken "a more
 natural way to say that is...", then the conversation continues; the same correction is never repeated) and
@@ -172,10 +172,10 @@ numbers were not measured because the old code could not be isolated from other 
 
 With Gemini (mostly Flash-Lite) before the changes, the first run measured Spearman 0.83, 38% in band and four 100s, one of them a "good" answer missing a key point. A clean Gemini after-run wasn't possible on 2026-11-04 because of the quota: 15 of 16 calls fell back to Ollama.
 
-What changed (`services/ai.py`):
+What changed (`services/interview/ai_interview_service.py`):
 - **Anchored 0-10 scale** in the scoring prompt (`SCORE_ANCHORS`): 10 only when nothing important is missing.
 - **`missing_point` before the scores:** the model first names the biggest missing point; if there is one, completeness is capped at 7.
 - **Completeness counts:** it was scored but carried no weight in the default rubric, so a shallow but correct answer scored like a complete one. When the rubric leaves it out, it now makes up 20% of the score (`COMPLETENESS_SHARE`).
 - **Off-topic bug fixed:** strong, concrete answers to open questions ("Walk me through your most significant project") have only 0.13-0.17 meaning similarity to the question, so the off-topic cap set relevance to 2 and scored them 60-65. Open questions (similarity ≥ 0.60 to a generic "tell me about a project" prompt; specific questions measured 0.11-0.49) now rely on the model's own `answers_the_question`.
 - **Mostly wrong technical answers** (correctness ≤ 3) can't keep high relevance, completeness or clarity.
-- **Score bands** appear next to the number: Needs work 0-39, Developing 40-59, Competent 60-74, Strong 75-89, Outstanding 90-100 (`services/scoring_bands.py`, `frontend/src/components/scoreBand.js`). Bands and scores never depend on the interviewer persona.
+- **Score bands** appear next to the number: Needs work 0-39, Developing 40-59, Competent 60-74, Strong 75-89, Outstanding 90-100 (`services/interview/score_band_labels.py`, `frontend/src/components/scoreBandLabel.js`). Bands and scores never depend on the interviewer persona.

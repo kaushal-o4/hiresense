@@ -1,6 +1,6 @@
 # Photoreal interviewers with MetaHuman
 
-The app already supports high-detail interviewers. Each persona in `backend/app/services/interviewers.py` has a
+The app already supports high-detail interviewers. Each persona in `backend/app/services/interview/interviewer_personalities.py` has a
 `hd_model` (`/avatars/hd/<id>.glb`). When that file exists, the interview loads it. When it doesn't, the app falls
 back to the bundled Rocketbox model. So you can add characters one at a time and nothing breaks in between.
 

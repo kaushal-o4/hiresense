@@ -1,3 +1,32 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/vite.config.js
+//
+// FILE PURPOSE:
+// Configuration of Vite, the tool that runs the development server and builds the frontend.
+//
+// WHAT THIS FILE DOES:
+// 1. Enables the React plugin.
+// 2. Splits big libraries (react, three.js, recharts) into separate cached chunks.
+// 3. Runs the dev server on port 5173.
+// 4. Forwards /api requests to the FastAPI backend (http://127.0.0.1:8000).
+//
+// HOW THIS FILE WORKS:
+// The proxy makes the browser think the API is on the same site, so the login cookie works in
+// development.
+//
+// INPUT:
+// Environment variable HS_API (optional, another backend for tests).
+//
+// OUTPUT:
+// Dev server behaviour and production build output (dist/).
+//
+// IMPORTANT DEPENDENCIES:
+//    @vitejs/plugin-react, vite
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 

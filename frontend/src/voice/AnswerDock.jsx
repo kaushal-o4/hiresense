@@ -1,6 +1,41 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/AnswerDock.jsx
+//
+// FILE PURPOSE:
+// The answer area under the interviewer: microphone level, live caption, typed answer and transcript
+// review.
+//
+// WHAT THIS FILE DOES:
+// 1. Shows the mic level and partial transcript while speaking.
+// 2. Lets the student type instead of speak.
+// 3. Shows the transcript for review before sending.
+//
+// HOW THIS FILE WORKS:
+// Receives state and dispatch from LiveVoiceInterview.jsx and renders according to the state.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: AnswerDock
+//
+// INPUT:
+// Props: state, dispatch, input mode, mic level, partial text.
+//
+// OUTPUT:
+// Answer UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: components/SharedUiComponents.jsx, voice/interviewMachine.js
+//    Used by: pages/student/LiveVoiceInterview.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* The answer area under the interviewer: microphone level and live caption, typed answer, transcript review. */
 import { Keyboard, Mic, RotateCcw, Send } from "lucide-react";
-import { Button, Spinner } from "../components/ui";
+import { Button, Spinner } from "../components/SharedUiComponents";
 import { S } from "./interviewMachine";
 
 export default function AnswerDock({ st, dispatch, inputMode, setInputMode, micLevel, eosMs, typeInstead, appendTo, partial,

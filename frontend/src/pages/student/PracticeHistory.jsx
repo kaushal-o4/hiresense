@@ -1,10 +1,44 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/PracticeHistory.jsx
+//
+// FILE PURPOSE:
+// All practice activities in one filterable list.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /student/history with a type filter.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: GET /student/history.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: PracticeHistory
+//
+// INPUT:
+// Filter.
+//
+// OUTPUT:
+// History list.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, pages/shared/filterChipStyle.js
+//    Used by: pages/student/ProgressHub.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Every practice activity (interviews, English, assessments) in one filterable list (GET /student/history). */
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { get } from "../../api";
-import { Card, ErrorBox, PageHeader, Pill, Spinner, Table, fmtDateTime, useApi } from "../../components/ui";
-import { chipClass } from "../shared/chips";
+import { get } from "../../apiClient";
+import { Card, ErrorBox, PageHeader, Pill, Spinner, Table, fmtDateTime, useApi } from "../../components/SharedUiComponents";
+import { chipClass } from "../shared/filterChipStyle";
 
 const TYPES = [["", "All"], ["interview", "Interviews"], ["english", "English conversations"], ["assessment", "Assessments"]];
 const TONE = { interview: "brand", english: "blue", pronunciation: "violet", speaking: "blue", assessment: "amber" };

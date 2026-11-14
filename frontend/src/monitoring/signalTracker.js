@@ -1,3 +1,51 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/signalTracker.js
+//
+// FILE PURPOSE:
+// Turns per-frame observations into calm warnings and recorded integrity events, avoiding false
+// alarms.
+//
+// WHAT THIS FILE DOES:
+// 1. Waits for a grace period before warning the student.
+// 2. Records an event only if the condition lasted a minimum time.
+// 3. Ignores short detector dropouts (hysteresis).
+// 4. Gives each event a confidence = share of frames that showed it.
+// 5. RepeatTracker detects repeated looking away; FocusTracker records time away from the window.
+//
+// HOW THIS FILE WORKS:
+// SignalTracker.update(time, observation) keeps an episode per condition; flush() closes open episodes
+// at the end.
+//
+// IMPORTANT FUNCTIONS:
+//    - SignalTracker()
+//        Main episode tracker for camera conditions.
+//    - RepeatTracker()
+//        Counts repeated deviations in a time window.
+//    - FocusTracker()
+//        Measures time the candidate spent outside the interview window.
+//    - thresholdsFrom()
+//        Merges admin-configured thresholds with defaults.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - DEFAULT_THRESHOLDS
+//        Default warn/record/end times.
+//    - WARNINGS
+//        Neutral reminder messages.
+//
+// INPUT:
+// Observations with timestamps; thresholds from the admin policy.
+//
+// OUTPUT:
+// Warnings and event objects.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/interviewMonitor.js, monitoring/objectMonitor.js
+//    Tested by: monitoring/frameAnalysisAndSignals.test.js, monitoring/interviewSecurity.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Turns per-frame camera observations into neutral warnings and integrity events. Pure (no browser APIs) so the
 // thresholds and false-positive handling can be unit-tested.
 //

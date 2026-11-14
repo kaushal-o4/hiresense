@@ -1,3 +1,54 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# frontend/avatar-src/convert_metahuman.py
+#
+# FILE PURPOSE:
+# Optional Blender script that bakes a MetaHuman's facial rig into plain blendshapes so it can be used
+# as a high-detail web avatar.
+#
+# WHAT THIS FILE DOES:
+# 1. Lists the controls and meshes of an imported MetaHuman (--list).
+# 2. For each ARKit expression (and optional visemes) sets face controls from
+#    metahuman_bake_map.json and stores the deformed mesh as a shape key.
+# 3. Exports a GLB that the web app drives through blendshapes only.
+#
+# HOW THIS FILE WORKS:
+# Runs in Blender 4.5+ on a .blend with the MetaHuman imported by the Character DNA add-on; uses
+# depsgraph evaluation and the glTF exporter.
+#
+# IMPORTANT FUNCTIONS:
+#    - face_board()
+#        The face-board armature (its pose bones are the GUI controls RigLogic reads).
+#    - face_meshes()
+#        Meshes of the head that RigLogic deforms (head, teeth, eyes, lashes, eye shell,
+#        saliva...) at the chosen LOD.
+#    - evaluate()
+#        Let RigLogic (driven by frame/depsgraph updates) apply the current face-board pose.
+#    - apply_target()
+#        spec: {"CTRL_L_eye_blink": [x, y], ...} or {"pose": "<action name>"}; values are face-
+#        board locations.
+#    Other helper functions: opt, lod_of, reset, capture, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, MAP, LOD, TEX, LIST, OUT
+#
+# INPUT:
+# .blend file, bake map JSON, options --lod and --tex.
+#
+# OUTPUT:
+# An HD .glb avatar (e.g. public/avatars/hd/aria.glb).
+#
+# IMPORTANT DEPENDENCIES:
+#    bpy
+#
+# IMPORTANT NOTE:
+# The add-on's control names were not verified against a real export (see METAHUMAN_GUIDE.md).
+# Developer tool only.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Convert a MetaHuman (imported into Blender with the free Poly Hammer "Character DNA" add-on) into a web GLB
 for the live interviewer. Full walkthrough: METAHUMAN_GUIDE.md (same folder).
 

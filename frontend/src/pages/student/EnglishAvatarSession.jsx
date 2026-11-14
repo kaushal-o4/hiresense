@@ -1,11 +1,60 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/EnglishAvatarSession.jsx
+//
+// FILE PURPOSE:
+// Face-to-face spoken English practice with the Aria avatar, hands-free.
+//
+// WHAT THIS FILE DOES:
+// 1. Aria speaks with lip sync and subtitles (POST /voice/speak, SpeechPlayer).
+// 2. The mic opens automatically; the student speaks.
+// 3. Speech is transcribed by the server's Whisper (POST /student/english/{id}/transcribe) or by
+//    the browser.
+// 4. Sends the text as a message (POST /student/english/{id}/message) and shows corrections on
+//    screen.
+// 5. Ends (POST .../end) or deletes (DELETE /student/english/{id}) the session; shows streak stats
+//    (GET /student/english/stats).
+//
+// HOW THIS FILE WORKS:
+// Uses useReducer with englishTransition, a SpeechPlayer and MicRecorder in refs, and Avatar3D (lazy-
+// loaded). Falls back to browser speech recognition or typing when local speech is not available.
+//
+// IMPORTANT FUNCTIONS:
+//    - EnglishAvatarSession()
+//        Page component.
+//    - Conversation()
+//        Transcript panel.
+//    - SubtitleLine()
+//        Subtitles.
+//    - Avatar3D()
+//        three.js is large: load the 3D avatar only when this page is opened.
+//
+// INPUT:
+// Props: initial session, onEnded; microphone audio.
+//
+// OUTPUT:
+// Spoken conversation UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/ConversationMemory.jsx, components/SharedUiComponents.jsx,
+//    components/useSpeechAndPreferences.jsx, voice/Avatar3D.jsx, voice/SvgAvatar2D.jsx,
+//    voice/englishMachine.js, voice/recorder.js, voice/speechPlayer.js
+//    Used by: pages/student/EnglishSession.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { Suspense, lazy, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Flame, Gauge, Keyboard, Lightbulb, Mic, Pause, PhoneOff, Play, Send, Sparkles, Square, Timer, Volume2 } from "lucide-react";
-import { api, del, get, post } from "../../api";
-import { useSpeechToText, usePrefs } from "../../components/useSpeech";
-import { Button, Card, ConfirmButton, Notice, Pill, useToast } from "../../components/ui";
+import { api, del, get, post } from "../../apiClient";
+import { useSpeechToText, usePrefs } from "../../components/useSpeechAndPreferences";
+import { Button, Card, ConfirmButton, Notice, Pill, useToast } from "../../components/SharedUiComponents";
 import ConversationMemory, { LEARNING_MODE_LABEL } from "../../components/ConversationMemory";
-import Avatar from "../../voice/Avatar";
+import Avatar from "../../voice/SvgAvatar2D";
 // three.js is large: load the 3D avatar only when this page is opened.
 const Avatar3D = lazy(() => import("../../voice/Avatar3D"));
 import {
@@ -14,6 +63,7 @@ import {
 import { MicRecorder } from "../../voice/recorder";
 import { SpeechPlayer } from "../../voice/speechPlayer";
 
+const TTS_WAIT_MS = 8000; // longest Aria waits for the local voice before using the browser voice
 const HESITATION_MS = 5000; // quiet this long on the student's turn -> offer starter phrases
 const STYLE_LABEL = { free_talk: "English free talk", interview: "Job interview practice" };
 
@@ -82,6 +132,25 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
   }, []);
 
   // ------------------------------------------------------------------ Aria speaks
+  // Local TTS can take 20+ s for a long line on CPU. Synthesis starts as soon as a reply is known (for the opening
+  // line: while the student reads the start screen), and Aria never waits more than TTS_WAIT_MS for it - after
+  // that she uses the browser voice, so "Start talking" can never look stuck.
+  const ttsCache = useRef(new Map()); // `${message id}:${rate}` -> Promise<speak response>
+  const slowTtsWarned = useRef(false);
+  const fetchSpeech = (msg) => {
+    const key = `${msg.id}:${ariaRate}`;
+    if (!ttsCache.current.has(key)) {
+      const p = post("/voice/speak", { text: msg.content.slice(0, 1500), speed: ariaRate });
+      p.catch(() => ttsCache.current.delete(key)); // allow a retry ("Say that again") after a failure
+      ttsCache.current.set(key, p);
+    }
+    return ttsCache.current.get(key);
+  };
+  useEffect(() => {
+    if (voice?.tts?.enabled && lastAi) fetchSpeech(lastAi).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voice?.tts?.enabled, lastAi?.id]);
+
   useEffect(() => {
     if (st.status !== E.PREPARING_SPEECH) return;
     if (!lastAi) return dispatch({ type: "SPEECH_FAILED", error: "There is nothing to say yet." });
@@ -90,10 +159,19 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
     (async () => {
       if (voice?.tts?.enabled) {
         try {
-          const res = await post("/voice/speak", { text, speed: ariaRate });
+          let timer;
+          const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(null), TTS_WAIT_MS); });
+          const res = await Promise.race([fetchSpeech(lastAi), timeout]);
+          clearTimeout(timer);
           if (!alive) return;
-          audioRef.current = { kind: "phoneme", res };
-          return dispatch({ type: "AUDIO_READY" });
+          if (res) {
+            audioRef.current = { kind: "phoneme", res };
+            return dispatch({ type: "AUDIO_READY" });
+          }
+          if (!slowTtsWarned.current) {
+            slowTtsWarned.current = true;
+            toast("Aria's local voice is slow right now, so the browser voice is used for this reply.");
+          }
         } catch (e) {
           if (!alive) return;
           toast(`Aria's voice is unavailable (${e.message}). Using the browser voice instead.`, "error");

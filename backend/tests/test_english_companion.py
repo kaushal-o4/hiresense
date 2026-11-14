@@ -1,3 +1,57 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_english_companion.py
+#
+# FILE PURPOSE:
+# English conversation companion: learning modes, topic following, conversation memory, no repeated
+# questions.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 17 test(s), e.g.: topic switch is detected; no false topic switch; memory tracks
+#    topics details and skips sensitive items; modes differ in behaviour config; start stores mode
+#    and memory and uses companion persona; interview style is isolated from free talk; topic
+#    switch is followed and enforced; paraphrased question is rejected by meaning; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# The LLM is MOCKED (prompts are inspected); real-model behaviour is measured by eval/run_eval.py.
+#
+# IMPORTANT FUNCTIONS:
+#    - llm()
+#        MOCKED local LLM (accepts any extra keyword arguments the client may pass).
+#    - test_bad_corrections_from_the_real_model_are_dropped()
+#        Regressions from the real-model eval: a British spelling 'corrected', and a long
+#        rewrite of 'one match'.
+#    Other helper functions: turn, start, say, test_topic_switch_is_detected,
+#    test_no_false_topic_switch, test_memory_tracks_topics_details_and_skips_sensitive_items,
+#    test_modes_differ_in_behaviour_config,
+#    test_start_stores_mode_and_memory_and_uses_companion_persona,
+#    test_interview_style_is_isolated_from_free_talk, test_topic_switch_is_followed_and_enforced,
+#    test_paraphrased_question_is_rejected_by_meaning,
+#    test_free_conversation_spaces_out_corrections,
+#    test_learning_mode_speaks_a_gentle_correction_and_continues,
+#    test_repeated_reply_opener_is_dropped, test_companion_config_endpoint,
+#    test_old_sessions_without_memory_still_work, parse_sse,
+#    test_streamed_reply_sends_growing_text_then_the_saved_session,
+#    test_streamed_reply_reports_model_failure_without_saving,
+#    test_streamed_reply_is_private_to_the_owner
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/services/ai_models/language_model_client.py,
+#    app/services/english/english_companion_memory.py,
+#    app/services/interview/ai_interview_service.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """English conversation companion: learning modes, topic following, conversation memory, no repeated questions.
 
 The LLM is MOCKED (prompts are inspected); real-model behaviour is measured by eval/run_eval.py."""
@@ -7,13 +61,13 @@ from types import SimpleNamespace
 import pytest
 
 from conftest import register_student
-from app.services import english_companion as ec
+from app.services.english import english_companion_memory as ec
 
 
 @pytest.fixture()
 def llm(monkeypatch):
     """MOCKED local LLM (accepts any extra keyword arguments the client may pass)."""
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     state = SimpleNamespace(calls=[], responses=[])
 
     def chat_json(system, prompt, schema, **kw):
@@ -193,7 +247,7 @@ def test_learning_mode_speaks_a_gentle_correction_and_continues(client, llm):
 
 def test_bad_corrections_from_the_real_model_are_dropped():
     """Regressions from the real-model eval: a British spelling 'corrected', and a long rewrite of 'one match'."""
-    from app.services.ai import clean_english_reply
+    from app.services.interview.ai_interview_service import clean_english_reply
     out = clean_english_reply(turn("Nice!", corrections=[
         {"original": "I practise it every evening", "corrected": "I practice it every evening", "explanation": "x"},
         {"original": "one match", "corrected": "you mentioned a match with close final overs", "explanation": "x"},
@@ -204,7 +258,7 @@ def test_bad_corrections_from_the_real_model_are_dropped():
 
 
 def test_repeated_reply_opener_is_dropped():
-    from app.services.ai import drop_repeated_opener
+    from app.services.interview.ai_interview_service import drop_repeated_opener
     earlier = ["I love that you mentioned video games! What kind do you play?"]
     assert drop_repeated_opener("I love that you mentioned movies! Which film did you watch most recently?", earlier) \
         == "Which film did you watch most recently?"
@@ -224,7 +278,7 @@ def test_companion_config_endpoint(client):
 
 
 def test_old_sessions_without_memory_still_work(client, llm, db):
-    from app.models import EnglishSession
+    from app.database_models import EnglishSession
     register_student(client)
     s = start(client, llm)
     row = db.get(EnglishSession, s["id"])
@@ -253,7 +307,7 @@ def parse_sse(text):
 
 
 def test_streamed_reply_sends_growing_text_then_the_saved_session(client, llm, monkeypatch):
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     c = client
     register_student(c)
     s = start(c, llm)
@@ -281,7 +335,7 @@ def test_streamed_reply_sends_growing_text_then_the_saved_session(client, llm, m
 
 
 def test_streamed_reply_reports_model_failure_without_saving(client, llm):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     c = client
     register_student(c)
     s = start(c, llm)

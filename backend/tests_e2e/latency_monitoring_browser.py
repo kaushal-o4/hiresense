@@ -1,3 +1,44 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/latency_monitoring_browser.py
+#
+# FILE PURPOSE:
+# Real-browser end-to-end test: fast streamed interview + disclosed camera monitoring (Chromium via
+# Playwright).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Uses the REAL local models (Ollama, Kokoro, Whisper). Chromium's fake devices provide the camera (a
+# synthetic test pattern - it contains NO face, which exercises the "face not visible" path) and the
+# microphone (a WAV of a spoken answer, made by voice_interview_browser.py). Checks and measures: *
+# setup: disclosure shown, nothing opened before the student presses the test button, separate opt-ins
+# * first question: Start pressed -> first interviewer audio (greeting streamed while the question is
+# prefetched) * answer: Submit -> first audio of the next question, and that sentence audio is ordered
+# / never overlaps * live partial transcript, end-of-speech, subtitles following playback *
+# monitoring:...
+#
+# IMPORTANT FUNCTIONS:
+#    - audio_overlaps()
+#        True if any interviewer audio buffer was scheduled to start before the previous one
+#        finished.
+#    Other helper functions: say, ok, wait_status, api, login
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT, MIC, BASE, INIT, STATUS
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Real-browser end-to-end test: fast streamed interview + disclosed camera monitoring (Chromium via Playwright).
 
 Uses the REAL local models (Ollama, Kokoro, Whisper). Chromium's fake devices provide the camera (a synthetic test

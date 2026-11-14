@@ -1,11 +1,56 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/PerformanceReport.jsx
+//
+// FILE PURPOSE:
+// Full performance report of the student.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /student/report.
+// 2. Shows readiness, area scores, a weekly activity chart and every attempt with change vs. the
+//    previous attempt.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: GET /student/report.
+//
+// IMPORTANT FUNCTIONS:
+//    - PerformanceReport()
+//        Page component.
+//    - AttemptsTable()
+//        All attempts.
+//    - WeeklyChart()
+//        Weekly activity chart.
+//    - AreaScores()
+//        Scores per area.
+//    Other helper functions: Bullets
+//
+// INPUT:
+// Report data.
+//
+// OUTPUT:
+// Report UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/DashboardCharts.jsx, components/PlacementReadinessCard.jsx,
+//    components/SharedUiComponents.jsx
+//    Used by: pages/student/ProgressHub.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Full performance report (GET /student/report): readiness, weekly activity chart and all attempts. */
 
 import { Link } from "react-router-dom";
 import { CheckCircle2, CircleDashed, Printer, TrendingDown, TrendingUp } from "lucide-react";
-import { get } from "../../api";
-import { MultiBar } from "../../components/charts";
-import { ReadinessCard } from "../../components/Readiness";
-import { Button, Card, ErrorBox, PageHeader, Pill, ScoreBar, Spinner, StatCard, Table, fmtDate, fmtDateTime, useApi } from "../../components/ui";
+import { get } from "../../apiClient";
+import { MultiBar } from "../../components/DashboardCharts";
+import { ReadinessCard } from "../../components/PlacementReadinessCard";
+import { Button, Card, ErrorBox, PageHeader, Pill, ScoreBar, Spinner, StatCard, Table, fmtDate, fmtDateTime, useApi } from "../../components/SharedUiComponents";
 
 const Bullets = ({ items, icon: Icon, cls }) => (
   <ul className="space-y-2">{items.map((x) => <li key={x} className="flex gap-2.5 text-sm leading-relaxed text-slate-700"><Icon size={15} className={`mt-[3px] shrink-0 ${cls}`} />{x}</li>)}</ul>

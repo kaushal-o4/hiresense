@@ -1,3 +1,53 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/recorder.js
+//
+// FILE PURPOSE:
+// Records the student's spoken answer from the microphone and prepares it for transcription.
+//
+// WHAT THIS FILE DOES:
+// 1. Opens the microphone only while recording and fully releases it afterwards.
+// 2. Downsamples audio to 16 kHz mono and encodes WAV pieces.
+// 3. Detects end of speech (silence) with a simple voice-activity check (vadStep).
+// 4. Hands out pieces for live captions and the final tail for transcription; reports the mic
+//    level.
+//
+// HOW THIS FILE WORKS:
+// MicRecorder uses an AudioWorklet to collect samples in memory; helper functions are pure and tested.
+//
+// IMPORTANT FUNCTIONS:
+//    - MicRecorder()
+//        Microphone recorder class (start, stop, cancel, release).
+//    - encodeWav()
+//        Builds a WAV file from samples.
+//    - downsample()
+//        Converts to 16 kHz.
+//    - vadStep()
+//        One step of the silence/end-of-speech detector.
+//    - rms()
+//        Loudness of a chunk.
+//    Other helper functions: PcmCapture
+//
+// IMPORTANT VARIABLES / STATE:
+//    - VAD_THRESHOLD
+//        Loudness level counted as speech.
+//
+// INPUT:
+// Microphone audio.
+//
+// OUTPUT:
+// WAV audio pieces and level/end-of-speech signals.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: pages/student/EnglishAvatarSession.jsx, pages/student/LiveVoiceInterview.jsx
+//    Tested by: voice/englishMachine.test.js, voice/streaming.test.js, voice/voice.test.js
+//
+// IMPORTANT NOTE:
+// Audio stays in memory and goes only to this app's backend for local Whisper transcription.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Microphone capture for one answer at a time. The microphone is opened when recording starts and fully
 // released when it stops (the browser's mic indicator turns off between answers). Audio stays in memory and is
 // sent as 16 kHz mono WAV pieces (live captions while talking, then the rest) to this app's own backend for local

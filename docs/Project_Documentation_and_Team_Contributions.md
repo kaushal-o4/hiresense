@@ -91,17 +91,17 @@ An ordinary portal stores data. HireSense adds practice, feedback, adaptive diff
 
 | Step | Description | Status in code |
 |---|---|---|
-| 1 | Student registers and logs in | Implemented (`backend/app/routers/auth.py`, frontend Login/Register) |
-| 2 | Student profile + resume upload | Implemented (`backend/app/routers/students.py`, `Resume.jsx`) |
-| 3 | System extracts education/skills/projects/experience | Implemented (`resume_parser.py`, AI analysis in `ai.py`) |
-| 4 | AI identifies strengths/weaknesses/areas | Implemented in `ai.py` with validation rules |
-| 5 | Student selects interview/assessment/practice | Implemented (`Interviews.jsx`, `Assessments.jsx`, `English.jsx`) |
-| 6 | Interviewer asks resume-based questions | Implemented (`interviews.py`, `interview_engine.py`) |
+| 1 | Student registers and logs in | Implemented (`backend/app/routers/authentication_routes.py`, frontend Login/Register) |
+| 2 | Student profile + resume upload | Implemented (`backend/app/routers/student_portal_routes.py`, `ResumeUploadAndAnalysis.jsx`) |
+| 3 | System extracts education/skills/projects/experience | Implemented (`resume_text_extractor.py`, AI analysis in `ai_interview_service.py`) |
+| 4 | AI identifies strengths/weaknesses/areas | Implemented in `ai_interview_service.py` with validation rules |
+| 5 | Student selects interview/assessment/practice | Implemented (`MockInterviewHome.jsx`, `StudentAssessments.jsx`, `EnglishPracticeHome.jsx`) |
+| 6 | Interviewer asks resume-based questions | Implemented (`interview_routes.py`, `interview_intelligence_rules.py`) |
 | 7 | Student answers via text or voice | Implemented; live voice uses local Whisper (faster-whisper) + Kokoro; browser speech is only a fallback (cloud profile) |
-| 8 | System evaluates answers and feedback | Implemented (rule-capped scoring in `ai.py`) |
+| 8 | System evaluates answers and feedback | Implemented (rule-capped scoring in `ai_interview_service.py`) |
 | 9 | Adaptive difficulty | Implemented (up/down rule thresholds) |
 | 10 | Performance report | Implemented (`PerformanceReport.jsx`, report generation) |
-| 11 | Mentor monitoring/recommendations | Implemented (`mentors.py`, mentor pages) |
+| 11 | Mentor monitoring/recommendations | Implemented (`mentor_portal_routes.py`, mentor pages) |
 | 12 | Recruiter candidate access | Implemented (`jobs.py`, recruiter pages) |
 | 13 | Admin manages platform | Implemented (`admin.py`, admin pages) |
 
@@ -111,7 +111,7 @@ An ordinary portal stores data. HireSense adds practice, feedback, adaptive diff
 
 ## 7. Actual Implemented Workflow
 
-The backend is a FastAPI application (`backend/app/main.py`). It exposes routers for auth, students, interviews, english, assessments, jobs, mentors, admin, voice and monitoring. The frontend is a React/Vite SPA with protected routes. Data is stored in MongoDB (`MONGODB_URL`), through a small SQLAlchemy-style data layer in `backend/app/odm/`.
+The backend is a FastAPI application (`backend/app/main.py`). It exposes routers for auth, students, interviews, english, assessments, jobs, mentors, admin, voice and monitoring. The frontend is a React/Vite SPA with protected routes. Data is stored in MongoDB (`MONGODB_URL`), through a small SQLAlchemy-style data layer in `backend/app/mongodb_data_layer/`.
 
 Startup warms up models in a background thread. Security headers and a global exception handler are registered.
 
@@ -137,10 +137,10 @@ Student Browser (React)
 FastAPI API (routers + deps auth)
    |
    v
-Services (ai.py, matching.py, rewards.py, ...)  -->  Gemini (default) / Ollama (local LLM)
+Services (ai_interview_service.py, semantic_job_matcher.py, rewards_and_badges.py, ...)  -->  Gemini (default) / Ollama (local LLM)
    |                                                Sentence Transformers
    v
-app/odm data layer (pymongo)
+app/mongodb_data_layer data layer (pymongo)
    |
    v
 MongoDB
@@ -186,21 +186,21 @@ Approves recruiters/suspensions, assigns mentors, configures question bank, rubr
 
 | Feature | Purpose | Status | Relevant Files | Remaining Work |
 |---|---|---|---|---|
-| Registration/login | User access | Implemented | `backend/app/routers/auth.py`, `Login.jsx`, `Register.jsx` | None major |
-| Role-based access | Security | Implemented | `deps.py`, models | Keep policies consistent |
-| Resume upload | Add resume | Implemented | `students.py`, `Resume.jsx`, `resume_parser.py` | Frontend UX |
-| Resume AI analysis | Extract + judge resume | Implemented + validated | `services/ai.py`, `skills.py` | Validate weak model output manually |
-| Mock interviews (text) | Interview practice | Implemented | `routers/interviews.py`, `interview_engine.py`, `ai.py` | Real-model quality checks |
-| Mock interviews (voice) | Spoken interview | Implemented, browser-dependent | `routers/voice.py`, `speech_stream.py`, `tts.py`, `stt.py`, `VoiceInterview.jsx` | Manual mic test |
-| Adaptive difficulty | Change difficulty | Implemented | `interviews.py` rubric thresholds | Fine-tune thresholds |
-| English practice | Conversation coaching | Implemented | `english.py`, `english_companion.py`, `English*.jsx` | Real-model verification |
-| Assessments | MCQs/timed tests | Implemented | `assessments.py`, `Assessments.jsx` | More question variety |
-| Rewards/badges | Motivation | Implemented | `rewards.py`, `Rewards.jsx` | Tuning |
-| Job matching | Job fit | Implemented with transparent rules | `matching.py`, `Jobs.jsx`, `JobDetail.jsx` | Weight tuning |
-| Mentor portal | Guidance | Implemented | `mentors.py`, mentor pages | UX |
+| Registration/login | User access | Implemented | `backend/app/routers/authentication_routes.py`, `Login.jsx`, `Register.jsx` | None major |
+| Role-based access | Security | Implemented | `authentication_dependencies.py`, models | Keep policies consistent |
+| Resume upload | Add resume | Implemented | `student_portal_routes.py`, `ResumeUploadAndAnalysis.jsx`, `resume_text_extractor.py` | Frontend UX |
+| Resume AI analysis | Extract + judge resume | Implemented + validated | `services/interview/ai_interview_service.py`, `skill_name_normalizer.py` | Validate weak model output manually |
+| Mock interviews (text) | Interview practice | Implemented | `routers/interview_routes.py`, `interview_intelligence_rules.py`, `ai_interview_service.py` | Real-model quality checks |
+| Mock interviews (voice) | Spoken interview | Implemented, browser-dependent | `routers/voice_speech_routes.py`, `streamed_reply_sentence_splitter.py`, `text_to_speech.py`, `speech_to_text.py`, `LiveVoiceInterview.jsx` | Manual mic test |
+| Adaptive difficulty | Change difficulty | Implemented | `interview_routes.py` rubric thresholds | Fine-tune thresholds |
+| English practice | Conversation coaching | Implemented | `english_practice_routes.py`, `english_companion_memory.py`, `English*.jsx` | Real-model verification |
+| Assessments | MCQs/timed tests | Implemented | `skill_assessment_routes.py`, `StudentAssessments.jsx` | More question variety |
+| Rewards/badges | Motivation | Implemented | `rewards_and_badges.py`, `Rewards.jsx` | Tuning |
+| Job matching | Job fit | Implemented with transparent rules | `semantic_job_matcher.py`, `StudentJobOpenings.jsx`, `RecruiterJobApplicants.jsx` | Weight tuning |
+| Mentor portal | Guidance | Implemented | `mentor_portal_routes.py`, mentor pages | UX |
 | Admin portal | Management | Implemented | `admin.py`, admin pages | Reports |
-| Monitoring/performance | Ops insight | Implemented | `monitoring.py`, `perf.py`, `admin/Monitoring.jsx` | Retention config |
-| Voice TTS/STT | Speech | Partially tested manually | `tts.py`, `stt.py` | GPU/CPU perf |
+| Monitoring/performance | Ops insight | Implemented | `interview_monitoring_routes.py`, `performance_timing.py`, `admin/AdminMonitoring.jsx` | Retention config |
+| Voice TTS/STT | Speech | Partially tested manually | `text_to_speech.py`, `speech_to_text.py` | GPU/CPU perf |
 
 ---
 
@@ -214,35 +214,35 @@ Approves recruiters/suspensions, assigns mentors, configures question bank, rubr
 
 ### Backend
 - `backend/app/main.py`: FastAPI app creation, routers, middleware, startup model warmup.
-- `backend/app/config.py`: settings from environment; defines DB URL, AI, matching, voice config.
-- `backend/app/database.py`: SQLAlchemy engine/session.
-- `backend/app/deps.py`: auth and role dependencies.
-- `backend/app/security.py`: Argon2 + JWT.
-- `backend/app/models.py`: all tables (users, profiles, resumes, interviews, english, assessments, progress, rewards, jobs, applications, mentoring, notifications, audit/AI/error logs, settings).
-- `backend/app/schemas.py`: request validation.
-- `backend/app/serializers.py`: API response shaping.
-- `backend/app/seed.py`: admin/badges/categories/question bank/rubrics.
-- `backend/app/services/ai.py`: all AI features, prompts, schemas, limits.
-- `backend/app/services/local_llm.py`: Ollama client.
-- `backend/app/services/embeddings.py`: embedding model.
-- `backend/app/services/matching.py`: semantic job matching.
-- `backend/app/services/resume_parser.py`: PDF/DOCX text extraction.
-- `backend/app/services/rewards.py`: points/badges/streaks.
-- `backend/app/services/insights.py`: student performance.
-- `backend/app/services/interview_engine.py`: interview orchestration.
-- `backend/app/services/interviewers.py`: personas.
-- `backend/app/services/integrity.py`: severity logic.
-- `backend/app/services/english_companion.py`: English memory/corrections.
-- `backend/app/services/question_classifier.py`: ML classifier.
-- `backend/app/services/skills.py`: skill aliases/checks.
-- `backend/app/services/access.py`: record access.
+- `backend/app/application_configuration.py`: settings from environment; defines DB URL, AI, matching, voice config.
+- `backend/app/database_connection.py`: SQLAlchemy engine/session.
+- `backend/app/authentication_dependencies.py`: auth and role dependencies.
+- `backend/app/password_and_token_security.py`: Argon2 + JWT.
+- `backend/app/database_models.py`: all tables (users, profiles, resumes, interviews, english, assessments, progress, rewards, jobs, applications, mentoring, notifications, audit/AI/error logs, settings).
+- `backend/app/request_validation_schemas.py`: request validation.
+- `backend/app/api_response_serializers.py`: API response shaping.
+- `backend/app/seed_initial_data.py`: admin/badges/categories/question bank/rubrics.
+- `backend/app/services/interview/ai_interview_service.py`: all AI features, prompts, schemas, limits.
+- `backend/app/services/ai_models/language_model_client.py`: Ollama client.
+- `backend/app/services/ai_models/sentence_embedding_model.py`: embedding model.
+- `backend/app/services/resume_and_jobs/semantic_job_matcher.py`: semantic job matching.
+- `backend/app/services/resume_and_jobs/resume_text_extractor.py`: PDF/DOCX text extraction.
+- `backend/app/services/student_progress/rewards_and_badges.py`: points/badges/streaks.
+- `backend/app/services/student_progress/student_performance_insights.py`: student performance.
+- `backend/app/services/interview/interview_intelligence_rules.py`: interview orchestration.
+- `backend/app/services/interview/interviewer_personalities.py`: personas.
+- `backend/app/services/monitoring/interview_integrity_rules.py`: severity logic.
+- `backend/app/services/english/english_companion_memory.py`: English memory/corrections.
+- `backend/app/services/ai_models/question_type_classifier.py`: ML classifier.
+- `backend/app/services/resume_and_jobs/skill_name_normalizer.py`: skill aliases/checks.
+- `backend/app/services/platform_support/student_record_access.py`: record access.
 - `backend/app/routers/*`: API endpoints.
 
 ### Frontend
-- `frontend/src/api.js`: API client.
-- `frontend/src/auth.jsx`: session.
+- `frontend/src/apiClient.js`: API client.
+- `frontend/src/AuthContext.jsx`: session.
 - `frontend/src/App.jsx`: routes/guards.
-- `frontend/src/components/Layout.jsx`: shell.
+- `frontend/src/components/AppShellLayout.jsx`: shell.
 - `frontend/src/pages/*`: portals/pages.
 - `frontend/src/voice/*`: avatar/lip-sync/state machines.
 - `frontend/src/monitoring/*`: integrity/performance monitoring.
@@ -274,7 +274,7 @@ Key execution paths:
 - **Module:** Core architecture, AI integration, interview engine, matching, backend/frontend integration.
 - **Completed (verified from code):** FastAPI app wiring, settings, AI service, local LLM client, matching, adaptive logic, monitoring/perf infrastructure.
 - **Remaining:** final demo prep, real-model verification, integration regression tests, release notes.
-- **Files:** `backend/app/main.py`, `config.py`, `services/ai.py`, `local_llm.py`, `matching.py`, `interview_engine.py`, `interviews.py`, `monitoring.py`, frontend `VoiceInterview.jsx`.
+- **Files:** `backend/app/main.py`, `application_configuration.py`, `services/interview/ai_interview_service.py`, `language_model_client.py`, `semantic_job_matcher.py`, `interview_intelligence_rules.py`, `interview_routes.py`, `interview_monitoring_routes.py`, frontend `LiveVoiceInterview.jsx`.
 - **Tests:** integration tests, latency benchmarks.
 - **Deliverables:** architecture notes, AI config, final demo.
 
@@ -290,7 +290,7 @@ Key execution paths:
 - **Module:** APIs, database schema, models, auth/permissions, data handling.
 - **Completed:** models, migrations, auth, routers, serializers, seed.
 - **Remaining:** DB indexing/performance on large data, stronger validation. (The PostgreSQL plan was dropped when the project moved to MongoDB.)
-- **Files:** `models.py`, `schemas.py`, `serializers.py`, `seed.py`, `database.py`, `routers/auth.py`, `common.py`, `students.py`.
+- **Files:** `database_models.py`, `request_validation_schemas.py`, `api_response_serializers.py`, `seed_initial_data.py`, `database_connection.py`, `routers/authentication_routes.py`, `profile_and_notification_routes.py`, `student_portal_routes.py`.
 - **Tests:** pytest auth/permissions/workflows.
 - **Deliverables:** DB ER diagram, API contract docs.
 
@@ -306,7 +306,7 @@ Key execution paths:
 - **Module:** mentor portal, English learning, testing/docs.
 - **Completed:** mentor pages, English routes/companion, tests in `backend/tests`.
 - **Remaining:** more integration tests, user guides, bug triage.
-- **Files:** `routers/mentors.py`, `english.py`, `services/english_companion.py`, `pages/mentor/*`, `tests/*`.
+- **Files:** `routers/mentor_portal_routes.py`, `english_practice_routes.py`, `services/english/english_companion_memory.py`, `pages/mentor/*`, `tests/*`.
 - **Tests:** full pytest run, regression list.
 - **Deliverables:** test report, user guide.
 
@@ -314,11 +314,11 @@ Key execution paths:
 
 | Member | Module | Main owned area | Key files | Status |
 |---|---|---|---|---|
-| 1 | AI/Architecture | AI + integration | `services/ai.py`, `main.py`, `matching.py` | Proposed |
+| 1 | AI/Architecture | AI + integration | `services/interview/ai_interview_service.py`, `main.py`, `semantic_job_matcher.py` | Proposed |
 | 2 | Student Frontend | Student UI | `pages/student/*` | Proposed |
-| 3 | Backend/DB | APIs/schema/auth | `models.py`, routers | Proposed |
+| 3 | Backend/DB | APIs/schema/auth | `database_models.py`, routers | Proposed |
 | 4 | Recruiter/Admin | Admin/recruiter | `admin.py`, `jobs.py`, admin pages | Proposed |
-| 5 | Mentor/Test/Learning | Mentor + tests | `mentors.py`, `english.py`, tests | Proposed |
+| 5 | Mentor/Test/Learning | Mentor + tests | `mentor_portal_routes.py`, `english_practice_routes.py`, tests | Proposed |
 
 ---
 
@@ -349,8 +349,8 @@ Distinguish verified contributions vs assigned: Git history only shows one contr
 
 - Added module-level docstrings/comments to core backend files and core frontend files.
 - Preserved functionality (only header additions).
-- Key files updated include `main.py`, `config.py`, `database.py`, `deps.py`, `security.py`, `auth.py`, `api.js`, `auth.jsx`, `App.jsx`, `main.jsx`, `Layout.jsx` and others already documented.
-- TODO: deeper function-level docstrings in large modules (ai.py, models.py, interviews.py) in later stages.
+- Key files updated include `main.py`, `application_configuration.py`, `database_connection.py`, `authentication_dependencies.py`, `password_and_token_security.py`, `authentication_routes.py`, `apiClient.js`, `AuthContext.jsx`, `App.jsx`, `main.jsx`, `AppShellLayout.jsx` and others already documented.
+- TODO: deeper function-level docstrings in large modules (ai_interview_service.py, database_models.py, interview_routes.py) in later stages.
 
 ---
 

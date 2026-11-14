@@ -36,8 +36,8 @@ jobs:
         env:
           MONGODB_DB: hiresense_ci
         run: |
-          python -m app.seed
-          python -m app.seed
+          python -m app.seed_initial_data
+          python -m app.seed_initial_data
 
   # The hosted-demo profile must keep working WITHOUT torch/numpy/Whisper/Kokoro (requirements-cloud.txt).
   backend-cloud:
@@ -71,7 +71,7 @@ jobs:
           STT_ENGINE: gemini
         run: |
           python -c "import app.main"
-          python -m app.seed
+          python -m app.seed_initial_data
 
   frontend:
     runs-on: ubuntu-latest
@@ -130,7 +130,7 @@ jobs:
       - name: Seed and start the API
         working-directory: backend
         run: |
-          python -m app.seed
+          python -m app.seed_initial_data
           nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../api.log 2>&1 &
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/api/health/live && break; sleep 1; done
       - name: Build and serve the frontend (vite preview proxies /api to :8000)

@@ -1,7 +1,53 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/InterviewSetup.jsx
+//
+// FILE PURPOSE:
+// Steps before an interview: explanation and monitoring consent, device checks, then start.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads the monitoring policy (GET /monitoring/policy).
+// 2. Shows each monitoring feature with a separate opt-in.
+// 3. Tests camera, microphone and network (mediaSession.js) and face framing (faceMonitor.js,
+//    frameAnalysis.js).
+// 4. Saves consent (POST /student/interviews/{id}/monitoring/consent).
+// 5. Warms up the AI/voice models (POST /voice/warmup).
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: GET /monitoring/policy, POST
+// /student/interviews/{id}/monitoring/consent, POST /voice/warmup.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewSetup()
+//        Setup component.
+//    - Term()
+//        One monitoring feature row.
+//    - Check()
+//        One device check row.
+//
+// INPUT:
+// Props: session, persona, voice, camera, onStart, typed.
+//
+// OUTPUT:
+// Consented features and a start signal.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, monitoring/faceMonitor.js,
+//    monitoring/frameAnalysis.js, monitoring/mediaSession.js, monitoring/objectMonitor.js
+//    Used by: pages/student/InterviewSession.jsx, pages/student/LiveVoiceInterview.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle2, Circle, Eye, Globe, Mic, Play, ShieldCheck, Wifi, XCircle } from "lucide-react";
-import { get, post } from "../../api";
-import { Button, Notice, Spinner } from "../../components/ui";
+import { get, post } from "../../apiClient";
+import { Button, Notice, Spinner } from "../../components/SharedUiComponents";
 import { FaceMonitor } from "../../monitoring/faceMonitor";
 import { preloadObjectDetector } from "../../monitoring/objectMonitor";
 import { Calibration, setupGuidance } from "../../monitoring/frameAnalysis";

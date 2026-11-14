@@ -10,6 +10,11 @@ nothing to leave your computer. Speech recognition, the interviewer's voice and 
 
 The original requirements are in [PROJECT_SPEC.md](PROJECT_SPEC.md).
 
+**New to the code?** Start with [documentation/PROJECT_OVERVIEW.md](documentation/PROJECT_OVERVIEW.md). The
+`documentation/` folder explains the architecture, the end-to-end workflow, every API endpoint, the database, the
+technology stack, every source file, the file renaming done on 2026-11-14, and gives a viva guide. Every source
+file also starts with a "comment index" that explains it.
+
 ## Screenshots
 
 | | |
@@ -83,7 +88,7 @@ flowchart LR
   MP -. "event records only" .-> API
 ```
 
-Every model call goes through one gateway (`backend/app/services/ai_base.py`) that applies daily limits, JSON-schema
+Every model call goes through one gateway (`backend/app/services/ai_models/ai_structured_call_base.py`) that applies daily limits, JSON-schema
 validation with one retry, and usage logging (status, latency and tokens, never the resume or answer text). If the AI
 is unavailable the app says so instead of faking results: interviews fall back to the admin question bank and job
 matching to keyword rules, each clearly labelled.
@@ -93,7 +98,7 @@ matching to keyword rules, each clearly labelled.
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite 6, Tailwind CSS, React Router, Recharts, three.js, MediaPipe Tasks Vision, Vitest |
-| Backend | Python 3.14, FastAPI, pydantic-settings, a small MongoDB data layer with a SQLAlchemy-style API (`backend/app/odm/`, pymongo) |
+| Backend | Python 3.14, FastAPI, pydantic-settings, a small MongoDB data layer with a SQLAlchemy-style API (`backend/app/mongodb_data_layer/`, pymongo) |
 | Database | MongoDB (local service, Docker, or MongoDB Atlas) |
 | Language model | Google Gemini (3.5 Flash / Flash-Lite, automatic switching) or Ollama `qwen3:4b`, JSON-schema outputs |
 | Speech | faster-whisper base.en (STT), Kokoro-82M (TTS), browser speech as fallback |
@@ -114,10 +119,10 @@ Requirements: **Python 3.12+** (developed on 3.14), **Node.js 20+**, **MongoDB C
    starts the backend (`start-backend.bat`, API on http://127.0.0.1:8000, docs at `/docs`) and the frontend
    (`start-frontend.bat`, http://localhost:5173), then opens the browser.
 3. On first setup the backend console prints a generated **admin password once** (login `admin@hiresense.app`).
-   Lost it? `cd backend` then `venv\Scripts\python -m app.reset_admin`.
+   Lost it? `cd backend` then `venv\Scripts\python -m app.reset_admin_password`.
 
 There are no demo accounts: students and recruiters register on the sign-up page, and the admin creates mentors. The
-seed (`python -m app.seed`, safe to re-run) only adds reference data such as the question bank, rubrics, badges,
+seed (`python -m app.seed_initial_data`, safe to re-run) only adds reference data such as the question bank, rubrics, badges,
 reward rules, challenges and starter assessments.
 
 <details>
@@ -132,7 +137,7 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -r requirements.txt
 pip install --no-deps kokoro==0.7.16      # local voice; see docs/VOICE_INTERVIEW.md
 copy .env.example .env
-python -m app.seed
+python -m app.seed_initial_data
 uvicorn app.main:app --reload --port 8000
 
 # frontend

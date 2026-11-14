@@ -1,3 +1,69 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/interviewMachine.js
+//
+// FILE PURPOSE:
+// The state machine of the live voice interview: it decides which step the interview is in and which
+// actions are allowed.
+//
+// MAIN RESPONSIBILITY:
+// Pure state logic for the voice interview room.
+//
+// WHAT THIS FILE DOES:
+// 1. Lists all states (initializing, interviewer speaking, listening, recording, transcribing,
+//    reviewing, evaluating, finished...).
+// 2. transition(state, event) returns the next state and ignores events that are not allowed.
+// 3. Prevents double submissions and recording while the interviewer is speaking.
+// 4. avatarMode() maps the interview state to the avatar's animation mode.
+//
+// HOW THIS FILE WORKS:
+// It is a pure function (no React, no audio), so it can be unit-tested. LiveVoiceInterview.jsx keeps
+// the state with useReducer and dispatches events.
+//
+// IMPORTANT FUNCTIONS:
+//    - transition()
+//        Returns the new state for an event, or the same state if the event is not allowed.
+//    - canTransition()
+//        Checks whether an event type is allowed in the current state.
+//    - avatarMode()
+//        Animation mode for the avatar in each state.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - S
+//        Names of all interview states.
+//    - initialState
+//        Starting state.
+//    - STATUS_LABEL
+//        Readable label for each state.
+//
+// INPUT:
+// Current state and an event (e.g. SPEECH_ENDED, RECORD_STOP, SUBMITTED).
+//
+// OUTPUT:
+// Next state.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: pages/student/LiveVoiceInterview.jsx, voice/AnswerDock.jsx, voice/ControlBar.jsx
+//    Tested by: voice/interviewers.test.js, voice/voice.test.js
+//
+// EXECUTION FLOW:
+//    Interviewer speaks the question
+//       |
+//       v
+//    Microphone opens (listening/recording)
+//       |
+//       v
+//    Answer is transcribed
+//       |
+//       v
+//    Student reviews/sends the answer
+//       |
+//       v
+//    Backend scores it; next question
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Voice-interview state machine. Pure: transition(state, event) -> new state. Disallowed events are ignored,
 // which is what prevents double submissions, recording while the avatar speaks, and similar races.
 

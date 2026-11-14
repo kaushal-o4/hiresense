@@ -1,3 +1,41 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/partial_transcript_check.py
+#
+# FILE PURPOSE:
+# Live partial transcript check (real Whisper + Kokoro + Ollama, Chromium fake microphone).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# The fake microphone plays an answer with natural pauses between sentences (Kokoro's own ~1.2 s plus
+# 0.4 s; ~1.6 s of detected quiet): hand a finished piece to Whisper while the candidate keeps talking
+# (segment pause 0.6 s), shorter than the Fast mode end-of-answer pause (1.0 s). Checks that "Heard so
+# far" text appears DURING recording, that the final transcript keeps all sentences in order, and how
+# long the transcript takes after the candidate stops. Run (servers running), from the backend folder:
+# .\venv\Scripts\python.exe tests_e2e\partial_transcript_check.py
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: ok
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT, WAV, BASE, SENTENCES, STATUS
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/voice/text_to_speech.py
+#
+# IMPORTANT DEPENDENCIES:
+#    numpy, playwright, soundfile
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Live partial transcript check (real Whisper + Kokoro + Ollama, Chromium fake microphone).
 
 The fake microphone plays an answer with natural pauses between sentences (Kokoro's own ~1.2 s plus 0.4 s; ~1.6 s of detected quiet): hand a finished piece to Whisper while the candidate keeps talking (segment pause 0.6 s), shorter than the Fast
@@ -29,7 +67,7 @@ SENTENCES = [
     "For the database I used PostgreSQL, and I added indexes on the columns used in searches and joins.",
 ]
 if not WAV.exists():
-    from app.services import tts
+    from app.services.voice import text_to_speech as tts
     parts = []
     sr = 24000
     for s in SENTENCES:

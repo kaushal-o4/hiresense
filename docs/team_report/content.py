@@ -1,3 +1,20 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# docs/team_report/content.py
+#
+# FILE PURPOSE:
+# Content of the HireSense team work-distribution report (facts taken from the repository and its
+# docs).
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    PROJECT, SUBTITLE, DATE, TEAM, DESCRIPTION, TECH_TABLE, MEMBERS, TIMELINE, COLLABORATION,
+#    SIMPLE_ARCH_TEXT, STUDENT_FLOW, STUDENT_FLOW_TEXT, RECRUITER_FLOW, ADMIN_FLOW,
+#    OTHER_FLOW_TEXT, ARCHITECTURE, CONCLUSION
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Content of the HireSense team work-distribution report (facts taken from the repository and its docs)."""
 
 PROJECT = "HireSense"
@@ -83,15 +100,15 @@ MEMBERS = [
         "responsibilities": [
             "Defined the overall architecture: four portals, one FastAPI backend, one MongoDB database, one AI gateway.",
             "Set up the FastAPI application, router registration, security headers, request IDs and the global error handler (app/main.py).",
-            "Built the central configuration with pydantic-settings, so every option lives in backend/.env (app/config.py).",
-            "Built the AI gateway (services/ai_base.py): daily limits, JSON-schema validation with one retry, usage logging without storing personal text.",
-            "Integrated Google Gemini (services/gemini_llm.py) with automatic switching to backup models on HTTP 429/503 or a slow first token.",
-            "Integrated the local Ollama model as a fallback (services/local_llm.py) and per-task model tiers (services/model_router.py).",
-            "Wrote the interview engine (services/interview_engine.py): resume-based questions, adaptive difficulty, repeat detection by meaning, follow-ups for vague answers.",
+            "Built the central configuration with pydantic-settings, so every option lives in backend/.env (app/application_configuration.py).",
+            "Built the AI gateway (services/ai_models/ai_structured_call_base.py): daily limits, JSON-schema validation with one retry, usage logging without storing personal text.",
+            "Integrated Google Gemini (services/ai_models/gemini_api_client.py) with automatic switching to backup models on HTTP 429/503 or a slow first token.",
+            "Integrated the local Ollama model as a fallback (services/ai_models/language_model_client.py) and per-task model tiers (services/ai_models/ai_task_model_router.py).",
+            "Wrote the interview engine (services/interview/interview_intelligence_rules.py): resume-based questions, adaptive difficulty, repeat detection by meaning, follow-ups for vague answers.",
             "Designed the scoring rubric and caps, and calibrated it on 16 hand-labelled answers (backend/eval/calibrate_scoring.py).",
-            "Added score bands shown to students, such as \"Strong 75-89\" (services/scoring_bands.py).",
-            "Built AI resume analysis (services/ai_resume.py, resume_parser.py) with a check that removes anything not found in the resume text.",
-            "Built explainable job matching with sentence embeddings and skill weights (services/matching.py, embeddings.py).",
+            "Added score bands shown to students, such as \"Strong 75-89\" (services/interview/score_band_labels.py).",
+            "Built AI resume analysis (services/resume_and_jobs/ai_resume_analyzer.py, resume_text_extractor.py) with a check that removes anything not found in the resume text.",
+            "Built explainable job matching with sentence embeddings and skill weights (services/resume_and_jobs/semantic_job_matcher.py, sentence_embedding_model.py).",
             "Added a validator that rejects AI replies which copy the prompt's instructions instead of answering.",
             "Led the backend test suite with pytest: 369 tests on a separate MongoDB test database (backend/tests/).",
             "Wrote Playwright browser tests, including the CI smoke test that opens 15 pages (tests_e2e/ci_smoke_browser.py).",
@@ -101,9 +118,9 @@ MEMBERS = [
             "Wrote the project documentation (README.md, docs/AI_MODELS_AND_SCORING.md, docs/TESTING.md, docs/FEATURE_STATUS.md).",
         ],
         "modules": [
-            "backend/app/main.py, config.py",
-            "backend/app/services/ai.py, ai_base.py, ai_resume.py, ai_tasks.py, gemini_llm.py, local_llm.py, model_router.py",
-            "backend/app/services/interview_engine.py, scoring_bands.py, matching.py, embeddings.py, question_classifier.py",
+            "backend/app/main.py, application_configuration.py",
+            "backend/app/services/interview/ai_interview_service.py, ai_structured_call_base.py, ai_resume_analyzer.py, ai_career_and_assessment_tasks.py, gemini_api_client.py, language_model_client.py, ai_task_model_router.py",
+            "backend/app/services/interview/interview_intelligence_rules.py, score_band_labels.py, semantic_job_matcher.py, sentence_embedding_model.py, question_type_classifier.py",
             "backend/eval/ (run_eval.py, calibrate_scoring.py, calibration_set.json), backend/ml/",
             "backend/tests/, backend/tests_e2e/, backend/tests_perf/, docs/",
             ".github/workflows/tests.yml, backend/Dockerfile, docker-compose.yml, render.yaml, frontend/vercel.json",
@@ -153,32 +170,32 @@ MEMBERS = [
         "summary": "Kaushal built the live voice interview room with the 3D interviewers and disclosed monitoring, the English "
                    "learning module, and the mentor, recruiter and admin portals.",
         "responsibilities": [
-            "Built the live voice interview room and its state machine (pages/student/VoiceInterview.jsx, voice/interviewMachine.js).",
-            "Integrated local speech-to-text with faster-whisper and live captions every ~1.2 s (services/stt.py, voice/recorder.js).",
-            "Integrated local text-to-speech with Kokoro-82M and sentence-by-sentence playback (services/tts.py, voice/speechPlayer.js).",
-            "Built the streamed interview turn: the next question is spoken while it is still being written (routers/interview_live.py, services/speech_stream.py).",
+            "Built the live voice interview room and its state machine (pages/student/LiveVoiceInterview.jsx, voice/interviewMachine.js).",
+            "Integrated local speech-to-text with faster-whisper and live captions every ~1.2 s (services/voice/speech_to_text.py, voice/recorder.js).",
+            "Integrated local text-to-speech with Kokoro-82M and sentence-by-sentence playback (services/voice/text_to_speech.py, voice/speechPlayer.js).",
+            "Built the streamed interview turn: the next question is spoken while it is still being written (routers/live_voice_interview_routes.py, services/voice/streamed_reply_sentence_splitter.py).",
             "Built the 3D interviewer renderer with three.js: lip sync from visemes, blinking, idle motion (voice/Avatar3D.jsx, visemes.js, faceRig.js).",
-            "Converted Rocketbox avatars with Blender and created the four interviewer personalities: Aria, Victor, Marcus, Elena (services/interviewers.py).",
+            "Converted Rocketbox avatars with Blender and created the four interviewer personalities: Aria, Victor, Marcus, Elena (services/interview/interviewer_personalities.py).",
             "Compressed the avatar models with meshopt and WebP: 16.5 MB → 5.4 MB (frontend/avatar-src/compress_avatars.py).",
             "Built camera monitoring with MediaPipe in the browser: face visible, more than one face, approximate gaze (monitoring/faceMonitor.js).",
-            "Built phone/notes detection in a Web Worker and the integrity event engine with a risk summary (services/integrity.py, routers/monitoring.py).",
-            "Built the visual attention percentage (services/attention.py, monitoring/attentionMeter.js).",
-            "Built the English conversation companion with three learning modes and topic memory (services/english_companion.py).",
-            "Built spaced-repetition vocabulary review with five boxes (1, 2, 4, 7, 14 days) and the self-ticking daily plan (services/english_vocab.py, pages/student/Vocabulary.jsx).",
-            "Built the rewards system: points, badges, streaks, challenges and reward rules (services/rewards.py).",
-            "Built the mentor portal: assigned students, feedback, private notes, improvement plans, sessions, alerts (routers/mentors.py, pages/mentor/).",
+            "Built phone/notes detection in a Web Worker and the integrity event engine with a risk summary (services/monitoring/interview_integrity_rules.py, routers/interview_monitoring_routes.py).",
+            "Built the visual attention percentage (services/monitoring/visual_attention_report.py, monitoring/attentionMeter.js).",
+            "Built the English conversation companion with three learning modes and topic memory (services/english/english_companion_memory.py).",
+            "Built spaced-repetition vocabulary review with five boxes (1, 2, 4, 7, 14 days) and the self-ticking daily plan (services/english/english_vocabulary_trainer.py, pages/student/VocabularyTrainer.jsx).",
+            "Built the rewards system: points, badges, streaks, challenges and reward rules (services/student_progress/rewards_and_badges.py).",
+            "Built the mentor portal: assigned students, feedback, private notes, improvement plans, sessions, alerts (routers/mentor_portal_routes.py, pages/mentor/).",
             "Built the recruiter portal, the side-by-side candidate comparison and the printable candidate report (routers/jobs/, pages/recruiter/).",
             "Built the admin portal: analytics, users and approvals, interview setup, assessments, settings, audit logs, reports (routers/admin/, pages/admin/).",
-            "Built timed MCQ assessments with server-side grading (routers/assessments.py).",
+            "Built timed MCQ assessments with server-side grading (routers/skill_assessment_routes.py).",
             "Measured and reduced voice latency: answer → next question from 19 s to about 4-7 s on the local model.",
         ],
         "modules": [
             "frontend/src/voice/ (interviewMachine, recorder, speechPlayer, turnStream, Avatar3D, visemes, faceRig, room components)",
-            "frontend/src/monitoring/; backend/app/services/stt.py, tts.py, speech_stream.py, interviewers.py, integrity.py, attention.py",
-            "backend/app/routers/voice.py, interview_live.py, monitoring.py; frontend/public/avatars/",
-            "backend/app/services/english_companion.py, english_profile.py, english_vocab.py, ai_english.py, rewards.py",
-            "backend/app/routers/english.py, mentors.py, assessments.py, jobs/, admin/",
-            "frontend/src/pages/student/English*.jsx, Vocabulary.jsx; pages/mentor/, recruiter/, admin/",
+            "frontend/src/monitoring/; backend/app/services/voice/speech_to_text.py, text_to_speech.py, streamed_reply_sentence_splitter.py, interviewer_personalities.py, interview_integrity_rules.py, visual_attention_report.py",
+            "backend/app/routers/voice_speech_routes.py, live_voice_interview_routes.py, interview_monitoring_routes.py; frontend/public/avatars/",
+            "backend/app/services/english/english_companion_memory.py, english_mistake_profile.py, english_vocabulary_trainer.py, ai_english_conversation.py, rewards_and_badges.py",
+            "backend/app/routers/english_practice_routes.py, mentor_portal_routes.py, skill_assessment_routes.py, jobs/, admin/",
+            "frontend/src/pages/student/English*.jsx, VocabularyTrainer.jsx; pages/mentor/, recruiter/, admin/",
         ],
         "deliverables": [
             "Live voice interview with four 3D interviewer personalities and live captions",
@@ -224,24 +241,24 @@ MEMBERS = [
         "summary": "Samrath built the data layer on MongoDB, authentication and security, access control and the core "
                    "REST APIs, plus live notifications.",
         "responsibilities": [
-            "Designed the MongoDB collections for users, profiles, interviews, answers, jobs, applications, English, rewards and logs (app/models.py).",
-            "Built the MongoDB data layer with a SQLAlchemy-style API: sessions, queries, statements, auto-increment ids (app/odm/).",
-            "Migrated the project from SQLite to MongoDB and created indexes and unique constraints at start-up (app/database.py).",
-            "Wrote request and response schemas with Pydantic validation (app/schemas.py, serializers).",
-            "Implemented authentication: registration, login, JWT in an httpOnly cookie, Argon2 password hashing (routers/auth.py, security.py).",
-            "Implemented login lockout, password reset by email (SMTP) and account deletion (services/mailer.py).",
-            "Implemented role guards and data-access rules, e.g. recruiters see only their own applicants (deps.py, services/access.py).",
-            "Built the student and common routers: profile, settings, notifications, dashboard data (routers/students.py, common.py).",
-            "Wrote the repeatable seed: question bank, rubrics, badges, reward rules, challenges, assessments (app/seed.py).",
-            "Built the shared rate limiter with optional Redis and in-memory fallback (services/limiter.py).",
-            "Built AI-data consent recording and the privacy endpoint (services/consent.py).",
-            "Built live notifications over Server-Sent Events with heartbeat and per-user limits (services/live_events.py).",
+            "Designed the MongoDB collections for users, profiles, interviews, answers, jobs, applications, English, rewards and logs (app/database_models.py).",
+            "Built the MongoDB data layer with a SQLAlchemy-style API: sessions, queries, statements, auto-increment ids (app/mongodb_data_layer/).",
+            "Migrated the project from SQLite to MongoDB and created indexes and unique constraints at start-up (app/database_connection.py).",
+            "Wrote request and response schemas with Pydantic validation (app/request_validation_schemas.py, serializers).",
+            "Implemented authentication: registration, login, JWT in an httpOnly cookie, Argon2 password hashing (routers/authentication_routes.py, password_and_token_security.py).",
+            "Implemented login lockout, password reset by email (SMTP) and account deletion (services/platform_support/email_sender.py).",
+            "Implemented role guards and data-access rules, e.g. recruiters see only their own applicants (authentication_dependencies.py, services/platform_support/student_record_access.py).",
+            "Built the student and common routers: profile, settings, notifications, dashboard data (routers/student_portal_routes.py, profile_and_notification_routes.py).",
+            "Wrote the repeatable seed: question bank, rubrics, badges, reward rules, challenges, assessments (app/seed_initial_data.py).",
+            "Built the shared rate limiter with optional Redis and in-memory fallback (services/platform_support/rate_limiter.py).",
+            "Built AI-data consent recording and the privacy endpoint (services/platform_support/hosted_ai_consent.py).",
+            "Built live notifications over Server-Sent Events with heartbeat and per-user limits (services/platform_support/live_notification_events.py).",
         ],
         "modules": [
-            "backend/app/odm/ (connection, session, query, statements, mapping, expressions, coltypes)",
-            "backend/app/models.py, schemas.py, database.py, security.py, deps.py, seed.py, reset_admin.py",
-            "backend/app/routers/auth.py, common.py, students.py",
-            "backend/app/services/access.py, limiter.py, consent.py, live_events.py, mailer.py, background.py",
+            "backend/app/mongodb_data_layer/ (connection, session, query, statements, mapping, expressions, coltypes)",
+            "backend/app/database_models.py, request_validation_schemas.py, database_connection.py, password_and_token_security.py, authentication_dependencies.py, seed_initial_data.py, reset_admin_password.py",
+            "backend/app/routers/authentication_routes.py, profile_and_notification_routes.py, student_portal_routes.py",
+            "backend/app/services/platform_support/student_record_access.py, rate_limiter.py, hosted_ai_consent.py, live_notification_events.py, email_sender.py, background_jobs.py",
         ],
         "deliverables": [
             "MongoDB data layer and schema for the whole platform",
@@ -288,18 +305,18 @@ MEMBERS = [
             "Built routing for the four portals with role-based route guards (frontend/src/App.jsx).",
             "Made every page load on demand with React.lazy and split vendor chunks: first load 1,130 kB → 236 kB.",
             "Designed the \"Dark premium\" theme with all colours as CSS variables, so the theme changes in one place (src/index.css).",
-            "Built the shared component library: cards, buttons, tables, tabs, status pills, empty states, spinners (components/ui.jsx, Tabs.jsx).",
-            "Built the application layout with a grouped sidebar, header, notification bell and user menu (components/Layout.jsx, Logo.jsx).",
-            "Built the chart components used on dashboards and reports (components/charts.jsx, Recharts).",
-            "Wrote the API client with httpOnly-cookie authentication and error handling (src/api.js).",
-            "Built the login state and session handling for the whole app (src/auth.jsx).",
+            "Built the shared component library: cards, buttons, tables, tabs, status pills, empty states, spinners (components/SharedUiComponents.jsx, UrlTabs.jsx).",
+            "Built the application layout with a grouped sidebar, header, notification bell and user menu (components/AppShellLayout.jsx, Logo.jsx).",
+            "Built the chart components used on dashboards and reports (components/DashboardCharts.jsx, Recharts).",
+            "Wrote the API client with httpOnly-cookie authentication and error handling (src/apiClient.js).",
+            "Built the login state and session handling for the whole app (src/AuthContext.jsx).",
             "Built the live-notification client: one stream per tab, reconnect with backoff, polling fallback (live/notificationStream.js).",
             "Built the sign-in, registration and password-reset screens (pages/Login.jsx, Register.jsx, AuthShell.jsx).",
             "Made the layout responsive and accessible (labels, focus states, keyboard navigation).",
         ],
         "modules": [
-            "frontend/src/App.jsx, main.jsx, api.js, auth.jsx, index.css, tailwind.config.js, vite.config.js",
-            "frontend/src/components/ (ui.jsx, Layout.jsx, Logo.jsx, Tabs.jsx, charts.jsx)",
+            "frontend/src/App.jsx, main.jsx, apiClient.js, AuthContext.jsx, index.css, tailwind.config.js, vite.config.js",
+            "frontend/src/components/ (SharedUiComponents.jsx, AppShellLayout.jsx, Logo.jsx, UrlTabs.jsx, DashboardCharts.jsx)",
             "frontend/src/live/notificationStream.js",
             "frontend/src/pages/ (Login, Register, AuthShell, ForgotPassword, ResetPassword, NotFound)",
         ],
@@ -339,22 +356,22 @@ MEMBERS = [
         "role": "Student Portal Pages and Frontend Testing",
         "summary": "Shardha built the student portal pages that students use every day and the frontend unit tests.",
         "responsibilities": [
-            "Built the student dashboard: greeting, readiness score, quick actions, stat cards and challenges (pages/student/Dashboard.jsx).",
+            "Built the student dashboard: greeting, readiness score, quick actions, stat cards and challenges (pages/student/StudentDashboard.jsx).",
             "Built the mock-interview pages: setup form, interviewer picker, typed interview session and history.",
             "Built the interview report page: overall score with band, skill breakdown, strengths, weaknesses and per-question feedback.",
-            "Built the resume page: upload, AI analysis view and student corrections (pages/student/Resume.jsx).",
+            "Built the resume page: upload, AI analysis view and student corrections (pages/student/ResumeUploadAndAnalysis.jsx).",
             "Built the jobs, placement drives, applications and opportunities pages with eligibility and match explanations.",
             "Built the progress hub with charts of interview, English and assessment progress (pages/student/ProgressHub.jsx).",
-            "Built the student rewards page: points, badges and challenges (pages/student/Rewards.jsx).",
-            "Built the profile, account settings and notifications pages (pages/Profile.jsx, Settings.jsx, Notifications.jsx).",
+            "Built the student rewards page: points, badges and challenges (pages/student/StudentRewards.jsx).",
+            "Built the profile, account settings and notifications pages (pages/ProfileEditor.jsx, AccountSettings.jsx, Notifications.jsx).",
             "Built the privacy page and the AI-consent notice shown before AI features (pages/Privacy.jsx).",
-            "Built score-band display helpers used on reports (components/scoreBand.js).",
+            "Built score-band display helpers used on reports (components/scoreBandLabel.js).",
             "Wrote frontend unit tests with Vitest: 141 tests for state machines and helpers.",
         ],
         "modules": [
             "frontend/src/pages/student/ (Dashboard, Interviews, InterviewSetup, InterviewerPicker, InterviewSession, PerformanceReport, Resume, Jobs, Drives, Applications, Opportunities, ProgressHub, Rewards)",
             "frontend/src/pages/ (Profile, Settings, Notifications, Privacy)",
-            "frontend/src/components/ (Readiness.jsx, scoreBand.js); frontend/src/**/*.test.js",
+            "frontend/src/components/ (PlacementReadinessCard.jsx, scoreBandLabel.js); frontend/src/**/*.test.js",
         ],
         "deliverables": [
             "Complete student portal (about 20 pages) on the shared design system",
@@ -498,9 +515,9 @@ ARCHITECTURE = [
                  "3D interviewer uses three.js; camera monitoring uses MediaPipe in the browser."),
     ("Backend", "FastAPI application organised in routers (auth, students, interviews, english, jobs, mentors, admin, "
                 "voice, monitoring) and services (AI, matching, rewards, integrity, speech)."),
-    ("Database", "MongoDB through a small data layer (backend/app/odm/). Indexes and unique constraints are created "
+    ("Database", "MongoDB through a small data layer (backend/app/mongodb_data_layer/). Indexes and unique constraints are created "
                  "at start-up; the seed adds reference data."),
-    ("AI module", "One gateway (services/ai_base.py) for every model call: Gemini first, backup Gemini models, then "
+    ("AI module", "One gateway (services/ai_models/ai_structured_call_base.py) for every model call: Gemini first, backup Gemini models, then "
                   "local Ollama. Outputs are validated against JSON schemas; usage is logged without personal text."),
     ("APIs", "REST over /api with automatic Swagger documentation, plus Server-Sent Events for live notifications and "
              "the streamed voice-interview turn."),

@@ -1,6 +1,40 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/ControlBar.jsx
+//
+// FILE PURPOSE:
+// The round-button toolbar of the live interview (mic, repeat, pause, voice, self-view, settings,
+// end).
+//
+// WHAT THIS FILE DOES:
+// 1. Shows buttons enabled or disabled according to the interview state.
+// 2. Calls the page's callbacks when pressed.
+//
+// HOW THIS FILE WORKS:
+// Uses interviewMachine state values to decide which buttons are active.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: ControlBar
+//
+// INPUT:
+// Props: interview state and callback functions.
+//
+// OUTPUT:
+// Toolbar UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: components/SharedUiComponents.jsx, voice/RoomParts.jsx, voice/interviewMachine.js
+//    Used by: pages/student/LiveVoiceInterview.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* The round-button toolbar of the live interview room (mic, repeat, pause, voice, self-view, settings, end). */
 import { Camera, CameraOff, Mic, MicOff, Pause, PhoneOff, Play, Settings2, Volume2, VolumeX } from "lucide-react";
-import { ConfirmButton } from "../components/ui";
+import { ConfirmButton } from "../components/SharedUiComponents";
 import { S } from "./interviewMachine";
 import { RoundButton } from "./RoomParts";
 

@@ -32,4 +32,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 
 # Seed is idempotent (admin account, badges, question bank); then serve. --proxy-headers: real client IPs behind
 # Render/nginx. On SIGTERM uvicorn finishes open requests, then the app drains background jobs (SHUTDOWN_GRACE_SECONDS).
-CMD ["sh", "-c", "python -m app.seed && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 25"]
+CMD ["sh", "-c", "python -m app.seed_initial_data && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --proxy-headers --forwarded-allow-ips='*' --timeout-graceful-shutdown 25"]

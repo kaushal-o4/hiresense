@@ -1,3 +1,47 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/eval/run_eval.py
+#
+# FILE PURPOSE:
+# Behaviour evaluation of the interviewers and the English companion with the REAL local models.
+#
+# WHAT THIS FILE DOES:
+# 1. Evaluation script using the real configured AI model.
+# 2. Run manually to measure AI behaviour/scoring quality; not part of the normal test run.
+#
+# HOW THIS FILE WORKS:
+# Drives the real HTTP API (FastAPI TestClient, in-memory database) through the fixed scenarios in
+# eval/scenarios.json, so the same script measures any version of the backend:
+# .\venv\Scripts\python.exe eval\run_eval.py --out eval\results\after.json .\venv\Scripts\python.exe
+# eval\run_eval.py --backend-dir <copy of an older backend> --out before.json Metrics (all computed
+# automatically; transcripts are saved for manual review): * duplicate_pairs - question pairs in one
+# interview whose meaning similarity (MiniLM cosine, an independent judge that is NOT the app's own
+# duplicate filter) is >= 0.75 * resume_grounded - share of questions that mention something from the
+# candidate's resume or role * fol...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: setup, embedder, register, add_resume, grounding_terms, mentions,
+#    usage_since, run_interview, closing_question, run_english, lat, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, BANNED, VAGUE_KINDS
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/database_models.py,
+#    app/main.py, app/routers/interview_routes.py, app/seed_initial_data.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/sentence_embedding_model.py
+#
+# IMPORTANT DEPENDENCIES:
+#    fastapi
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Behaviour evaluation of the interviewers and the English companion with the REAL local models.
 
 Drives the real HTTP API (FastAPI TestClient, in-memory database) through the fixed scenarios in
@@ -44,16 +88,16 @@ def setup(backend_dir: Path):
                        "AI_DAILY_LIMIT_PER_USER": "100000"})
     sys.path.insert(0, str(backend_dir))
     os.chdir(backend_dir)
-    from app import database, seed as seed_module
-    from app.config import get_settings
-    from app.database import get_db
+    from app import database_connection as database, seed_initial_data as seed_module
+    from app.application_configuration import get_settings
+    from app.database_connection import get_db
     get_settings.cache_clear()
     database.init_db()
     database.clear_database()  # a throwaway MongoDB database (MONGODB_DB set above), never the app's own
     seed_module.seed()
     factory = database.SessionLocal
     from app.main import app
-    from app.routers import interviews
+    from app.routers import interview_routes as interviews
 
     def override():
         db = factory()
@@ -68,7 +112,7 @@ def setup(backend_dir: Path):
 
 
 def embedder():
-    from app.services import embeddings
+    from app.services.ai_models import sentence_embedding_model as embeddings
 
     def sim(a: str, b: str) -> float:
         v = embeddings.embed([a, b])
@@ -84,7 +128,7 @@ def register(c, email):
 
 
 def add_resume(factory, user_id, resume):
-    from app.models import Resume
+    from app.database_models import Resume
     db = factory()
     for old in db.query(Resume).filter(Resume.student_id == user_id).all():  # the MongoDB layer has no bulk update
         old.is_current = False
@@ -114,7 +158,7 @@ def mentions(text: str, terms: set[str]) -> bool:
 
 
 def usage_since(factory, since_id: int):
-    from app.models import AIUsageLog
+    from app.database_models import AIUsageLog
     db = factory()
     rows = db.query(AIUsageLog).filter(AIUsageLog.id > since_id).all()
     out = [(r.feature, r.status, r.latency_ms, r.error) for r in rows]
@@ -161,7 +205,7 @@ def run_interview(c, factory, sim, data, run, uid):
         if body.get("ready_to_complete"):
             break
     c.delete(f"/api/student/interviews/{s['id']}")
-    from app.models import InterviewQuestion  # server-side audit metadata (not part of the API response)
+    from app.database_models import InterviewQuestion  # server-side audit metadata (not part of the API response)
     db = factory()
     metas = {q_.text: q_.meta for q_ in db.query(InterviewQuestion).filter(InterviewQuestion.session_id == s["id"])}
     db.close()
@@ -261,8 +305,8 @@ def main():
     out_path = Path(args.out).resolve()
     data = json.loads((HERE / "scenarios.json").read_text(encoding="utf-8"))
     c, factory = setup(Path(args.backend_dir).resolve())
-    from app.config import get_settings
-    from app.services import local_llm
+    from app.application_configuration import get_settings
+    from app.services.ai_models import language_model_client as local_llm
     st = local_llm.runtime_status(force=True)
     if not (st["running"] and st["model_ready"]):
         sys.exit(f"LLM not available: {st['error']}")

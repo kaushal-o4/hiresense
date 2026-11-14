@@ -1,3 +1,31 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/camera_preview_browser.py
+#
+# FILE PURPOSE:
+# Browser check: the optional camera preview starts only on click and is released on "Hide".
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Uses Chromium's fake camera. Run from the backend folder: .\venv\Scripts\python.exe
+# tests_e2e\camera_preview_browser.py
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    OUT, BASE, CREDS
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Browser check: the optional camera preview starts only on click and is released on "Hide".
 
 Uses Chromium's fake camera. Run from the backend folder: .\\venv\\Scripts\\python.exe tests_e2e\\camera_preview_browser.py

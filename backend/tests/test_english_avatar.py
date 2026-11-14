@@ -1,3 +1,50 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_english_avatar.py
+#
+# FILE PURPOSE:
+# Spoken-English avatar practice ("Aria"): persona output contract, live widgets, local transcription.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 11 test(s), e.g.: opening uses aria persona and style; reply contract is enforced;
+#    aria does not repeat her previous turn; repeat detection; whisper hallucinations are removed;
+#    spoken text has no emoji; empty model reply is an error not a silent turn; confidence meter
+#    rewards longer cleaner spoken answers; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# The LLM and STT are MOCKED here.
+#
+# IMPORTANT FUNCTIONS:
+#    - test_aria_does_not_repeat_her_previous_turn()
+#        Regression (real session): the model returned the identical reply to three different
+#        answers.
+#    Other helper functions: aria, start, test_opening_uses_aria_persona_and_style,
+#    test_reply_contract_is_enforced, test_repeat_detection,
+#    test_whisper_hallucinations_are_removed, test_spoken_text_has_no_emoji,
+#    test_empty_model_reply_is_an_error_not_a_silent_turn,
+#    test_confidence_meter_rewards_longer_cleaner_spoken_answers,
+#    test_live_active_time_matches_final_verified_time, test_english_stats_streak,
+#    test_english_transcribe_local
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    REPEATED
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/routers/english_practice_routes.py,
+#    app/services/interview/ai_interview_service.py, app/services/voice/speech_to_text.py
+#
+# IMPORTANT DEPENDENCIES:
+#    test_local_ai, test_voice
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Spoken-English avatar practice ("Aria"): persona output contract, live widgets, local transcription.
 
 The LLM and STT are MOCKED here."""
@@ -90,7 +137,7 @@ def test_aria_does_not_repeat_her_previous_turn(client, mock_llm):
 
 
 def test_repeat_detection():
-    from app.services.ai import repeats_earlier_turn
+    from app.services.interview.ai_interview_service import repeats_earlier_turn
     assert repeats_earlier_turn(REPEATED, [REPEATED])
     # same closing question with a different opener still counts as repeating
     assert repeats_earlier_turn("Nice! What's one small habit you use to stay organized in your daily life?", [REPEATED])
@@ -98,7 +145,7 @@ def test_repeat_detection():
 
 
 def test_whisper_hallucinations_are_removed():
-    from app.services.stt import clean_transcript, collapse_loops
+    from app.services.voice.speech_to_text import clean_transcript, collapse_loops
     loop = " ".join(["We are going to take a look at what we are doing here."] * 6)
     assert collapse_loops(loop) == "We are going to take a look at what we are doing here."
     assert clean_transcript(loop, voiced=1.0) == ""  # known phrase from near-silence
@@ -115,7 +162,7 @@ def test_whisper_hallucinations_are_removed():
 
 
 def test_spoken_text_has_no_emoji():
-    from app.services.ai import clean_english_reply
+    from app.services.interview.ai_interview_service import clean_english_reply
     out = clean_english_reply(aria("Let's practise together! 😊 How are you? ✨", enc="Nice 👍",
                                    followups=["I am fine 🙂"]), "I am good today")
     assert out["reply"] == "Let's practise together! How are you?"
@@ -132,8 +179,8 @@ def test_empty_model_reply_is_an_error_not_a_silent_turn(client, mock_llm):
 
 
 def test_confidence_meter_rewards_longer_cleaner_spoken_answers():
-    from app.models import EnglishMessage, EnglishSession
-    from app.routers.english import confidence_meter
+    from app.database_models import EnglishMessage, EnglishSession
+    from app.routers.english_practice_routes import confidence_meter
 
     def sess(*msgs):
         s = EnglishSession(topic="t", mode="voice")
@@ -150,7 +197,7 @@ def test_confidence_meter_rewards_longer_cleaner_spoken_answers():
 
 
 def test_live_active_time_matches_final_verified_time(client, fake_ai, db):
-    from app.models import EnglishSession
+    from app.database_models import EnglishSession
     register_student(client)
     s = client.post("/api/student/english", json={"topic": "Hobbies", "mode": "voice"}).json()
     for text in ["I enjoy playing cricket on weekends", "I also like reading novels at night"]:
@@ -169,7 +216,7 @@ def test_live_active_time_matches_final_verified_time(client, fake_ai, db):
 
 
 def test_english_stats_streak(client, db):
-    from app.models import EnglishSession
+    from app.database_models import EnglishSession
     sid = register_student(client)["id"]
     assert client.get("/api/student/english/stats").json()["current_streak"] == 0
     now = datetime.now(timezone.utc)
@@ -183,7 +230,7 @@ def test_english_stats_streak(client, db):
 
 
 def test_english_transcribe_local(client, mock_llm, monkeypatch, new_client):
-    from app.services import stt
+    from app.services.voice import speech_to_text as stt
     register_student(client)
     s = start(client, mock_llm)
     send = lambda c, sid: c.post(f"/api/student/english/{sid}/transcribe",  # noqa: E731

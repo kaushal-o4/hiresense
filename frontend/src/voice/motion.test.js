@@ -1,3 +1,30 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/motion.test.js
+//
+// FILE PURPOSE:
+// Unit tests for motion.js.
+//
+// WHAT THIS FILE DOES:
+// 1. Blinks vary and never stare too long.
+// 2. Gaze holds eye contact and looks away while talking.
+// 3. Head motion is smooth and non-repeating.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests with a seeded random generator.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: run
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/motion.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { describe, expect, it } from "vitest";
 import { Blinker, Gaze, HeadMotion, Micro, noise1, rng } from "./motion";
 

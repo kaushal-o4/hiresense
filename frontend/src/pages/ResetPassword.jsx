@@ -1,9 +1,46 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/ResetPassword.jsx
+//
+// FILE PURPOSE:
+// Page that sets a new password from the emailed reset link.
+//
+// WHAT THIS FILE DOES:
+// 1. Reads the token from the URL (?token=...).
+// 2. Asks for the new password twice.
+// 3. Calls POST /auth/reset-password.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: POST /auth/reset-password.
+//
+// IMPORTANT FUNCTIONS:
+//    - ResetPassword()
+//        Form component.
+//
+// INPUT:
+// Token from the URL and the new password.
+//
+// OUTPUT:
+// Password changed message.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, pages/AuthShell.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Set a new password from an emailed reset link (POST /auth/reset-password with the token from the URL). */
 
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { post } from "../api";
-import { Button, ErrorBox, Field, Notice } from "../components/ui";
+import { post } from "../apiClient";
+import { Button, ErrorBox, Field, Notice } from "../components/SharedUiComponents";
 import AuthShell from "./AuthShell";
 
 export default function ResetPassword() {

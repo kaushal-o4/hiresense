@@ -1,3 +1,43 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/eval/calibrate_scoring.py
+#
+# FILE PURPOSE:
+# Score calibration check for interview answers, using the REAL configured model.
+#
+# WHAT THIS FILE DOES:
+# 1. Evaluation script using the real configured AI model.
+# 2. Run manually to measure AI behaviour/scoring quality; not part of the normal test run.
+#
+# HOW THIS FILE WORKS:
+# Scores the fixed answers in eval/calibration_set.json (poor / fair / good / excellent, hand-
+# labelled) with the same function the live interview uses (ai.score_answer + the default rubric) and
+# reports: * spearman - rank correlation between the hand label and the 0-100 score (1.0 = perfect
+# ordering) * mean_by_label - average score per label, and the gap between neighbouring labels
+# (spread) * in_band - share of answers whose score falls in the band a fair interviewer would give *
+# perfect_100 - answers that got 100 (nothing in this set deserves 100) .\venv\Scripts\python.exe
+# eval\calibrate_scoring.py --out eval\results\calibration_after.json .\venv\Scripts\python.exe
+# eval\calibrate_scoring.py --...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: spearman, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, BACKEND
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py,
+#    app/routers/interview_routes.py, app/seed_initial_data.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/interview/ai_interview_service.py, app/services/interview/score_band_labels.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Score calibration check for interview answers, using the REAL configured model.
 
 Scores the fixed answers in eval/calibration_set.json (poor / fair / good / excellent, hand-labelled) with the same
@@ -61,14 +101,15 @@ def main():
                        "TTS_ENABLED": "false", "STT_ENABLED": "false"})
     sys.path.insert(0, str(BACKEND))
     os.chdir(BACKEND)
-    from app import database, seed as seed_module
-    from app.config import get_settings
+    from app import database_connection as database, seed_initial_data as seed_module
+    from app.application_configuration import get_settings
     get_settings.cache_clear()
     database.init_db()
     database.clear_database()
     seed_module.seed()
-    from app.routers.interviews import DEFAULT_RUBRIC
-    from app.services import ai, local_llm, scoring_bands
+    from app.routers.interview_routes import DEFAULT_RUBRIC
+    from app.services.interview import ai_interview_service as ai, score_band_labels as scoring_bands
+    from app.services.ai_models import language_model_client as local_llm
 
     if args.baseline:
         ai.SCORE_ANCHORS = ""

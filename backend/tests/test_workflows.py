@@ -1,3 +1,45 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_workflows.py
+#
+# FILE PURPOSE:
+# End-to-end API workflow tests: AI unavailability is reported (never faked), non-resume files are
+# rejected, a full interview with rewards and mentor goals, short or pasted answers earn no points /
+# are flagged, verified English practice time, the recruiter job-application cycle, eligibility,
+# assessment grading, and admin settings / rubric validation.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 10 test(s), e.g.: ai unavailable is reported not faked; rejects non resume files;
+#    full interview flow with rewards and mentor goal; short answers earn no points; pasted
+#    duplicate answers are flagged; english active time is verified; recruiter job application
+#    cycle; ineligible student cannot apply; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: _docx_bytes, _make_recruiter,
+#    test_ai_unavailable_is_reported_not_faked, test_rejects_non_resume_files,
+#    test_full_interview_flow_with_rewards_and_mentor_goal, test_short_answers_earn_no_points,
+#    test_pasted_duplicate_answers_are_flagged, test_english_active_time_is_verified,
+#    test_recruiter_job_application_cycle, test_ineligible_student_cannot_apply,
+#    test_assessment_grading_and_answer_secrecy, test_admin_settings_and_rubric_validation
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    RESUME
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py
+#
+# IMPORTANT DEPENDENCIES:
+#    docx
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 import io
 from datetime import datetime, timedelta, timezone
 
@@ -148,7 +190,7 @@ def test_pasted_duplicate_answers_are_flagged(client, new_client, fake_ai):
 
 
 def test_english_active_time_is_verified(client, fake_ai, db):
-    from app.models import EnglishMessage, EnglishSession
+    from app.database_models import EnglishMessage, EnglishSession
     register_student(client)
     s = client.post("/api/student/english", json={"topic": "Hobbies"}).json()
     for text in ["I enjoy playing cricket on weekends with my friends", "ok", "I also like reading novels in the evening"]:

@@ -1,3 +1,55 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/shared/IntegrityReview.jsx
+//
+// FILE PURPOSE:
+// Review page for interview-security events, for admins, permitted mentors and recruiters.
+//
+// WHAT THIS FILE DOES:
+// 1. Lists monitored interviews with filters (GET /monitoring/sessions).
+// 2. Shows one session's events, risk summary, attention report and timeline (GET
+//    /monitoring/sessions/{id}).
+// 3. Reviewer marks an event (no concern, concern noted, false positive...) with PATCH
+//    /monitoring/events/{id}.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /monitoring/sessions, GET
+// /monitoring/sessions/{id}, PATCH /monitoring/events/{id}.
+//
+// IMPORTANT FUNCTIONS:
+//    - IntegrityReviewPage()
+//        Page with the session list.
+//    - IntegrityReview()
+//        Session list component (also embedded in other pages).
+//    - SessionDetail()
+//        One session's details.
+//    - RiskPanel()
+//        Risk summary.
+//    - Timeline()
+//        Event timeline.
+//    - EventRow()
+//        One event with review buttons.
+//    Other helper functions: fmt, clock, pretty
+//
+// INPUT:
+// Monitoring data from the API.
+//
+// OUTPUT:
+// Review UI and saved review decisions.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: AuthContext.jsx, apiClient.js, components/SharedUiComponents.jsx,
+//    monitoring/AttentionPanels.jsx
+//    Used by: App.jsx, pages/admin/AdminMonitoring.jsx, pages/recruiter/CandidateDetail.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Review of interview-security events (camera, browser, audio, connection) for admins, authorised mentors and
  * recruiters (completed interviews of their own applicants). Events are signals for a person to judge, never
@@ -5,10 +57,10 @@
  */
 
 import { useState } from "react";
-import { get, patch } from "../../api";
-import { useAuth } from "../../auth";
+import { get, patch } from "../../apiClient";
+import { useAuth } from "../../AuthContext";
 import { AttentionReport } from "../../monitoring/AttentionPanels";
-import { Button, Card, ErrorBox, Modal, Notice, PageHeader, Pagination, Pill, Spinner, Table, fmtDateTime, useApi, useToast } from "../../components/ui";
+import { Button, Card, ErrorBox, Modal, Notice, PageHeader, Pagination, Pill, Spinner, Table, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
 
 const STATUS_TONE = { none: "green", warning: "amber", review: "red", unavailable: "slate" };
 const SEV_TONE = { info: "slate", low: "blue", medium: "amber", high: "red" };

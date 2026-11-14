@@ -1,3 +1,31 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/interviewers.test.js
+//
+// FILE PURPOSE:
+// Unit tests for avatar states, personality expressions and interviewer voices.
+//
+// WHAT THIS FILE DOES:
+// 1. One avatar state per conversation state.
+// 2. Each personality looks different.
+// 3. Stress-interview interruption and voice selection.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: run
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/avatarStates.js, voice/interviewMachine.js, voice/speechPlayer.js,
+//    voice/useInterviewers.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Unit tests: avatar state machine, personality expression profiles, stress-interview interruption, true pause,
 // and interviewer voice selection.
 import { describe, expect, it } from "vitest";

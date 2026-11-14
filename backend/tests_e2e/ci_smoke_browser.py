@@ -1,3 +1,38 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/ci_smoke_browser.py
+#
+# FILE PURPOSE:
+# Fast browser smoke test, run by CI on every push (no GPU, no AI models, no demo accounts needed).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Registers a fresh student, opens the main student pages and checks that each renders without an
+# uncaught page error, then runs one live (voice-room) interview turn by typing: setup screen with the
+# fake camera, the room's control bar, settings and transcript panels, a typed answer, and the next
+# question from the question bank. Needs the backend (any AI settings; CI runs it with
+# AI_ENABLED=false) and the frontend (dev server or `vite preview`). From the backend folder: python
+# tests_e2e/ci_smoke_browser.py # HS_E2E_BASE=http://127.0.0.1:4173 for vite preview
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: ok, api, settle
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    OUT, BASE, EMAIL, PASSWORD, FETCH, INIT, PAGES
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Fast browser smoke test, run by CI on every push (no GPU, no AI models, no demo accounts needed).
 
 Registers a fresh student, opens the main student pages and checks that each renders without an uncaught page

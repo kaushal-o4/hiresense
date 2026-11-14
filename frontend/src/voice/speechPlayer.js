@@ -1,3 +1,43 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/speechPlayer.js
+//
+// FILE PURPOSE:
+// Plays the interviewer's voice and tells the avatar which mouth shape to show.
+//
+// WHAT THIS FILE DOES:
+// 1. Plays audio from the local Kokoro text-to-speech engine with its phoneme timeline.
+// 2. Falls back to the browser's speechSynthesis voice (approximate lip sync) if needed.
+// 3. Plays streamed sentences in order with SpeechQueue (startQueue, queueAdd, queueFill...).
+// 4. Supports pause, resume, stop and gives getMouth()/getVisemes() to the avatar.
+//
+// HOW THIS FILE WORKS:
+// Audio is played with the Web Audio API; mouth shapes are looked up on the same AudioContext clock
+// and scaled by the volume, so lips close when sound stops.
+//
+// IMPORTANT FUNCTIONS:
+//    - SpeechPlayer()
+//        Class managing playback, the queue and lip-sync state.
+//    - pickBrowserVoice()
+//        Chooses a browser voice by language and gender.
+//    Other helper functions: b64ToArrayBuffer
+//
+// INPUT:
+// Base64 WAV audio + visemes from /voice/speak or the interview turn stream; or plain text for the
+// browser voice.
+//
+// OUTPUT:
+// Audio playback and current mouth shape.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/speechQueue.js, voice/visemes.js
+//    Used by: pages/student/EnglishAvatarSession.jsx, pages/student/InterviewerFeedback.jsx,
+//    pages/student/InterviewerPicker.jsx, pages/student/LiveVoiceInterview.jsx
+//    Tested by: voice/interviewers.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Plays the interviewer's voice and exposes the current mouth shape for the avatar.
 //
 // Main path: audio from the local Kokoro engine + its phoneme timeline. The mouth shape is looked up against the

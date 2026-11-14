@@ -1,3 +1,44 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/attentionMeter.js
+//
+// FILE PURPOSE:
+// Estimates the percentage of time the candidate looked toward the interview screen.
+//
+// WHAT THIS FILE DOES:
+// 1. Adds time between samples to toward, away or unobserved totals.
+// 2. Treats missing frames and no face as unobserved (never as looking away).
+// 3. Ignores brief glances shorter than confirmMs.
+// 4. Gives a rolling live value and a full-interview snapshot with 10-second buckets.
+//
+// HOW THIS FILE WORKS:
+// attention % = time toward / (toward + away). It uses elapsed time, not frame counts, so the frame
+// rate does not matter. Pure class, no timers or DOM.
+//
+// IMPORTANT FUNCTIONS:
+//    - AttentionMeter()
+//        Time-based attention calculator (add, setPaused, finish, rolling, snapshot).
+//    - classifyFrame()
+//        Maps a frame's face/light state to toward, away or unobserved.
+//    Other helper functions: newEpoch
+//
+// IMPORTANT VARIABLES / STATE:
+//    - STATE
+//        Possible frame states.
+//
+// INPUT:
+// Timestamped frame states.
+//
+// OUTPUT:
+// Attention percentage, coverage and buckets.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/interviewMonitor.js
+//    Tested by: monitoring/attentionMeter.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Estimated visual attention toward the interview screen, from TIME, not frame counts.
 //
 //   attention % = time looking toward the screen / (time toward + time away)       (valid observations only)

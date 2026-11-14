@@ -1,3 +1,38 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/AuthShell.jsx
+//
+// FILE PURPOSE:
+// The two-column layout shared by the login, register, forgot-password and reset-password pages.
+//
+// WHAT THIS FILE DOES:
+// 1. Left: a dark product panel with a headline, a live 3D interviewer (InterviewerStage) and a
+//    sample report preview.
+// 2. Right: the form passed in as children.
+//
+// HOW THIS FILE WORKS:
+// A layout component; ReportPreview is a static mock-up of a report card for decoration.
+//
+// IMPORTANT FUNCTIONS:
+//    - AuthShell()
+//        The layout wrapper.
+//    - ReportPreview()
+//        Decorative example report card.
+//
+// INPUT:
+// Props: title, subtitle, children (the form).
+//
+// OUTPUT:
+// The page layout.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: components/InterviewerStage.jsx, components/Logo.jsx
+//    Used by: pages/ForgotPassword.jsx, pages/Login.jsx, pages/Register.jsx,
+//    pages/ResetPassword.jsx
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Two-column layout shared by the Login, Register, ForgotPassword and ResetPassword pages: a dark product panel
  * (headline, a live 3D interviewer and a floating preview of an interview report) and the form column.

@@ -1,3 +1,35 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_auth_and_permissions.py
+#
+# FILE PURPOSE:
+# Tests registration, login and the current-user endpoint, password rules, wrong-password lockout,
+# password hashing, role-based access, recruiter approval, and that mentors and students can only see
+# the data they are allowed to see.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 9 test(s), e.g.: register login me; password rules and duplicates; wrong password and
+#    lockout; passwords are hashed; role based access; recruiter requires approval; admin cannot
+#    demote self; mentor only sees assigned students; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: test_register_login_me, test_password_rules_and_duplicates,
+#    test_wrong_password_and_lockout, test_passwords_are_hashed, test_role_based_access,
+#    test_recruiter_requires_approval, test_admin_cannot_demote_self,
+#    test_mentor_only_sees_assigned_students, test_student_cannot_access_other_students_data
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 from conftest import admin_login, login, register_student
 
 
@@ -30,7 +62,7 @@ def test_wrong_password_and_lockout(client):
 
 
 def test_passwords_are_hashed(client, db):
-    from app.models import User
+    from app.database_models import User
     register_student(client, email="hash@test.dev")
     u = db.query(User).filter_by(email="hash@test.dev").one()
     assert u.password_hash != "Passw0rd!" and u.password_hash.startswith("$argon2")
@@ -106,7 +138,7 @@ def test_student_cannot_access_other_students_data(client, new_client):
     register_student(client, email="a1@test.dev")
     other = new_client()
     register_student(other, email="a2@test.dev")
-    from app.models import Resume  # noqa: F401
+    from app.database_models import Resume  # noqa: F401
     # Notifications are private
     n = other.get("/api/notifications").json()["items"][0]
     assert client.post(f"/api/notifications/{n['id']}/read").status_code == 404

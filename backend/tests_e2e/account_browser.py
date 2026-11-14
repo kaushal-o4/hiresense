@@ -1,3 +1,41 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/account_browser.py
+#
+# FILE PURPOSE:
+# Real-browser check of the account features and the merged student pages.
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Covers: forgot password -> reset link -> new password works (old one doesn't), the merged "My
+# Progress" and "Jobs & Drives" pages (old URLs redirect to the right tab), and "Delete my account".
+# Email is off in development, so the reset token is created here the same way the server does (same
+# secret, same database). Run from backend with the backend + frontend running:
+# .\venv\Scripts\python.exe tests_e2e\account_browser.py
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: ok, reset_token
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    OUT, BASE, EMAIL
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_connection.py, app/database_models.py, app/mongodb_data_layer/__init__.py,
+#    app/password_and_token_security.py
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Real-browser check of the account features and the merged student pages.
 
 Covers: forgot password -> reset link -> new password works (old one doesn't), the merged "My Progress" and
@@ -16,10 +54,10 @@ from playwright.sync_api import sync_playwright
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from app.database import SessionLocal  # noqa: E402
-from app.models import User  # noqa: E402
-from app.odm import select  # noqa: E402
-from app.security import create_reset_token  # noqa: E402
+from app.database_connection import SessionLocal  # noqa: E402
+from app.database_models import User  # noqa: E402
+from app.mongodb_data_layer import select  # noqa: E402
+from app.password_and_token_security import create_reset_token  # noqa: E402
 
 OUT = Path(__file__).resolve().parent / "output"
 OUT.mkdir(exist_ok=True)

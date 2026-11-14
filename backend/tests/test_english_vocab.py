@@ -1,3 +1,58 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_english_vocab.py
+#
+# FILE PURPOSE:
+# English vocabulary review (Leitner boxes), daily plan, progress and English milestone rewards. The
+# language model is mocked.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 20 test(s), e.g.: knowing a card moves it up one box with a longer gap; not knowing
+#    sends any card back to box one for tomorrow; knowing a box five card masters it; out of range
+#    boxes are clamped; normalise ignores case spacing and end punctuation; corrections become
+#    review cards once; punctuation only corrections are not cards; review moves boxes and logs
+#    answers; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    - backdate()
+#        Verified time counts the gap before each student message, so move the session and
+#        Aria's opener back.
+#    Other helper functions: test_knowing_a_card_moves_it_up_one_box_with_a_longer_gap,
+#    test_not_knowing_sends_any_card_back_to_box_one_for_tomorrow,
+#    test_knowing_a_box_five_card_masters_it, test_out_of_range_boxes_are_clamped,
+#    test_normalise_ignores_case_spacing_and_end_punctuation, llm, start, say,
+#    test_corrections_become_review_cards_once, test_punctuation_only_corrections_are_not_cards,
+#    test_review_moves_boxes_and_logs_answers, test_mastering_a_card_awards_points_once,
+#    test_another_students_cards_are_invisible, test_students_can_add_and_delete_their_own_words,
+#    test_vocabulary_filters, test_daily_plan_without_any_data_has_conversation_and_interview,
+#    test_daily_plan_recommends_the_mode_for_the_weakest_skill_of_an_earlier_session,
+#    test_daily_plan_ticks_itself_and_awards_points_once,
+#    test_conversation_in_another_mode_does_not_tick_the_plan,
+#    test_progress_has_score_trend_and_weekly_reviews, test_word_badges_are_awarded,
+#    test_weekly_review_challenge_counts_reviews,
+#    test_seed_adds_english_rewards_and_stays_repeatable
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    NOW, FIX
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/mongodb_data_layer/__init__.py, app/seed_initial_data.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/english/english_vocabulary_trainer.py,
+#    app/services/student_progress/rewards_and_badges.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """English vocabulary review (Leitner boxes), daily plan, progress and English milestone rewards.
 The language model is mocked."""
 import json
@@ -7,12 +62,19 @@ from types import SimpleNamespace
 import pytest
 
 from conftest import register_student
-from app import seed as seed_module
-from app.models import (
-    Badge, Challenge, EnglishSession, PointTransaction, RewardRule, StudentBadge, User, VocabularyItem,
+from app import seed_initial_data as seed_module
+from app.database_models import (
+    Badge,
+    Challenge,
+    EnglishSession,
+    PointTransaction,
+    RewardRule,
+    StudentBadge,
+    User,
+    VocabularyItem,
 )
-from app.odm import select
-from app.services import english_vocab as ev
+from app.mongodb_data_layer import select
+from app.services.english import english_vocabulary_trainer as ev
 
 NOW = datetime(2026, 11, 4, 9, 0, tzinfo=timezone.utc)
 
@@ -51,7 +113,7 @@ def test_normalise_ignores_case_spacing_and_end_punctuation():
 
 @pytest.fixture()
 def llm(monkeypatch):
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     state = SimpleNamespace(corrections=[], scores={"grammar": 6, "vocabulary": 7, "fluency": 8,
                                                    "sentence_formation": 7})
 
@@ -278,7 +340,7 @@ def test_word_badges_are_awarded(client, db):
 
 
 def test_weekly_review_challenge_counts_reviews(client, db):
-    from app.services.rewards import challenge_progress
+    from app.services.student_progress.rewards_and_badges import challenge_progress
     user = register_student(client)
     item = VocabularyItem(student_id=user["id"], key="k", kind="word", front="k", back="k", box=1,
                           due_at=datetime.now(timezone.utc))

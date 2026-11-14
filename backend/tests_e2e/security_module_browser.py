@@ -1,3 +1,41 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/security_module_browser.py
+#
+# FILE PURPOSE:
+# Interview security module, end to end in a real browser (headless Chromium, fake camera + fake
+# microphone).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# What is REAL here: the app, the backend, MediaPipe face analysis in the browser, the AI interviewer
+# (Ollama + TTS), the event pipeline and database. What is SIMULATED: the person. The fake camera
+# plays a video built from the app's own synthetic 3D interviewer (Rocketbox model, not a real person)
+# rendered facing the camera and with the head turned 45 degrees, an empty room, and two faces; the
+# fake microphone plays output/candidate_answer.wav. Timeline of the fake camera (seconds after the
+# camera opens, loops): 0-22 facing the screen | 22-34 head turned 45 deg | 34-40 facing | 40-50
+# nobody | 50-56 facing 56-66 two faces | 66-90 facing Then: a tab switch (another tab in front for ~6
+# s), 8 s off...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: say, ok, api, render_heads, make_video, text, setup_and_start
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT, MIC, BASE, STUDENT, RECRUITER, TIMELINE, LOGIN, FETCH
+#
+# IMPORTANT DEPENDENCIES:
+#    PIL, numpy, playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Interview security module, end to end in a real browser (headless Chromium, fake camera + fake microphone).
 
 What is REAL here: the app, the backend, MediaPipe face analysis in the browser, the AI interviewer (Ollama + TTS),

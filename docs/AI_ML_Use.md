@@ -47,7 +47,7 @@ Ask: did we change the model's weights using our own dataset? If yes, that is tr
 - Provider/source: Ollama; Apache-2.0 licensed model.
 - Runs locally: Yes. No API key needed.
 - Used by: resume analysis, interview question generation, answer evaluation, English coach, AI match explanation.
-- Where called: backend/app/services/local_llm.py and backend/app/services/ai.py.
+- Where called: backend/app/services/ai_models/language_model_client.py and backend/app/services/interview/ai_interview_service.py.
 - Configuration: OLLAMA_BASE_URL, OLLAMA_MODEL, OLLAMA_NUM_CTX, OLLAMA_KEEP_ALIVE, AI_TEMPERATURE, AI_MAX_OUTPUT_TOKENS, AI_TIMEOUT_SECONDS, AI_MAX_CONCURRENT, AI_DAILY_LIMIT_PER_USER.
 - Typical input: prompt plus context (resume text, skills, previous answers).
 - Typical output: structured JSON (skills, education, scores, feedback, questions).
@@ -60,7 +60,7 @@ Ask: did we change the model's weights using our own dataset? If yes, that is tr
 - Type: embedding model that turns text into a vector of numbers.
 - Runs locally: Yes, downloaded from Hugging Face (~90 MB), Apache-2.0.
 - Used by: job matching and near-duplicate question detection.
-- Where used: backend/app/services/embeddings.py, matching.py, interview_engine.py.
+- Where used: backend/app/services/ai_models/sentence_embedding_model.py, semantic_job_matcher.py, interview_intelligence_rules.py.
 - Example: similarities between job description and candidate profile; paraphrase detection above 0.78 cosine similarity.
 - Training by us: No. We use it pretrained and combine with transparent skill rules.
 
@@ -80,7 +80,7 @@ Ask: did we change the model's weights using our own dataset? If yes, that is tr
 - STT: Whisper base.en via transformers for transcription (~150 MB).
 - Runs locally: Yes, CPU, downloaded on first use.
 - Used by: live voice interview and English avatar sessions.
-- Where used: backend/app/services/tts.py, stt.py, speech_stream.py; frontend/src/pages/student/VoiceInterview.jsx.
+- Where used: backend/app/services/voice/text_to_speech.py, speech_to_text.py, streamed_reply_sentence_splitter.py; frontend/src/pages/student/LiveVoiceInterview.jsx.
 - Training by us: No. Pretrained models.
 
 ### E. MediaPipe Face Landmarker (vision)
@@ -88,7 +88,7 @@ Ask: did we change the model's weights using our own dataset? If yes, that is tr
 - Model: MediaPipe Face Landmarker running in the browser.
 - Purpose: detect face presence, multiple faces, gaze/approx direction, lighting for interview monitoring.
 - Runs locally in browser; only event records uploaded, never frames/video.
-- Used by: frontend/src/monitoring/* and integrity review (backend/app/services/integrity.py).
+- Used by: frontend/src/monitoring/* and integrity review (backend/app/services/monitoring/interview_integrity_rules.py).
 - Training by us: No. Pretrained.
 
 ## 4. Does Our Project Use a Trained Model?
@@ -111,12 +111,12 @@ Short answer: We trained one small traditional ML model. We did NOT train or fin
 
 ```
 Student uploads PDF/DOCX
--> frontend src/pages/student/Resume.jsx
+-> frontend src/pages/student/ResumeUploadAndAnalysis.jsx
 -> POST /api/student/resumes
--> backend app/routers/students.py
--> resume_parser.py extracts text
--> services/ai.py builds prompt (resume text wrapped in tags)
--> local_llm.py calls Ollama
+-> backend app/routers/student_portal_routes.py
+-> resume_text_extractor.py extracts text
+-> services/interview/ai_interview_service.py builds prompt (resume text wrapped in tags)
+-> language_model_client.py calls Ollama
 -> model returns JSON
 -> schema validation + cleanup of invented items
 -> resume analysis + completeness score saved
@@ -127,10 +127,10 @@ Student uploads PDF/DOCX
 
 ```
 Start interview request
--> interviews.py creates interview
--> interview_engine.py builds candidate facts from resume
--> services/ai.py builds question prompt
--> local_llm.py gets question from Ollama
+-> interview_routes.py creates interview
+-> interview_intelligence_rules.py builds candidate facts from resume
+-> services/interview/ai_interview_service.py builds question prompt
+-> language_model_client.py gets question from Ollama
 -> duplicate checks (wording/meaning/topic)
 -> schema validation and output cleanup
 -> question stored in DB and returned
@@ -140,8 +140,8 @@ Start interview request
 
 ```
 Student submits answer
--> interviews.py / answer endpoint
--> ai.py builds evaluation prompt
+-> interview_routes.py / answer endpoint
+-> ai_interview_service.py builds evaluation prompt
 -> Ollama returns scores 0-10
 -> fixed rules apply: empty/'I don't know'<=1, short answers capped
 -> adaptive difficulty updated
@@ -152,7 +152,7 @@ Student submits answer
 
 ```
 Student applies for job
--> matching.py compares profile and job
+-> semantic_job_matcher.py compares profile and job
 -> required/preferred skills coverage
 -> semantic similarity via MiniLM embedding
 -> experience fit
@@ -164,9 +164,9 @@ Student applies for job
 
 ```
 Student sends message
--> english.py routes
--> english_companion.py manages memory and corrections
--> ai.py/ARIA system prompt
+-> english_practice_routes.py routes
+-> english_companion_memory.py manages memory and corrections
+-> ai_interview_service.py/ARIA system prompt
 -> Ollama reply + corrections
 -> frontend shows coaching and confidence meter
 ```
@@ -199,11 +199,11 @@ We do not train the model for each feature. Instead we send carefully designed i
 
 ## 9. Evidence from Code
 
-- backend/app/services/ai.py - prompts, schemas, validation, limits, logging.
-- backend/app/services/local_llm.py - Ollama client and availability checks.
-- backend/app/services/embeddings.py - local embedding model loader.
-- backend/app/services/matching.py - transparent weights and gap cap.
-- backend/app/services/interview_engine.py - candidate facts, duplicate detection.
+- backend/app/services/interview/ai_interview_service.py - prompts, schemas, validation, limits, logging.
+- backend/app/services/ai_models/language_model_client.py - Ollama client and availability checks.
+- backend/app/services/ai_models/sentence_embedding_model.py - local embedding model loader.
+- backend/app/services/resume_and_jobs/semantic_job_matcher.py - transparent weights and gap cap.
+- backend/app/services/interview/interview_intelligence_rules.py - candidate facts, duplicate detection.
 - backend/ml/train_question_classifier.py - trained ML script.
 - backend/ml/data/interview_questions_dev.csv - training data.
 - backend/ml/README.md - method, metrics, limitations.

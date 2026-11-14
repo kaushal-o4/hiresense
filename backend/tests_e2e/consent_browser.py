@@ -1,3 +1,40 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/consent_browser.py
+#
+# FILE PURPOSE:
+# Real-browser check of the hosted-AI consent flow (cloud profile, LOCAL_AI_PROVIDER=gemini).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Needs a backend started with LOCAL_AI_PROVIDER=gemini (a Gemini key is not needed: the AI is
+# reported offline and interviews use the question bank) and the frontend pointing at it. Example (two
+# terminals, from backend): set LOCAL_AI_PROVIDER=gemini& set GEMINI_API_KEY=& set
+# MONGODB_DB=hiresense_e2e_consent .\venv\Scripts\python.exe -m uvicorn app.main:app --port 8023
+# (frontend) set HS_API=http://127.0.0.1:8023& npx vite --port 5193 set
+# HS_E2E_BASE=http://localhost:5193& .\venv\Scripts\python.exe tests_e2e\consent_browser.py Checks:
+# the register checkbox and /privacy say Google; without consent the interview page shows the notice
+# and the API refuses to start (428); "I agree" removes it; the S...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: ok
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    OUT, BASE, EMAIL, START
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Real-browser check of the hosted-AI consent flow (cloud profile, LOCAL_AI_PROVIDER=gemini).
 
 Needs a backend started with LOCAL_AI_PROVIDER=gemini (a Gemini key is not needed: the AI is reported offline and

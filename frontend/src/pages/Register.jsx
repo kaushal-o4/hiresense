@@ -1,3 +1,44 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/Register.jsx
+//
+// FILE PURPOSE:
+// Self-registration page for students and recruiters.
+//
+// WHAT THIS FILE DOES:
+// 1. Lets the user choose student or recruiter.
+// 2. Collects name, email, password and role-specific details.
+// 3. Calls POST /auth/register/{role}.
+// 4. Shows the hosted-AI consent notice when the server uses Gemini.
+// 5. Recruiters may stay 'pending' until an admin approves them.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: POST /auth/register/student, POST
+// /auth/register/recruiter.
+//
+// IMPORTANT FUNCTIONS:
+//    - Register()
+//        Registration form component.
+//
+// INPUT:
+// Form fields typed by the user.
+//
+// OUTPUT:
+// A new account (and sign-in for students).
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: AuthContext.jsx, apiClient.js, components/HostedAiConsentGate.jsx,
+//    components/SharedUiComponents.jsx, pages/AuthShell.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Self-registration for students and recruiters (POST /auth/register/{role}). Recruiter accounts stay
  * pending until an admin approves them.
@@ -5,11 +46,11 @@
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { post } from "../api";
-import { useAuth } from "../auth";
-import { Button, ErrorBox, Field, Notice, Tabs } from "../components/ui";
+import { post } from "../apiClient";
+import { useAuth } from "../AuthContext";
+import { Button, ErrorBox, Field, Notice, Tabs } from "../components/SharedUiComponents";
 import AuthShell from "./AuthShell";
-import { usePrivacyInfo } from "../components/AIConsent";
+import { usePrivacyInfo } from "../components/HostedAiConsentGate";
 
 export default function Register() {
   const { refresh } = useAuth();

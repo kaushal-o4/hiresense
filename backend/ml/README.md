@@ -18,7 +18,7 @@ It is a cross-check only: it never changes the interview.
 ## Data (development only)
 * `data/interview_questions_dev.csv`: **176 questions written and labelled by hand for this project.** This is a
   development dataset, not real interview data, and the labels reflect one person's judgement.
-* The 15 de-duplicated admin seed questions from `app/seed.py`.
+* The 15 de-duplicated admin seed questions from `app/seed_initial_data.py`.
 * 191 questions in total. Type classes: technical 89, hr 34, behavioral 26, communication 22, project 20.
 
 ## Method

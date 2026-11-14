@@ -1,0 +1,84 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/recruiter/RecruiterDashboard.jsx
+//
+// FILE PURPOSE:
+// Recruiter home page.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /recruiter/dashboard.
+// 2. Shows job and applicant counts and charts.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /recruiter/dashboard.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: RecruiterDashboard
+//
+// INPUT:
+// Dashboard data.
+//
+// OUTPUT:
+// Stats and charts.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/DashboardCharts.jsx, components/SharedUiComponents.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
+/* Recruiter home: job and applicant counts and charts (GET /recruiter/dashboard). */
+
+import { Link } from "react-router-dom";
+import { Briefcase, CalendarClock, CheckCircle2, Plus, Users } from "lucide-react";
+import { get } from "../../apiClient";
+import { MultiBar } from "../../components/DashboardCharts";
+import { Button, Card, ErrorBox, PageHeader, Spinner, StatCard, StatusPill, Table, fmtDateTime, useApi } from "../../components/SharedUiComponents";
+
+export default function RecruiterDashboard() {
+  const { data, error, loading, reload } = useApi(() => get("/recruiter/dashboard"));
+  if (loading) return <Spinner />;
+  if (error) return <ErrorBox message={error} onRetry={reload} />;
+  const bs = data.applications.by_status;
+  return (
+    <div className="space-y-6">
+      <PageHeader title="Recruitment dashboard" subtitle="Your jobs, candidates and hiring progress."
+        actions={<Link to="/recruiter/jobs?new=1"><Button><Plus size={16} /> Post a job</Button></Link>} />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+        <StatCard label="Active jobs" value={data.jobs.published} icon={Briefcase} hint={`${data.jobs.draft} drafts · ${data.jobs.closed} closed`} />
+        <StatCard label="Applications" value={data.applications.total} icon={Users} tone="sky" hint={`${bs.applied || 0} awaiting review`} />
+        <StatCard label="Shortlisted" value={(bs.shortlisted || 0) + (bs.interview_scheduled || 0)} icon={CalendarClock} tone="amber" hint={`${bs.interview_scheduled || 0} interviews scheduled`} />
+        <StatCard label="Selected" value={bs.selected || 0} icon={CheckCircle2} tone="green" hint={`${bs.rejected || 0} not selected`} />
+      </div>
+      <Card title="Hiring funnel by job">
+        <MultiBar data={data.per_job.map((j) => ({ ...j, name: j.title.length > 18 ? `${j.title.slice(0, 18)}…` : j.title }))} nameKey="name"
+          keys={[{ key: "applications", label: "Applications" }, { key: "shortlisted", label: "Shortlisted" }, { key: "selected", label: "Selected" }]} />
+      </Card>
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        <Card title="Recent applications" bodyClass="">
+          <Table rows={data.recent_applications} empty="No applications yet"
+            columns={[
+              { label: "Candidate", render: (a) => <Link className="font-medium text-brand-700 hover:underline" to={`/recruiter/candidates/${a.student_id}`}>{a.student?.full_name}</Link> },
+              { label: "Job", render: (a) => <Link className="hover:underline" to={`/recruiter/jobs/${a.job_id}`}>{a.job?.title}</Link> },
+              { label: "Match", render: (a) => <span className={`num font-semibold ${a.match?.score >= 75 ? "text-emerald-700" : a.match?.score >= 50 ? "text-amber-700" : "text-slate-700"}`}>{a.match?.score ?? "—"}</span> },
+              { label: "Status", render: (a) => <StatusPill status={a.status} /> },
+            ]} />
+        </Card>
+        <Card title="Upcoming interviews" bodyClass="">
+          <Table rows={data.upcoming_interviews} empty="No interviews scheduled"
+            columns={[
+              { label: "Candidate", render: (a) => a.student?.full_name },
+              { label: "Job", render: (a) => a.job?.title },
+              { label: "When", render: (a) => fmtDateTime(a.interview_at) },
+            ]} />
+        </Card>
+      </div>
+    </div>
+  );
+}

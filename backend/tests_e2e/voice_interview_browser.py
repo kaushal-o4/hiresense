@@ -1,3 +1,47 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/voice_interview_browser.py
+#
+# FILE PURPOSE:
+# Real-browser end-to-end test of the live voice interview (Chromium via Playwright).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# The microphone is Chromium's fake capture device fed with a WAV of a spoken answer, so the whole
+# pipeline runs: mic -> AudioWorklet recorder -> WAV upload -> local Whisper -> review -> existing
+# answer API -> local LLM -> next question -> local TTS -> avatar lip sync. Run (backend + frontend +
+# Ollama running), from the backend folder: .\venv\Scripts\python.exe -m pip install playwright
+# .\venv\Scripts\python.exe -m playwright install chromium .\venv\Scripts\python.exe
+# tests_e2e\voice_interview_browser.py Uses the seeded demo student unless HS_E2E_EMAIL /
+# HS_E2E_PASSWORD are set. Screenshots go to tests_e2e/output/.
+#
+# IMPORTANT FUNCTIONS:
+#    - make_candidate_audio()
+#        The fake microphone plays this WAV: a spoken answer made with a different local voice,
+#        plus pauses.
+#    - wait_status()
+#        Poll the status badge until it matches `pattern`, sampling the avatar meanwhile.
+#    Other helper functions: say, mouth_stats
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT, MIC, BASE, MIC, INIT, SAMPLE
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/voice/text_to_speech.py
+#
+# IMPORTANT DEPENDENCIES:
+#    numpy, playwright, soundfile
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Real-browser end-to-end test of the live voice interview (Chromium via Playwright).
 
 The microphone is Chromium's fake capture device fed with a WAV of a spoken answer, so the whole pipeline runs:
@@ -35,7 +79,7 @@ def make_candidate_audio():
     import numpy as np
     import soundfile as sf
     sys.path.insert(0, str(HERE.parent))
-    from app.services import tts
+    from app.services.voice import text_to_speech as tts
     r = tts.synthesize("In my placement tracker project I used Python with Flask for the backend and React for the "
                        "frontend. I designed REST endpoints for students and companies, and I stored the data in a "
                        "SQL database with proper indexes.", voice="am_michael")

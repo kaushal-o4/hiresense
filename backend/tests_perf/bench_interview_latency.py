@@ -1,3 +1,43 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_perf/bench_interview_latency.py
+#
+# FILE PURPOSE:
+# Latency benchmark for the interview pipeline with the REAL local models (Ollama, Kokoro, Whisper).
+#
+# WHAT THIS FILE DOES:
+# 1. Performance benchmark with the real models.
+# 2. Run manually; results are written to tests_perf/results/.
+#
+# HOW THIS FILE WORKS:
+# Measures each stage separately so the bottleneck is visible instead of guessed: * LLM cold load,
+# question generation, answer scoring (with Ollama's own load / prompt / generation split) * text-to-
+# speech: whole question vs. first sentence only (what the streaming path waits for) * speech-to-text
+# of a recorded answer * the full "answer -> next question" server path (score + question), as the old
+# endpoint did it Run from the backend folder (Ollama running, model pulled):
+# .\venv\Scripts\python.exe tests_perf\bench_interview_latency.py [--runs 5] [--out results.json] Uses
+# an in-memory database; no candidate data is written anywhere. Prints p50 / p95 / mean per stage.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: pct, summary, timed, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, WAV, RESUME, ANSWERS
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/seed_initial_data.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/sentence_embedding_model.py,
+#    app/services/interview/ai_interview_service.py, app/services/voice/speech_to_text.py,
+#    app/services/voice/streamed_reply_sentence_splitter.py, app/services/voice/text_to_speech.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Latency benchmark for the interview pipeline with the REAL local models (Ollama, Kokoro, Whisper).
 
 Measures each stage separately so the bottleneck is visible instead of guessed:
@@ -25,8 +65,8 @@ os.environ["MONGODB_DB"] = "hiresense_bench"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
-from app import database, seed as seed_module  # noqa: E402
-from app.config import get_settings  # noqa: E402
+from app import database_connection as database, seed_initial_data as seed_module  # noqa: E402
+from app.application_configuration import get_settings  # noqa: E402
 
 get_settings.cache_clear()
 HERE = Path(__file__).resolve().parent
@@ -85,7 +125,9 @@ def main():
     factory = database.SessionLocal
     db = factory()
 
-    from app.services import ai, embeddings, local_llm, stt, tts
+    from app.services.interview import ai_interview_service as ai
+    from app.services.ai_models import sentence_embedding_model as embeddings, language_model_client as local_llm
+    from app.services.voice import speech_to_text as stt, text_to_speech as tts
     if "--no-warm" not in sys.argv and hasattr(local_llm, "warmup"):
         embeddings.warmup()  # the server loads these at startup (main.warm_up_models); do the same here
         local_llm.warmup()
@@ -123,7 +165,7 @@ def main():
         extra = {}
         marks: dict = {}
         if streaming:  # new code: when is the first complete sentence ready to be spoken?
-            from app.services.speech_stream import SpokenStream
+            from app.services.voice.streamed_reply_sentence_splitter import SpokenStream
             t_start = time.perf_counter()
             ss = SpokenStream(lambda s: marks.setdefault("first", (time.perf_counter() - t_start) * 1000))
             extra = {"on_delta": ss.feed}

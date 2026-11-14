@@ -1,13 +1,54 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/Notifications.jsx
+//
+// FILE PURPOSE:
+// The full notifications list for any role.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /notifications with paging.
+// 2. Marks one as read (POST /notifications/{id}/read) or all (POST /notifications/read-all).
+// 3. Deletes a notification (DELETE /notifications/{id}).
+// 4. Shows whether the live connection is active and reloads on live signals.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /notifications, POST
+// /notifications/{id}/read, POST /notifications/read-all, DELETE /notifications/{id}.
+//
+// IMPORTANT FUNCTIONS:
+//    - Notifications()
+//        Page component.
+//    - LiveStatus()
+//        Shows live connection status.
+//
+// INPUT:
+// Notification list from the API and live stream signals.
+//
+// OUTPUT:
+// Notification list UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, live/notificationStream.js
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Full notification list for any role: mark as read, mark all read, delete (/notifications endpoints).
- * The header bell in components/Layout.jsx shows the latest few.
+ * The header bell in components/AppShellLayout.jsx shows the latest few.
  */
 
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Trash2 } from "lucide-react";
-import { del, get, post } from "../api";
-import { Button, Card, EmptyState, ErrorBox, PageHeader, Pagination, Spinner, fmtDateTime, useApi, useToast } from "../components/ui";
+import { del, get, post } from "../apiClient";
+import { Button, Card, EmptyState, ErrorBox, PageHeader, Pagination, Spinner, fmtDateTime, useApi, useToast } from "../components/SharedUiComponents";
 import { onNotificationStatus, subscribeNotifications } from "../live/notificationStream";
 
 const LIVE_LABEL = { live: "Live", connecting: "Connecting…", polling: "Reconnecting… (checking every 30 s)" };

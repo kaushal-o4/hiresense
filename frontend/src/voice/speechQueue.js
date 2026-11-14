@@ -1,3 +1,36 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/speechQueue.js
+//
+// FILE PURPOSE:
+// Keeps streamed speech in the correct order without overlaps (pure logic, no audio).
+//
+// WHAT THIS FILE DOES:
+// 1. Stores numbered sentences in lanes (e.g. greeting, then question).
+// 2. Waits for sentence n before playing n+1.
+// 3. Falls back to the browser voice from a failed sentence onwards.
+// 4. Can retract unplayed sentences.
+//
+// HOW THIS FILE WORKS:
+// SpeechQueue is a small class; speechPlayer.js calls it to decide what to play next.
+//
+// IMPORTANT FUNCTIONS:
+//    - SpeechQueue()
+//        Ordered multi-lane speech queue.
+//
+// INPUT:
+// Sentence text and later its audio.
+//
+// OUTPUT:
+// Next item to play.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: voice/speechPlayer.js
+//    Tested by: voice/streaming.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Ordering logic for streamed speech, kept free of audio APIs so it can be unit-tested.
 //
 // Speech arrives as numbered sentences in "lanes" that play one after another (e.g. "greeting" then

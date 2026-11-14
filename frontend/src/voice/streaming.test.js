@@ -1,3 +1,30 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/streaming.test.js
+//
+// FILE PURPOSE:
+// Unit tests for streamed speech and the SSE parser.
+//
+// WHAT THIS FILE DOES:
+// 1. SpeechQueue ordering and fallbacks.
+// 2. SSE parsing across split chunks.
+// 3. End-of-speech detection.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: res
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/recorder.js, voice/speechQueue.js, voice/turnStream.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { describe, expect, it } from "vitest";
 import { vadStep } from "./recorder";
 import { SpeechQueue } from "./speechQueue";

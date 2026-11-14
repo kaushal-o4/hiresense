@@ -1,3 +1,40 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_english_profile.py
+#
+# FILE PURPOSE:
+# Recurring-mistake profile for the English companion. The language model is mocked.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 6 test(s), e.g.: classify known patterns; classify does not guess; a pattern becomes
+#    recurring only after enough corrections in enough sessions; the note is not sent in other
+#    learning modes; student can dismiss and clear and cannot touch anothers; deleting a session
+#    keeps the learning profile.
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: test_classify_known_patterns, test_classify_does_not_guess, llm,
+#    new_session, say,
+#    test_a_pattern_becomes_recurring_only_after_enough_corrections_in_enough_sessions,
+#    test_the_note_is_not_sent_in_other_learning_modes,
+#    test_student_can_dismiss_and_clear_and_cannot_touch_anothers,
+#    test_deleting_a_session_keeps_the_learning_profile
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/ai_models/language_model_client.py,
+#    app/services/english/english_mistake_profile.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Recurring-mistake profile for the English companion. The language model is mocked."""
 import json
 from types import SimpleNamespace
@@ -5,7 +42,7 @@ from types import SimpleNamespace
 import pytest
 
 from conftest import register_student
-from app.services import english_profile as ep
+from app.services.english import english_mistake_profile as ep
 
 
 @pytest.mark.parametrize("original, corrected, category", [
@@ -35,7 +72,7 @@ def test_classify_does_not_guess(original, corrected):
 
 @pytest.fixture()
 def llm(monkeypatch):
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     state = SimpleNamespace(prompts=[], correction=None)
 
     def chat_json(system, prompt, schema, **kw):

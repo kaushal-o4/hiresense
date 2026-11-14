@@ -1,4 +1,37 @@
-/* Small presentational pieces of the live interview room (pages/student/VoiceInterview.jsx). */
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/RoomParts.jsx
+//
+// FILE PURPOSE:
+// Small presentational pieces of the live interview room.
+//
+// WHAT THIS FILE DOES:
+// 1. SubtitleLine: subtitles with the current word highlighted.
+// 2. RoundButton, Panel, Stat, Toggle: basic room UI pieces.
+//
+// HOW THIS FILE WORKS:
+// Simple React components with props only.
+//
+// IMPORTANT FUNCTIONS:
+//    - SubtitleLine()
+//        Subtitles: exactly what is being said (greeting included); the word being spoken is
+//        highlighted.
+//    Other helper functions: RoundButton, Panel, Stat, Toggle
+//
+// INPUT:
+// Props.
+//
+// OUTPUT:
+// UI elements.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: pages/student/LiveVoiceInterview.jsx, voice/ControlBar.jsx,
+//    voice/RoomSettingsPanel.jsx, voice/RoomSidePanels.jsx
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
+/* Small presentational pieces of the live interview room (pages/student/LiveVoiceInterview.jsx). */
 
 const SUB_SIZE = { sm: "text-sm", md: "text-base", lg: "text-lg sm:text-xl" };
 

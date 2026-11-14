@@ -1,3 +1,41 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# frontend/avatar-src/compress_avatars.py
+#
+# FILE PURPOSE:
+# Shrinks the interviewer .glb files for faster web loading.
+#
+# WHAT THIS FILE DOES:
+# 1. Unpacks a GLB with gltf-transform.
+# 2. Re-encodes textures as WebP with Pillow.
+# 3. Compresses geometry and blendshapes with meshopt and repacks the GLB.
+#
+# HOW THIS FILE WORKS:
+# Run: python frontend/avatar-src/compress_avatars.py IN.glb OUT.glb [...]. Needs Node (npx) and
+# Pillow. Avatar3D.jsx sets a MeshoptDecoder to read the result.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: npx, compress
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    CLI
+#
+# INPUT:
+# Original GLB files.
+#
+# OUTPUT:
+# Compressed GLB files (bones and morph names unchanged).
+#
+# IMPORTANT DEPENDENCIES:
+#    PIL
+#
+# IMPORTANT NOTE:
+# Developer tool; run on the original exports, not on already-compressed files.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Shrink the interviewer GLBs for the web: WebP textures (Pillow) + meshopt geometry compression (gltf-transform).
 
     python frontend/avatar-src/compress_avatars.py IN.glb OUT.glb [IN2.glb OUT2.glb ...]

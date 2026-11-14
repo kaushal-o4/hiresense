@@ -1,7 +1,48 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/components/ConversationMemory.jsx
+//
+// FILE PURPOSE:
+// Shows what Aria (the English practice partner) remembers in the current English conversation.
+//
+// WHAT THIS FILE DOES:
+// 1. Lists earlier topics, the student's interests and important details Aria noted.
+// 2. Shows which grammar points are being practised.
+// 3. Shows the current learning mode label.
+//
+// HOW THIS FILE WORKS:
+// It receives the memory object returned by the backend and renders it in a Card; renders nothing if
+// there is no memory.
+//
+// IMPORTANT FUNCTIONS:
+//    - ConversationMemory()
+//        What Aria remembers from this conversation (topics, interests, details), so the
+//        student can see it.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - LEARNING_MODE_LABEL
+//        Readable names of the three learning modes.
+//
+// INPUT:
+// Props: memory (from the English session API) and learningMode.
+//
+// OUTPUT:
+// A 'What Aria remembers' card.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: components/SharedUiComponents.jsx
+//    Used by: pages/student/EnglishAvatarSession.jsx, pages/student/EnglishSession.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Panel showing what Aria remembers in an English conversation (used by EnglishSession and EnglishAvatarSession). */
 
 import { Brain } from "lucide-react";
-import { Card, Pill } from "./ui";
+import { Card, Pill } from "./SharedUiComponents";
 
 export const LEARNING_MODE_LABEL = {
   free_conversation: "Free conversation",

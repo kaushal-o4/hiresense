@@ -1,3 +1,48 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/audioMonitor.js
+//
+// FILE PURPOSE:
+// Approximately detects a possible additional voice during the candidate's answer, and tracks
+// connection outages.
+//
+// WHAT THIS FILE DOES:
+// 1. Uses only microphone loudness levels from the already-open answer recording.
+// 2. Compares voiced audio with whether the single visible face's mouth is moving.
+// 3. Reports nothing when it cannot attribute the voice (no face / several faces).
+// 4. ConnectionTracker records network down/up episodes.
+//
+// HOW THIS FILE WORKS:
+// SpeechAttribution.audio() and .face() collect samples; end() decides if sustained voice without
+// mouth movement happened.
+//
+// IMPORTANT FUNCTIONS:
+//    - SpeechAttribution()
+//        Audio-visual check for a voice that may not be the candidate's.
+//    - ConnectionTracker()
+//        Tracks offline periods.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - AUDIO_DEFAULTS
+//        Thresholds for the audio check.
+//
+// INPUT:
+// Audio levels and face mouth-openness samples.
+//
+// OUTPUT:
+// Possible-additional-voice or connection events.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/interviewMonitor.js
+//    Tested by: monitoring/interviewSecurity.test.js
+//
+// IMPORTANT NOTE:
+// Nothing is recorded or sent for this check except the event; accent, emotion or speech style are
+// never analysed.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Possible additional voice during the candidate's answer - on-device, approximate, pure (unit-tested).
 //
 // Only the audio levels of the microphone stream that is ALREADY open for the answer are used (MicRecorder's

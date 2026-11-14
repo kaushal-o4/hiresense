@@ -1,6 +1,44 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_health_and_routing.py
+#
+# FILE PURPOSE:
+# Health endpoints, request IDs and per-task model routing. No real model is used.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 6 test(s), e.g.: liveness needs nothing; readiness reports components and never fails
+#    for missing ai; request id is returned and unsafe ids are replaced; placeholder secret key is
+#    refused only when served securely; router defaults to the main model and follows tier
+#    settings; a routed model that is not downloaded falls back to the main model.
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: test_liveness_needs_nothing,
+#    test_readiness_reports_components_and_never_fails_for_missing_ai,
+#    test_request_id_is_returned_and_unsafe_ids_are_replaced,
+#    test_placeholder_secret_key_is_refused_only_when_served_securely,
+#    test_router_defaults_to_the_main_model_and_follows_tier_settings,
+#    test_a_routed_model_that_is_not_downloaded_falls_back_to_the_main_model
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/main.py,
+#    app/services/ai_models/ai_task_model_router.py,
+#    app/services/ai_models/language_model_client.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Health endpoints, request IDs and per-task model routing. No real model is used."""
-from app.config import get_settings
-from app.services import local_llm, model_router
+from app.application_configuration import get_settings
+from app.services.ai_models import language_model_client as local_llm, ai_task_model_router as model_router
 
 
 def test_liveness_needs_nothing(client):

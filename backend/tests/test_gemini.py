@@ -1,11 +1,60 @@
-"""Gemini provider (services/gemini_llm.py) and the Ollama fallback in local_llm. No real API is called: the HTTP
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_gemini.py
+#
+# FILE PURPOSE:
+# Gemini provider (services/ai_models/gemini_api_client.py) and the Ollama fallback in local_llm. No
+# real API is called: the HTTP client is replaced by a fake that replays Server-Sent Events.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 15 test(s), e.g.: streams json and skips thought parts; retries rate limit and server
+#    errors; unsupported thinking option is downgraded; timeout is not retried and starts cooldown;
+#    cut off answer is an error; falls back to ollama when gemini fails; no fallback after text was
+#    streamed; status picks newest flash when configured model is missing; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: sse, text_chunk, gemini, test_streams_json_and_skips_thought_parts,
+#    test_retries_rate_limit_and_server_errors, test_unsupported_thinking_option_is_downgraded,
+#    test_timeout_is_not_retried_and_starts_cooldown, test_cut_off_answer_is_an_error,
+#    test_falls_back_to_ollama_when_gemini_fails, test_no_fallback_after_text_was_streamed,
+#    test_status_picks_newest_flash_when_configured_model_is_missing,
+#    test_missing_key_reports_setup_hint, test_routing_uses_gemini_tier_models, _with_backup,
+#    test_overloaded_model_switches_to_backup_without_waiting, test_slow_model_switches_to_backup,
+#    test_backup_not_offered_to_key_is_skipped, test_cut_off_json_retries_on_backup_model,
+#    test_streamed_reply_is_never_restarted_on_bad_json
+#
+# IMPORTANT CLASSES:
+#    - FakeResponse
+#    - FakeHttp
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/services/ai_models/ai_task_model_router.py,
+#    app/services/ai_models/gemini_api_client.py, app/services/ai_models/language_model_client.py
+#
+# IMPORTANT DEPENDENCIES:
+#    httpx, pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
+"""Gemini provider (services/ai_models/gemini_api_client.py) and the Ollama fallback in local_llm. No real API is called: the HTTP
 client is replaced by a fake that replays Server-Sent Events."""
 import json
 
 import pytest
 
-from app.config import get_settings
-from app.services import gemini_llm, local_llm, model_router
+from app.application_configuration import get_settings
+from app.services.ai_models import (
+    gemini_api_client as gemini_llm,
+    language_model_client as local_llm,
+    ai_task_model_router as model_router,
+)
 
 
 def sse(*chunks) -> list[str]:

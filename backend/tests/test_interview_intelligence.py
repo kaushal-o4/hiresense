@@ -1,4 +1,49 @@
-﻿"""Interview intelligence wired into the interview API: resume-grounded prompts, answer signals, coverage,
+﻿# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_interview_intelligence.py
+#
+# FILE PURPOSE:
+# Interview intelligence wired into the interview API: resume-grounded prompts, answer signals,
+# coverage, duplicate rejection with retries, fallbacks and per-personality behaviour. The LLM is
+# MOCKED (prompts are inspected); real-model behaviour is measured by eval/run_eval.py.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 9 test(s), e.g.: prompt uses full resume facts and stage; vague answer signal reaches
+#    the prompt and metadata is stored; paraphrased duplicate is rejected and regenerated; repeated
+#    failures use a resume grounded fallback not a loop; clarifying followup on same aspect is
+#    allowed; repeat request allows asking again; stock praise is removed from the spoken question;
+#    each personality adds its own behaviour rules; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: q, student, start, answer, q_prompts,
+#    test_prompt_uses_full_resume_facts_and_stage,
+#    test_vague_answer_signal_reaches_the_prompt_and_metadata_is_stored,
+#    test_paraphrased_duplicate_is_rejected_and_regenerated,
+#    test_repeated_failures_use_a_resume_grounded_fallback_not_a_loop,
+#    test_clarifying_followup_on_same_aspect_is_allowed, test_repeat_request_allows_asking_again,
+#    test_stock_praise_is_removed_from_the_spoken_question,
+#    test_each_personality_adds_its_own_behaviour_rules,
+#    test_personality_configs_are_distinct_and_public_part_hides_prompts
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    ANALYSIS
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/services/interview/interviewer_personalities.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest, test_local_ai
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
+"""Interview intelligence wired into the interview API: resume-grounded prompts, answer signals, coverage,
 duplicate rejection with retries, fallbacks and per-personality behaviour. The LLM is MOCKED (prompts are inspected);
 real-model behaviour is measured by eval/run_eval.py."""
 from datetime import datetime, timezone
@@ -25,7 +70,7 @@ def q(text, topic="", aspect="overview", kind="new_topic", followup=False, qtype
 
 @pytest.fixture()
 def student(client, db):
-    from app.models import Resume
+    from app.database_models import Resume
     sid = register_student(client)["id"]
     db.add(Resume(student_id=sid, filename="r.pdf", stored_path="-", content_type="application/pdf", raw_text="x",
                   is_current=True, analysis_status="completed", analysis=ANALYSIS,
@@ -75,7 +120,7 @@ def test_vague_answer_signal_reaches_the_prompt_and_metadata_is_stored(client, m
     prompt = q_prompts(mock_llm)[-1]["prompt"]
     assert "which part they were personally responsible for" in prompt
     assert "Already explored: hospital resources management system / overview" in prompt
-    from app.models import InterviewQuestion
+    from app.database_models import InterviewQuestion
     stored = s["questions"][-1]
     assert stored["text"] == "Which part of the hospital system did you build yourself?"
     db.expire_all()
@@ -144,7 +189,7 @@ def test_each_personality_adds_its_own_behaviour_rules(client, mock_llm, student
 
 
 def test_personality_configs_are_distinct_and_public_part_hides_prompts(client):
-    from app.services import interviewers
+    from app.services.interview import interviewer_personalities as interviewers
     ps = list(interviewers.INTERVIEWERS.values())
     assert len({p.max_question_words for p in ps}) >= 3 and len({p.aspect_order for p in ps}) == 4
     marcus = interviewers.get("marcus")

@@ -1,3 +1,48 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/visemes.js
+//
+// FILE PURPOSE:
+// Lip-sync maths: mouth-shape parameters, timeline lookup and SVG mouth geometry.
+//
+// WHAT THIS FILE DOES:
+// 1. Defines mouth SHAPES for each viseme.
+// 2. Finds the active viseme segment at a time (segmentAt, mouthAt, visemeWeightsAt).
+// 3. approximateVisemes() estimates shapes from letters when no phoneme timing exists.
+// 4. mouthGeometry() draws the SVG mouth.
+//
+// HOW THIS FILE WORKS:
+// Pure functions so they can be tested without a browser.
+//
+// IMPORTANT FUNCTIONS:
+//    - mouthAt()
+//        Mouth shape at time t from a viseme timeline.
+//    - visemeWeightsAt()
+//        Viseme weights at time t (3D).
+//    - approximateVisemes()
+//        Approximate shapes for a word (browser voice fallback).
+//    - segmentAt()
+//        Index of the segment active at time t (binary search), or -1.
+//    - amplitudeFactor()
+//        Map an audio RMS level to a 0..1 openness factor so the mouth closes when the audio is
+//        quiet.
+//    - mouthGeometry()
+//        SVG geometry for the mouth centred at (cx, cy).
+//    Other helper functions: lerpShape, f
+//
+// INPUT:
+// Viseme timeline and time.
+//
+// OUTPUT:
+// Mouth parameters.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: voice/SvgAvatar2D.jsx, voice/speechPlayer.js
+//    Tested by: voice/voice.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Lip-sync maths: viseme (mouth shape) parameters, timeline lookup and SVG mouth geometry.
 // Pure functions only, so they can be unit-tested without a browser.
 

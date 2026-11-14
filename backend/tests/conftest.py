@@ -1,3 +1,58 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/conftest.py
+#
+# FILE PURPOSE:
+# Shared pytest setup: forces a safe test environment (no real AI model, no Gemini, no email, a
+# separate 'hiresense_test' MongoDB database emptied before every test, throwaway upload folder) and
+# provides fixtures such as the API test client, the database session and fake AI responses.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    - join_app_threads()
+#        Wait for the app's background threads (first-question prefetch, streamed turns,
+#        background feedback), so a thread still running from one step (or test) cannot write
+#        into the next one's data.
+#    - db_session_factory()
+#        An emptied MongoDB test database with the standard seed (admin account, badges,
+#        question bank, ...).
+#    - new_client()
+#        Factory for additional independent clients (separate cookie jars) sharing the same DB.
+#    - fake_embed()
+#        MOCK embedding: bag of hashed words + character trigrams, unit length.
+#    - fake_embeddings()
+#        MOCKED embedding model for semantic-matching tests.
+#    - fake_ai()
+#        MOCKED local LLM: deterministic stand-in used to test the AI-dependent workflows end
+#        to end.
+#    Other helper functions: _isolated_uploads, _join_app_threads, _prefetch_runs_inline,
+#    _reset_ai_caches, client, db, make_client, register_student, login, admin_login
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    APP_THREADS
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/main.py,
+#    app/seed_initial_data.py, app/services/ai_models/gemini_api_client.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/sentence_embedding_model.py,
+#    app/services/interview/ai_interview_service.py,
+#    app/services/platform_support/background_jobs.py,
+#    app/services/platform_support/rate_limiter.py
+#
+# IMPORTANT DEPENDENCIES:
+#    fastapi, numpy, pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 import atexit
 import os
 import shutil
@@ -24,9 +79,9 @@ atexit.register(shutil.rmtree, _UPLOADS, ignore_errors=True)
 
 import pytest
 from fastapi.testclient import TestClient
-from app import database, seed as seed_module
-from app.config import get_settings
-from app.database import get_db
+from app import database_connection as database, seed_initial_data as seed_module
+from app.application_configuration import get_settings
+from app.database_connection import get_db
 from app.main import app
 
 get_settings.cache_clear()
@@ -62,7 +117,7 @@ def _join_app_threads():
 def _prefetch_runs_inline(monkeypatch):
     """Run the first-question prefetch synchronously inside the request that starts the interview, so tests that
     check the first question exists right after the start response are deterministic."""
-    from app.services import background
+    from app.services.platform_support import background_jobs as background
 
     real_spawn = background.spawn
 
@@ -76,8 +131,8 @@ def _prefetch_runs_inline(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def _reset_ai_caches():
-    from app.services import gemini_llm, local_llm
-    from app.services import limiter
+    from app.services.ai_models import gemini_api_client as gemini_llm, language_model_client as local_llm
+    from app.services.platform_support import rate_limiter as limiter
     local_llm._status_cache.update(at=0.0, value=None)
     gemini_llm._status_cache.update(at=0.0, value=None)
     limiter.reset()  # login lockout + rate limits; ids restart at 1 in every test's fresh database
@@ -103,7 +158,7 @@ def client(db_session_factory):
             db.close()
 
     app.dependency_overrides[get_db] = override
-    from app.services import limiter
+    from app.services.platform_support import rate_limiter as limiter
     limiter.reset()
     with TestClient(app) as c:
         yield c
@@ -178,7 +233,7 @@ def fake_embed(texts):
 @pytest.fixture()
 def fake_embeddings(monkeypatch):
     """MOCKED embedding model for semantic-matching tests."""
-    from app.services import embeddings
+    from app.services.ai_models import sentence_embedding_model as embeddings
     monkeypatch.setattr(embeddings, "embed", fake_embed)
     return fake_embed
 
@@ -186,7 +241,7 @@ def fake_embeddings(monkeypatch):
 @pytest.fixture()
 def fake_ai(monkeypatch):
     """MOCKED local LLM: deterministic stand-in used to test the AI-dependent workflows end to end."""
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
 
     monkeypatch.setattr(ai, "ai_status", lambda db: {"configured": True, "enabled": True, "available": True, "model": "stub"})
     counter = {"q": 0}

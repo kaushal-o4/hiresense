@@ -56,7 +56,7 @@ resume analysis and spoken answer is a request. The demo caps each user at `AI_D
 3. Wait for the deploy, then open `https://<api>.onrender.com/api/health/ready`. Expected:
    `"database": {"ok": true}`, `"language_model": {"ok": true}`, and `speech_synthesis`/`embeddings` listed as
    degraded. Those two are off on purpose in the cloud profile.
-4. Each start runs `python -m app.seed` (safe to repeat): it creates the admin account, badges and the question bank.
+4. Each start runs `python -m app.seed_initial_data` (safe to repeat): it creates the admin account, badges and the question bank.
 
 ## 4. Web app: Vercel
 

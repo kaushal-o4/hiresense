@@ -1,3 +1,47 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/motion.js
+//
+// FILE PURPOSE:
+// Procedural 'aliveness' for the interviewer: natural gaze, blinks, head motion and micro-expressions.
+//
+// WHAT THIS FILE DOES:
+// 1. Gaze: holds eye contact with small movements, looks away briefly while speaking or thinking.
+// 2. Blinker: random blink intervals, double and half blinks.
+// 3. HeadMotion: smooth non-repeating noise plus nods.
+// 4. Micro: short small expressions tied to the conversation.
+//
+// HOW THIS FILE WORKS:
+// Pure classes using a seeded random generator (rng) so tests are repeatable.
+//
+// IMPORTANT FUNCTIONS:
+//    - Gaze()
+//        Eye direction controller.
+//    - Blinker()
+//        Blink controller.
+//    - HeadMotion()
+//        Head movement controller.
+//    - Micro()
+//        Micro-expression controller.
+//    - rng()
+//        Deterministic random number generator.
+//    - noise1()
+//        Smooth 1-D noise.
+//    Other helper functions: smooth
+//
+// INPUT:
+// Time step and conversation mode.
+//
+// OUTPUT:
+// Gaze, blink, head and expression values.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: voice/Avatar3D.jsx
+//    Tested by: voice/motion.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Procedural "aliveness" for the interviewer: gaze, blinks, head motion and micro-expressions.
 // Pure (no three.js / DOM). Every controller takes an injectable random source so tests are deterministic.
 //

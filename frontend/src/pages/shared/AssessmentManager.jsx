@@ -1,3 +1,47 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/shared/AssessmentManager.jsx
+//
+// FILE PURPOSE:
+// Create, edit, AI-draft and view results of assessments (used by recruiters and admins).
+//
+// WHAT THIS FILE DOES:
+// 1. Lists assessments (GET /assessments).
+// 2. Create/update/delete (POST /assessments, PUT/DELETE /assessments/{id}).
+// 3. Lets AI draft MCQ questions (POST /assessments/generate) for review before saving.
+// 4. Shows results of an assessment (GET /assessments/{id}/results).
+// 5. Recruiters can link an assessment to one of their jobs.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /assessments, POST /assessments,
+// PUT /assessments/{id}, DELETE /assessments/{id}, POST /assessments/generate, GET
+// /assessments/{id}/results, GET /recruiter/jobs or /admin/jobs.
+//
+// IMPORTANT FUNCTIONS:
+//    - AssessmentManager()
+//        Page component.
+//    - AssessmentForm()
+//        Create/edit form with question editor.
+//    Other helper functions: blankQ
+//
+// INPUT:
+// Form input and API data.
+//
+// OUTPUT:
+// Saved assessments and result tables.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: AuthContext.jsx, apiClient.js, components/SharedUiComponents.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Create, edit, AI-draft and see results of assessments. Used by recruiters (job-specific tests)
  * and admins, at /recruiter/assessments and /admin/assessments.
@@ -5,12 +49,12 @@
 
 import { useState } from "react";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
-import { del, get, post, put } from "../../api";
-import { useAuth } from "../../auth";
+import { del, get, post, put } from "../../apiClient";
+import { useAuth } from "../../AuthContext";
 import {
   Button, Card, ConfirmButton, ErrorBox, Field, Modal, PageHeader, Pagination, Pill, Spinner, Table, fmtDateTime,
   useApi, useToast,
-} from "../../components/ui";
+} from "../../components/SharedUiComponents";
 
 const blankQ = () => ({ question: "", options: ["", "", "", ""], answer_index: 0, explanation: "" });
 const EMPTY = { title: "", description: "", topic: "", time_limit_minutes: 15, pass_percent: 60, job_id: "", active: true, questions: [blankQ()] };

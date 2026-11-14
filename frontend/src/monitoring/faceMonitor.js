@@ -1,3 +1,46 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/faceMonitor.js
+//
+// FILE PURPOSE:
+// Analyses the camera picture on the device with MediaPipe Face Landmarker a few times per second.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads the MediaPipe WebAssembly runtime and face model served by this app.
+// 2. Reads frames from the camera <video> element.
+// 3. Passes face results (and a tiny brightness sample) to a callback.
+// 4. faceAnalysisAvailable() checks whether face analysis can run in this browser.
+//
+// HOW THIS FILE WORKS:
+// FaceMonitor.start(video) creates the landmarker and runs detection on a timer (default 4 fps);
+// stop() ends it.
+//
+// IMPORTANT FUNCTIONS:
+//    - FaceMonitor()
+//        Class that runs face analysis on a video element.
+//    - faceAnalysisAvailable()
+//        Returns whether the face model can be loaded.
+//    Other helper functions: loadLandmarker
+//
+// INPUT:
+// Camera video element.
+//
+// OUTPUT:
+// Per-frame face results for frameAnalysis.js / interviewMonitor.js.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: monitoring/frameAnalysis.js
+//    Used by: monitoring/interviewMonitor.js, pages/student/InterviewSetup.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    @mediapipe/tasks-vision
+//
+// IMPORTANT NOTE:
+// Frames never leave the browser and no third-party server is contacted.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // On-device face analysis with MediaPipe Face Landmarker (Apache-2.0). The WebAssembly runtime and the model are
 // served by this app (public/mediapipe, public/models) - no third-party request, and frames never leave the
 // browser. Runs a few times per second on a <video> element showing the camera.

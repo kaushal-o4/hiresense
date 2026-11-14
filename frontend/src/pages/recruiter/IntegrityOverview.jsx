@@ -1,7 +1,39 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/recruiter/IntegrityOverview.jsx
+//
+// FILE PURPOSE:
+// Small summary of one candidate's interview-integrity counts, shown separately from performance.
+//
+// WHAT THIS FILE DOES:
+// 1. Shows counts of monitored interviews and reviewed/unreviewed signals.
+//
+// HOW THIS FILE WORKS:
+// Presentational component used by CompareCandidates and CandidateReport.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: IntegrityOverview
+//
+// INPUT:
+// Prop: integrity overview data.
+//
+// OUTPUT:
+// Summary card.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: components/SharedUiComponents.jsx
+//    Used by: pages/recruiter/CandidateReport.jsx, pages/recruiter/CompareCandidates.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Integrity roll-up for one candidate (counts only), shown apart from performance. Used by compare and report. */
 
 import { ShieldCheck } from "lucide-react";
-import { Pill } from "../../components/ui";
+import { Pill } from "../../components/SharedUiComponents";
 
 const BAND_TONE = { none: "green", low: "blue", moderate: "amber", high: "red" };
 

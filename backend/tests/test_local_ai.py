@@ -1,3 +1,92 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_local_ai.py
+#
+# FILE PURPOSE:
+# Tests for the local-AI features.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 48 test(s), e.g.: resume valid analysis removes invented items; resume validation
+#    rejects sentences and duplicate internships; evaluation never leaves student without
+#    improvements; resume prompt fences untrusted text; resume empty file rejected; resume without
+#    text rejected; resume corrupted file rejected without internals; resume unsupported type
+#    rejected; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# ALL tests in this file use MOCKED model output (a fake `local_llm.chat_json` and a fake embedding
+# function). They prove the plumbing, validation, scoring rules, persistence and access control work.
+# They do NOT prove the quality of the real model's answers - see tests_integration/ for checks
+# against the real local models.
+#
+# IMPORTANT FUNCTIONS:
+#    - resume_json()
+#        MOCK model output.
+#    - mock_llm()
+#        MOCKED local LLM.
+#    - feedback_json()
+#        MOCK detailed feedback (generated in the background after the answer is scored).
+#    - test_background_generation_gives_way_to_interactive()
+#        A background request (detailed feedback) is cancelled when a candidate-facing request
+#        is waiting.
+#    - test_interactive_hold_keeps_background_generation_out()
+#        While a turn is speaking/transcribing (CPU-heavy), background generations neither
+#        start nor continue.
+#    - test_off_topic_answer_is_capped_even_if_model_is_generous()
+#        Regression for a real case: a model gave 100/100 to an answer about indexes for a
+#        different question.
+#    Other helper functions: docx_bytes, upload, question_json, question_prompts, eval_json,
+#    test_resume_valid_analysis_removes_invented_items,
+#    test_resume_validation_rejects_sentences_and_duplicate_internships,
+#    test_evaluation_never_leaves_student_without_improvements,
+#    test_resume_prompt_fences_untrusted_text, test_resume_empty_file_rejected,
+#    test_resume_without_text_rejected, test_resume_corrupted_file_rejected_without_internals,
+#    test_resume_unsupported_type_rejected,
+#    test_resume_invalid_model_output_is_not_saved_as_success,
+#    test_resume_invalid_then_valid_output_retries, test_resume_model_not_downloaded,
+#    test_resume_ollama_not_running, test_student_can_correct_analysis_and_score_updates, _start,
+#    test_interview_questions_are_personalised, test_answer_evaluation_stored_with_details,
+#    test_short_answer_is_capped_by_rules, test_adaptive_difficulty_goes_down_with_explanation,
+#    test_adaptive_difficulty_goes_up_after_strong_answer, test_repeated_question_is_replaced,
+#    test_transient_ai_failure_affects_only_one_question, test_next_question_recovery,
+#    test_ollama_runner_crash_is_retried_once, test_priority_gate_serves_interactive_first,
+#    test_is_repeat_detects_rephrasing, test_model_says_answer_misses_question,
+#    test_answer_rules_unit, test_missing_interview_session,
+#    test_cannot_answer_other_students_interview_or_skip, test_interview_subject_validation, cand,
+#    match, test_match_strong, test_match_partial_uses_related_skill, test_match_weak,
+#    test_missing_required_skills_cap_score, test_skill_found_in_project_text_counts,
+#    test_match_empty_profile, test_match_empty_job_description,
+#    test_match_invalid_embedding_output_falls_back, test_match_embedding_unavailable_falls_back,
+#    test_eligibility_issue_blocks_strong_fit, test_skill_aliases, test_status_without_api_key,
+#    test_apply_uses_semantic_match_when_embeddings_available, test_ai_usage_log_records_success,
+#    test_resume_isolation_between_students, test_question_classifier_prediction
+#
+# IMPORTANT CLASSES:
+#    - _Ctx
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    RESUME_TEXT, JOB
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/routers/interview_routes.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/question_type_classifier.py,
+#    app/services/ai_models/sentence_embedding_model.py,
+#    app/services/interview/ai_interview_service.py,
+#    app/services/resume_and_jobs/semantic_job_matcher.py,
+#    app/services/resume_and_jobs/skill_name_normalizer.py
+#
+# IMPORTANT DEPENDENCIES:
+#    docx, httpx, numpy, pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Tests for the local-AI features.
 
 ALL tests in this file use MOCKED model output (a fake `local_llm.chat_json` and a fake embedding function).
@@ -75,7 +164,7 @@ def resume_json(**over):
 @pytest.fixture()
 def mock_llm(monkeypatch):
     """MOCKED local LLM. Push dicts/strings/exceptions/callables onto `.responses`; prompts land in `.calls`."""
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     state = SimpleNamespace(calls=[], responses=[])
 
     def chat_json(system, prompt, schema, *, max_tokens=None, temperature=None, priority="interactive",
@@ -148,7 +237,7 @@ def test_resume_valid_analysis_removes_invented_items(client, mock_llm):
 
 
 def test_resume_validation_rejects_sentences_and_duplicate_internships():
-    from app.services.ai import ResumeExtraction, validate_resume_extraction
+    from app.services.interview.ai_interview_service import ResumeExtraction, validate_resume_extraction
     raw = resume_json(
         soft_skills=["Leadership", "Led a team of 4 students in a hackathon"],
         work_experience=[{"organization": "Infosys", "role": "Software Intern", "duration": "", "summary": ""}])
@@ -206,7 +295,7 @@ def test_resume_unsupported_type_rejected(client):
 
 
 def test_resume_invalid_model_output_is_not_saved_as_success(client, mock_llm, db):
-    from app.models import AIUsageLog
+    from app.database_models import AIUsageLog
     register_student(client)
     mock_llm.responses += ['{"full_name": 5}', "not json at all"]   # invalid twice -> give up
     r = upload(client)
@@ -228,7 +317,7 @@ def test_resume_invalid_then_valid_output_retries(client, mock_llm):
 
 
 def test_resume_model_not_downloaded(client, monkeypatch):
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     monkeypatch.setattr(local_llm, "runtime_status", lambda force=False: {
         "provider": "ollama", "model": "qwen3:4b", "running": True, "model_ready": False,
         "error": "The model 'qwen3:4b' has not been downloaded. Run: ollama pull qwen3:4b"})
@@ -360,11 +449,11 @@ def test_repeated_question_is_replaced(client, mock_llm):
 
 
 def test_transient_ai_failure_affects_only_one_question(client, mock_llm):
-    from app.services.ai import AIUnavailable
+    from app.services.interview.ai_interview_service import AIUnavailable
     register_student(client)
     mock_llm.responses.append(question_json("Explain database indexing."))
     s = _start(client).json()["session"]
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     mock_llm.responses += [eval_json(6), local_llm.LLMError("runner crashed", kind="http_error")]
     r = client.post(f"/api/student/interviews/{s['id']}/answer", json={
         "question_id": s["questions"][0]["id"],
@@ -375,7 +464,7 @@ def test_transient_ai_failure_affects_only_one_question(client, mock_llm):
 
 
 def test_next_question_recovery(client, mock_llm, db):
-    from app.models import InterviewQuestion
+    from app.database_models import InterviewQuestion
     register_student(client)
     mock_llm.responses.append(question_json("Explain database indexing."))
     s = _start(client).json()["session"]
@@ -395,7 +484,7 @@ def test_next_question_recovery(client, mock_llm, db):
 
 def test_ollama_runner_crash_is_retried_once(monkeypatch):
     import httpx
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     monkeypatch.setattr(local_llm, "runtime_status", lambda force=False: {
         "provider": "ollama", "model": "m", "running": True, "model_ready": True, "error": None})
     calls = []
@@ -432,7 +521,7 @@ class _Ctx:
 def test_background_generation_gives_way_to_interactive(monkeypatch):
     """A background request (detailed feedback) is cancelled when a candidate-facing request is waiting."""
     import httpx
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     monkeypatch.setattr(local_llm, "runtime_status", lambda force=False: {
         "provider": "ollama", "model": "m", "running": True, "model_ready": True, "error": None})
     gate = local_llm.PriorityGate(1)
@@ -454,7 +543,7 @@ def test_background_generation_gives_way_to_interactive(monkeypatch):
 
 def test_interactive_hold_keeps_background_generation_out():
     """While a turn is speaking/transcribing (CPU-heavy), background generations neither start nor continue."""
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     gate = local_llm.PriorityGate(1)
     gate.hold(+1)
     assert not gate.acquire(False, 0.2)  # background waits for the hold to end
@@ -467,7 +556,7 @@ def test_interactive_hold_keeps_background_generation_out():
 
 def test_priority_gate_serves_interactive_first():
     import threading
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     gate = local_llm.PriorityGate(1)
     assert gate.acquire(True, 1)
     order = []
@@ -495,7 +584,7 @@ def test_priority_gate_serves_interactive_first():
 
 
 def test_is_repeat_detects_rephrasing():
-    from app.routers.interviews import is_repeat
+    from app.routers.interview_routes import is_repeat
     assert is_repeat("What is a hash map and how does it work?", ["What is a hash map, and how does it work"])
     assert not is_repeat("What is a hash map?", ["Tell me about yourself."])
 
@@ -504,7 +593,7 @@ def test_off_topic_answer_is_capped_even_if_model_is_generous(client, mock_llm, 
     """Regression for a real case: a model gave 100/100 to an answer about indexes for a different question.
     The real MiniLM similarity for this pair was measured at 0.13; the mock embedding is not calibrated, so the
     measured value is used here."""
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     monkeypatch.setattr(ai, "answer_similarity", lambda q, a: 0.13)
     register_student(client)
     mock_llm.responses.append(question_json("In your placement tracker project, how do students and companies "
@@ -521,7 +610,7 @@ def test_off_topic_answer_is_capped_even_if_model_is_generous(client, mock_llm, 
 
 
 def test_model_says_answer_misses_question():
-    from app.services.ai import apply_answer_rules
+    from app.services.interview.ai_interview_service import apply_answer_rules
     ev = {"answers_the_question": False, "relevance": 9, "correctness": 9, "completeness": 9, "clarity": 9,
           "communication": 9}
     apply_answer_rules(ev, "Tell me about yourself.", "My favourite algorithm is quicksort because it is fast on "
@@ -536,7 +625,7 @@ def test_model_says_answer_misses_question():
 
 
 def test_answer_rules_unit():
-    from app.services.ai import apply_answer_rules, next_difficulty
+    from app.services.interview.ai_interview_service import apply_answer_rules, next_difficulty
     ev = {k: 9 for k in ("relevance", "correctness", "completeness", "clarity", "communication")}
     notes = apply_answer_rules(ev, "What is REST?", "I don't know")
     assert all(ev[k] <= 1 for k in ev) and notes
@@ -591,7 +680,7 @@ def cand(**over):
 
 
 def match(job=JOB, c=None, **kw):
-    from app.services.matching import compute_match
+    from app.services.resume_and_jobs.semantic_job_matcher import compute_match
     return compute_match(job, c if c is not None else cand(), embed_fn=kw.pop("embed_fn", fake_embed), **kw)
 
 
@@ -645,7 +734,7 @@ def test_match_empty_profile():
 
 
 def test_match_empty_job_description():
-    from app.services.matching import MatchInputError
+    from app.services.resume_and_jobs.semantic_job_matcher import MatchInputError
     with pytest.raises(MatchInputError):
         match(job={"title": "X", "description": "", "required_skills": [], "preferred_skills": []})
 
@@ -657,7 +746,7 @@ def test_match_invalid_embedding_output_falls_back():
 
 
 def test_match_embedding_unavailable_falls_back():
-    from app.services.embeddings import EmbeddingUnavailable
+    from app.services.ai_models.sentence_embedding_model import EmbeddingUnavailable
 
     def broken(texts):
         raise EmbeddingUnavailable("model not downloaded")
@@ -673,7 +762,7 @@ def test_eligibility_issue_blocks_strong_fit():
 
 
 def test_skill_aliases():
-    from app.services.skills import TextIndex, normalize_skill
+    from app.services.resume_and_jobs.skill_name_normalizer import TextIndex, normalize_skill
     assert normalize_skill("JS") == normalize_skill("javascript") == "javascript"
     assert normalize_skill("Node") == "node.js" and normalize_skill("k8s") == "kubernetes"
     assert TextIndex("Built with ReactJS and Postgres.").has_skill("React")
@@ -715,7 +804,7 @@ def test_apply_uses_semantic_match_when_embeddings_available(client, new_client,
 
 
 def test_ai_usage_log_records_success(client, mock_llm, db):
-    from app.models import AIUsageLog
+    from app.database_models import AIUsageLog
     register_student(client)
     mock_llm.responses.append(resume_json())
     upload(client)
@@ -736,7 +825,7 @@ def test_resume_isolation_between_students(client, new_client, mock_llm):
 
 
 def test_question_classifier_prediction():
-    from app.services import question_classifier
+    from app.services.ai_models import question_type_classifier as question_classifier
     p = question_classifier.predict("Tell me about a time you resolved a conflict in your team.")
     if p is None:
         pytest.skip("classifier not trained - run: python -m ml.train_question_classifier")

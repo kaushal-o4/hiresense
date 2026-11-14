@@ -1,3 +1,46 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_perf/bench_models.py
+#
+# FILE PURPOSE:
+# Compare local models on the two workloads that matter most, using the app's real prompts and
+# validation.
+#
+# WHAT THIS FILE DOES:
+# 1. Performance benchmark with the real models.
+# 2. Run manually; results are written to tests_perf/results/.
+#
+# HOW THIS FILE WORKS:
+# 1. English chat turns (the conversational path: english_reply) -> latency + whether a grammar slip
+# is corrected 2. Answer scoring (score_answer) on six labelled answers -> does the score separate
+# good from bad? Run from the backend folder, Ollama running, every listed model already pulled:
+# .\venv\Scripts\python.exe tests_perf\bench_models.py --models qwen3:4b qwen3:1.7b --runs 3 --out
+# results.json Each model is unloaded first, so the first call of each model is a cold start (reported
+# separately). Uses an in-memory database. Only timings and numeric scores are printed; model output
+# text is not stored.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: pct, stats, unload_all, ps_info, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    RUBRIC, QUESTION, ANSWERS, CHAT
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/seed_initial_data.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/sentence_embedding_model.py,
+#    app/services/interview/ai_interview_service.py
+#
+# IMPORTANT DEPENDENCIES:
+#    httpx
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Compare local models on the two workloads that matter most, using the app's real prompts and validation.
 
   1. English chat turns (the conversational path: english_reply)    -> latency + whether a grammar slip is corrected
@@ -24,8 +67,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx  # noqa: E402
 
-from app import database, seed as seed_module  # noqa: E402
-from app.config import get_settings  # noqa: E402
+from app import database_connection as database, seed_initial_data as seed_module  # noqa: E402
+from app.application_configuration import get_settings  # noqa: E402
 
 get_settings.cache_clear()
 
@@ -96,7 +139,8 @@ def main():
     factory = database.SessionLocal
     db = factory()
 
-    from app.services import ai, embeddings, local_llm
+    from app.services.interview import ai_interview_service as ai
+    from app.services.ai_models import sentence_embedding_model as embeddings, language_model_client as local_llm
     embeddings.warmup()
     s = get_settings()
     base = local_llm._base_url()

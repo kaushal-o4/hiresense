@@ -1,3 +1,39 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_perf/bench_stt.py
+#
+# FILE PURPOSE:
+# Speech-to-text latency on this computer: how long after the candidate stops talking until the text
+# is ready.
+#
+# WHAT THIS FILE DOES:
+# 1. Performance benchmark with the real models.
+# 2. Run manually; results are written to tests_perf/results/.
+#
+# HOW THIS FILE WORKS:
+# Makes spoken answers with the app's own TTS voice (Kokoro), then times the configured STT engine on
+# them, and checks the words come back (word error rate against the script). Run: python
+# tests_perf/bench_stt.py [engine ...] Engines: whatever STT_ENGINE/STT_MODEL say, unless names are
+# given (e.g. "transformers:openai/whisper-base.en", "faster:base.en", "faster:small.en"). Clips are
+# cached in tests_perf/results/stt_clips/.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: words, wer, clips, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    SCRIPTS, CLIPS
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/services/voice/speech_to_text.py,
+#    app/services/voice/text_to_speech.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Speech-to-text latency on this computer: how long after the candidate stops talking until the text is ready.
 
 Makes spoken answers with the app's own TTS voice (Kokoro), then times the configured STT engine on them, and checks
@@ -50,15 +86,15 @@ def clips() -> dict[str, bytes]:
     for name, text in SCRIPTS.items():
         f = CLIPS / f"{name}.wav"
         if not f.exists():
-            from app.services import tts
+            from app.services.voice import text_to_speech as tts
             f.write_bytes(base64.b64decode(tts.synthesize(text)["audio_wav_b64"]))
         out[name] = f.read_bytes()
     return out
 
 
 def main() -> None:
-    from app.config import get_settings
-    from app.services import stt
+    from app.application_configuration import get_settings
+    from app.services.voice import speech_to_text as stt
     data = clips()
     engines = sys.argv[1:] or [f"{get_settings().stt_engine}:{get_settings().stt_model}"]
     results = []

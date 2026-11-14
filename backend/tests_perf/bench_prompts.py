@@ -1,3 +1,42 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_perf/bench_prompts.py
+#
+# FILE PURPOSE:
+# Latency + quality benchmark of the analysis prompts (resume analysis, answer scoring, answer
+# feedback, final interview report) with the REAL configured provider (Gemini, falling back to
+# Ollama), using the app's own functions.
+#
+# WHAT THIS FILE DOES:
+# 1. Performance benchmark with the real models.
+# 2. Run manually; results are written to tests_perf/results/.
+#
+# HOW THIS FILE WORKS:
+# .\venv\Scripts\python.exe tests_perf\bench_prompts.py --runs 2 --out
+# tests_perf\results\prompts_after.json Uses the throwaway MongoDB database "hiresense_bench" (cleared
+# first). Fictional inputs only. Prints timings, token counts, which provider answered and simple
+# quality checks; model text is not stored.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: stats, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    RESUME, QUESTION, ANSWERS, RUBRIC, QA
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/database_models.py,
+#    app/mongodb_data_layer/__init__.py, app/seed_initial_data.py,
+#    app/services/ai_models/gemini_api_client.py, app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/sentence_embedding_model.py,
+#    app/services/interview/ai_interview_service.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Latency + quality benchmark of the analysis prompts (resume analysis, answer scoring, answer feedback, final
 interview report) with the REAL configured provider (Gemini, falling back to Ollama), using the app's own functions.
 
@@ -19,8 +58,8 @@ from pathlib import Path
 os.environ["MONGODB_DB"] = "hiresense_bench"
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import database, seed as seed_module  # noqa: E402
-from app.config import get_settings  # noqa: E402
+from app import database_connection as database, seed_initial_data as seed_module  # noqa: E402
+from app.application_configuration import get_settings  # noqa: E402
 
 get_settings.cache_clear()
 
@@ -83,9 +122,14 @@ def main():
     seed_module.seed()
     db = database.SessionLocal()
 
-    from app.models import AIUsageLog
-    from app.odm import select
-    from app.services import ai, embeddings, gemini_llm, local_llm
+    from app.database_models import AIUsageLog
+    from app.mongodb_data_layer import select
+    from app.services.interview import ai_interview_service as ai
+    from app.services.ai_models import (
+        sentence_embedding_model as embeddings,
+        gemini_api_client as gemini_llm,
+        language_model_client as local_llm,
+    )
     embeddings.warmup()
 
     who: list[str] = []

@@ -1,3 +1,30 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/live/notificationStream.test.js
+//
+// FILE PURPOSE:
+// Unit tests for notificationStream.js.
+//
+// WHAT THIS FILE DOES:
+// 1. Backoff doubling and cap.
+// 2. Connect, relay, reconnect and polling fallback.
+// 3. One shared connection.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests with fake timers and a fake EventSource.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: FakeES, fakeTimers, setup
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: live/notificationStream.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { describe, expect, it } from "vitest";
 import { BACKOFF_MAX_MS, BACKOFF_MIN_MS, NotificationStream, POLL_MS, backoffDelay } from "./notificationStream";
 
