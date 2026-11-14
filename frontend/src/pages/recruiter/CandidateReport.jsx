@@ -1,3 +1,46 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/recruiter/CandidateReport.jsx
+//
+// FILE PURPOSE:
+// Printable report about one applicant.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /recruiter/applications/{id}/report.
+// 2. Shows profile, match, interviews, assessments and integrity overview.
+// 3. 'Save as PDF' uses the browser print dialog.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET
+// /recruiter/applications/{id}/report.
+//
+// IMPORTANT FUNCTIONS:
+//    - CandidateReport()
+//        Page component.
+//    - Section()
+//        Report section.
+//    - KV()
+//        Label/value row.
+//
+// INPUT:
+// Application id from the URL.
+//
+// OUTPUT:
+// Printable report.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/Logo.jsx, components/SharedUiComponents.jsx,
+//    pages/recruiter/IntegrityOverview.jsx, pages/recruiter/RecruiterJobApplicants.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Printable candidate report for one application (GET /recruiter/applications/:id/report).
  * "Save as PDF" uses the browser print dialog; index.css switches to a light palette and hides the app chrome
@@ -6,13 +49,13 @@
 
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Printer } from "lucide-react";
-import { get } from "../../api";
+import { get } from "../../apiClient";
 import Logo from "../../components/Logo";
 import {
   Button, Card, ErrorBox, Pill, ScoreBar, Spinner, StatusPill, fmtDate, fmtDateTime, useApi,
-} from "../../components/ui";
+} from "../../components/SharedUiComponents";
 import IntegrityOverview from "./IntegrityOverview";
-import { MatchPanel } from "./JobDetail";
+import { MatchPanel } from "./RecruiterJobApplicants";
 
 function Section({ title, children }) {
   return (

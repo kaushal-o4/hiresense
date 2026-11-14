@@ -1,3 +1,49 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/englishMachine.js
+//
+// FILE PURPOSE:
+// State machine of the hands-free spoken English practice with Aria.
+//
+// WHAT THIS FILE DOES:
+// 1. Defines the conversation loop: Aria speaks -> mic opens -> student talks -> transcribe -> Aria
+//    thinks -> Aria speaks.
+// 2. Ignores disallowed events (no recording while Aria speaks, no double sends).
+// 3. Maps states to avatar expressions and labels the confidence meter.
+//
+// HOW THIS FILE WORKS:
+// englishTransition(state, event) is a pure function used by EnglishAvatarSession.jsx with useReducer.
+// Unlike the interview there is no review step.
+//
+// IMPORTANT FUNCTIONS:
+//    - englishTransition()
+//        Next conversation state for an event.
+//    - englishAvatarMode()
+//        Avatar mood for a state.
+//    - confidenceLabel()
+//        Text label for the confidence score.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - E
+//        State names.
+//    - initialEnglishState
+//        Starting state.
+//    - GENERIC_STARTERS
+//        Fallback conversation starters.
+//
+// INPUT:
+// State and events.
+//
+// OUTPUT:
+// Next state.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: pages/student/EnglishAvatarSession.jsx
+//    Tested by: voice/englishMachine.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Conversation loop for spoken-English practice with Aria. Pure: transition(state, event) -> new state, and
 // disallowed events are ignored (no recording while Aria speaks, no double sends).
 //

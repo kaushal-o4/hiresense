@@ -1,3 +1,47 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/recruiter/CompareCandidates.jsx
+//
+// FILE PURPOSE:
+// Side-by-side comparison of 2-4 applicants to one job.
+//
+// WHAT THIS FILE DOES:
+// 1. Reads applicant ids from the URL (?ids=12,15).
+// 2. Calls POST /recruiter/jobs/{id}/compare.
+// 3. Shows match, scores and integrity rows; marks a single clear leader.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: POST /recruiter/jobs/{id}/compare.
+//
+// IMPORTANT FUNCTIONS:
+//    - CompareCandidates()
+//        Page component.
+//    - parseIds()
+//        Reads up to 4 valid ids from the URL.
+//    - leaderIndex()
+//        Finds a single clear leader in a row.
+//    Other helper functions: Row
+//
+// INPUT:
+// Job id and applicant ids from the URL.
+//
+// OUTPUT:
+// Comparison table (printable).
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, pages/recruiter/IntegrityOverview.jsx,
+//    pages/recruiter/RecruiterJobApplicants.jsx
+//    Used by: App.jsx
+//    Tested by: pages/recruiter/CompareCandidates.test.js
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Side-by-side comparison of 2-4 applicants to one job (POST /recruiter/jobs/:id/compare).
  * URL: /recruiter/jobs/:id/compare?ids=12,15 - shareable and printable. Advisory only; integrity is shown apart.
@@ -5,12 +49,12 @@
 
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, FileText, Printer } from "lucide-react";
-import { post } from "../../api";
+import { post } from "../../apiClient";
 import {
   Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, fmtDate, useApi,
-} from "../../components/ui";
+} from "../../components/SharedUiComponents";
 import IntegrityOverview from "./IntegrityOverview";
-import { MATCH_METHOD } from "./JobDetail";
+import { MATCH_METHOD } from "./RecruiterJobApplicants";
 
 const REC_TONE = { strong_fit: "green", potential_fit: "amber", not_a_fit: "red" };
 

@@ -1,3 +1,30 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/voice.test.js
+//
+// FILE PURPOSE:
+// Unit tests for the voice interview state machine, lip-sync maths and audio helpers.
+//
+// WHAT THIS FILE DOES:
+// 1. Happy path and blocked actions of interviewMachine.
+// 2. Lip-sync segment lookup and mouth shapes.
+// 3. WAV encoding and silence detection.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests on pure functions.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: run
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/interviewMachine.js, voice/recorder.js, voice/visemes.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Unit tests for the voice interview's pure logic: state machine, lip-sync maths, audio encoding, silence detection.
 import { describe, expect, it } from "vitest";
 import { S, avatarMode, canTransition, initialState, transition } from "./interviewMachine";

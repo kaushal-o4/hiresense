@@ -1,3 +1,37 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/RoomSidePanels.jsx
+//
+// FILE PURPOSE:
+// Right-hand panels of the live interview room: progress, running transcript and private notes.
+//
+// WHAT THIS FILE DOES:
+// 1. Shows question number, total and elapsed time.
+// 2. Shows the transcript of the conversation.
+// 3. Private notes area.
+//
+// HOW THIS FILE WORKS:
+// Presentational component fed by LiveVoiceInterview.jsx.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: RoomSidePanels
+//
+// INPUT:
+// Props: session, question number, timer, etc.
+//
+// OUTPUT:
+// Side panels UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/RoomParts.jsx, voice/roomUtils.js
+//    Used by: pages/student/LiveVoiceInterview.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Right-hand panels of the live interview room: progress, running transcript and private notes. */
 import { Link } from "react-router-dom";
 import { Panel, Stat } from "./RoomParts";

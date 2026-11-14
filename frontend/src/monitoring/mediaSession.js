@@ -1,8 +1,51 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/mediaSession.js
+//
+// FILE PURPOSE:
+// Handles the camera for the interview and the pre-interview device checks.
+//
+// WHAT THIS FILE DOES:
+// 1. CameraSession opens one camera stream only when the candidate asks, and watches for
+//    disconnects.
+// 2. testMicrophone() measures microphone level for a short test.
+// 3. checkNetwork() calls /api/health to check the connection.
+// 4. browserSupport() checks required browser features.
+// 5. cameraErrorMessage() gives friendly error messages.
+//
+// HOW THIS FILE WORKS:
+// Uses navigator.mediaDevices.getUserMedia; stop() releases all camera tracks.
+//
+// IMPORTANT FUNCTIONS:
+//    - CameraSession()
+//        Opens/stops the camera stream.
+//    - testMicrophone()
+//        Short microphone level test.
+//    - checkNetwork()
+//        Health check of the backend.
+//    - browserSupport()
+//        Feature support check.
+//    Other helper functions: cameraErrorMessage
+//
+// INPUT:
+// Browser media permissions.
+//
+// OUTPUT:
+// A camera stream and device check results.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js
+//    Used by: monitoring/useTypedMonitoring.js, pages/student/InterviewSetup.jsx,
+//    pages/student/LiveVoiceInterview.jsx
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Camera handling for the interview: one stream at a time, opened only after the candidate asks for it, watched
 // for disconnection and revoked permissions, and fully stopped at the end (or when monitoring is withdrawn).
 // The microphone stays with MicRecorder, which opens it only while it is the candidate's turn.
 
-import { apiUrl } from "../api";
+import { apiUrl } from "../apiClient";
 
 export function cameraErrorMessage(e) {
   if (e?.name === "NotAllowedError" || e?.name === "SecurityError") return "Camera permission was denied.";

@@ -1,3 +1,45 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/AttentionPanels.jsx
+//
+// FILE PURPOSE:
+// Displays the estimated visual attention - live during the interview and as a report afterwards.
+//
+// WHAT THIS FILE DOES:
+// 1. AttentionCard: live rolling attention figure and tracking status.
+// 2. AttentionReport: whole-interview value, coverage, a timeline and the limits of the estimate.
+//
+// HOW THIS FILE WORKS:
+// Formats the values computed by attentionMeter.js / the backend; always labels them 'estimated' and
+// never shows stale values as current.
+//
+// IMPORTANT FUNCTIONS:
+//    - AttentionCard()
+//        Live attention card.
+//    - AttentionReport()
+//        Stored attention report.
+//    - trackingLabel()
+//        Human-readable tracking status.
+//    - Timeline()
+//        One column per 10 s: height = attention in that bucket; a grey column = no usable
+//        observation.
+//    Other helper functions: mmss, Stat
+//
+// INPUT:
+// Monitoring status or stored attention data.
+//
+// OUTPUT:
+// Attention UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/InterviewMonitorBar.jsx, pages/shared/IntegrityReview.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Estimated visual attention toward the interview screen.
  *  - AttentionCard: the live figure during the interview (rolling window), with the tracking status.

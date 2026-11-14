@@ -1,6 +1,6 @@
 # Live voice interview and interviewer personalities
 
-> **Current speech stack:** speech-to-text is **faster-whisper** (`STT_ENGINE=faster`, base.en) with the transformers Whisper pipeline as fallback; text-to-speech is **Kokoro-82M**. Both run locally. In the cloud profile (`backend/.env.cloud.example`) Kokoro is off and the browser voice is used, and spoken answers are transcribed by Gemini (`STT_ENGINE=gemini`, no live captions). Questions come from the configured language model (Gemini by default, Ollama fallback). The voice room's UI is split into `frontend/src/voice/` (`RoomParts.jsx`, `RoomSidePanels.jsx`, `RoomSettingsPanel.jsx`, `AnswerDock.jsx`, `ControlBar.jsx`, `roomUtils.js`); the streamed turn endpoint is in `backend/app/routers/interview_live.py`.
+> **Current speech stack:** speech-to-text is **faster-whisper** (`STT_ENGINE=faster`, base.en) with the transformers Whisper pipeline as fallback; text-to-speech is **Kokoro-82M**. Both run locally. In the cloud profile (`backend/.env.cloud.example`) Kokoro is off and the browser voice is used, and spoken answers are transcribed by Gemini (`STT_ENGINE=gemini`, no live captions). Questions come from the configured language model (Gemini by default, Ollama fallback). The voice room's UI is split into `frontend/src/voice/` (`RoomParts.jsx`, `RoomSidePanels.jsx`, `RoomSettingsPanel.jsx`, `AnswerDock.jsx`, `ControlBar.jsx`, `roomUtils.js`); the streamed turn endpoint is in `backend/app/routers/live_voice_interview_routes.py`.
 
 ## Live voice interview (animated AI interviewer)
 
@@ -113,7 +113,7 @@ personality (questions and feedback), just without the avatar.
 | Voice (Kokoro) | `af_heart` 0.95× | `bm_george` 0.95× | `am_michael` 1.12× | `bf_emma` 1.0× |
 | Face | warm smiles, nods | serious, controlled head, raised brow when probing | focused, squint, brief scepticism | polished, attentive nods |
 
-* **Where:** behaviour in `backend/app/services/interviewers.py` (prompts stay on the server; `GET /api/interviewers`
+* **Where:** behaviour in `backend/app/services/interview/interviewer_personalities.py` (prompts stay on the server; `GET /api/interviewers`
   returns the public part). Expressions in `frontend/src/voice/avatarStates.js`. Each session stores `interviewer`
   (older sessions = Aria).
 * **Fair scoring:** every answer is scored by the same rubric and evaluator whoever the interviewer is (tested:

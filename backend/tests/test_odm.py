@@ -1,13 +1,65 @@
-"""The MongoDB data layer (app/odm.py): SQL semantics the routers rely on."""
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_odm.py
+#
+# FILE PURPOSE:
+# The MongoDB data layer (app/mongodb_data_layer.py): SQL semantics the routers rely on.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 14 test(s), e.g.: ids defaults and roundtrip; only changed fields are written; in
+#    place json changes are saved; unique constraint raises and flush is undone; null values do not
+#    collide in unique constraints; begin nested skips only the failing row; relationships one to
+#    one one to many and orphans; delete cascades and sets null; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    - test_null_values_do_not_collide_in_unique_constraints()
+#        uq_integrity_client_event covers a nullable column: like SQL, several NULLs are
+#        allowed.
+#    Other helper functions: _user, test_ids_defaults_and_roundtrip,
+#    test_only_changed_fields_are_written, test_in_place_json_changes_are_saved,
+#    test_unique_constraint_raises_and_flush_is_undone,
+#    test_begin_nested_skips_only_the_failing_row,
+#    test_relationships_one_to_one_one_to_many_and_orphans, test_delete_cascades_and_sets_null,
+#    test_set_null_on_delete, test_where_semantics_joins_groups_and_ordering,
+#    test_bulk_update_refreshes_loaded_objects, test_rollback_reloads_and_unique_partial_insert,
+#    test_onupdate_timestamp, test_unique_student_badge
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/mongodb_data_layer/__init__.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
+"""The MongoDB data layer (app/mongodb_data_layer.py): SQL semantics the routers rely on."""
 from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.models import (
-    ApplicationStatusHistory, Badge, InterviewAnswer, InterviewQuestion, InterviewSession, Job, JobApplication,
-    Notification, Resume, ResumeSkill, StudentBadge, StudentProfile, User,
+from app.database_models import (
+    ApplicationStatusHistory,
+    Badge,
+    InterviewAnswer,
+    InterviewQuestion,
+    InterviewSession,
+    Job,
+    JobApplication,
+    Notification,
+    Resume,
+    ResumeSkill,
+    StudentBadge,
+    StudentProfile,
+    User,
 )
-from app.odm import IntegrityError, delete, func, or_, select, update
+from app.mongodb_data_layer import IntegrityError, delete, func, or_, select, update
 
 
 def _user(db, email, role="student", **kw):
@@ -64,7 +116,7 @@ def test_unique_constraint_raises_and_flush_is_undone(db_session_factory):
 
 def test_null_values_do_not_collide_in_unique_constraints(db_session_factory):
     """uq_integrity_client_event covers a nullable column: like SQL, several NULLs are allowed."""
-    from app.models import IntegrityEvent
+    from app.database_models import IntegrityEvent
     db = db_session_factory()
     s = InterviewSession(student_id=_user(db, "n@t.dev").id, job_role="Dev", category="technical")
     db.add(s)
@@ -154,7 +206,7 @@ def test_delete_cascades_and_sets_null(db_session_factory):
 
 
 def test_set_null_on_delete(db_session_factory):
-    from app.models import AuditLog
+    from app.database_models import AuditLog
     db = db_session_factory()
     u = _user(db, "actor@t.dev")
     db.add(AuditLog(actor_id=u.id, action="x"))

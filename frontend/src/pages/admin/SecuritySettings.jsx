@@ -1,3 +1,49 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/admin/SecuritySettings.jsx
+//
+// FILE PURPOSE:
+// Admin settings for interview monitoring.
+//
+// WHAT THIS FILE DOES:
+// 1. Which detectors are offered, thresholds, reminder and pause rules, severity caps, risk
+//    weights, recruiter access.
+// 2. Loads/saves GET/PUT /admin/security-settings.
+// 3. Global switches via PUT /admin/settings/{key}.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /admin/security-settings, PUT
+// /admin/security-settings, PUT /admin/settings/{key}.
+//
+// IMPORTANT FUNCTIONS:
+//    - SecuritySettings()
+//        Page component.
+//    - Num()
+//        Number input.
+//    - Switch()
+//        On/off switch.
+//
+// INPUT:
+// Admin input.
+//
+// OUTPUT:
+// Saved security config.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx
+//    Used by: pages/admin/AdminMonitoring.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react
+//
+// IMPORTANT NOTE:
+// The values are starting points, not validated cheating thresholds.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Admin -> AI & Monitoring -> Security settings: which detectors are offered, detection thresholds, reminder and
  * pause rules, severity caps, risk-summary weights and recruiter access (GET/PUT /admin/security-settings, audited).
@@ -6,8 +52,8 @@
  */
 
 import { useEffect, useState } from "react";
-import { get, put } from "../../api";
-import { Button, Card, ErrorBox, Notice, Spinner, useApi, useToast } from "../../components/ui";
+import { get, put } from "../../apiClient";
+import { Button, Card, ErrorBox, Notice, Spinner, useApi, useToast } from "../../components/SharedUiComponents";
 
 const DETECTORS = {
   face_presence: "Face visibility (incl. partly out of frame)", multiple_faces: "More than one face",

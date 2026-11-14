@@ -1,3 +1,35 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/RoomSettingsPanel.jsx
+//
+// FILE PURPOSE:
+// Settings panel of the live interview room.
+//
+// WHAT THIS FILE DOES:
+// 1. Voice on/off and speed.
+// 2. Captions and subtitle size.
+// 3. Auto microphone, end-of-speech pause and auto-send.
+// 4. 3D graphics quality.
+//
+// HOW THIS FILE WORKS:
+// Calls setSetting/setAvatarQuality passed in by the page.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: RoomSettingsPanel
+//
+// INPUT:
+// Props: settings and setter functions.
+//
+// OUTPUT:
+// Settings UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/RoomParts.jsx, voice/avatarStates.js
+//    Used by: pages/student/LiveVoiceInterview.jsx
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* The live interview room's Settings panel (voice, captions, microphone, auto-send, graphics). */
 import { AVATAR_QUALITY, saveQuality } from "./avatarStates";
 import { Panel, Toggle } from "./RoomParts";

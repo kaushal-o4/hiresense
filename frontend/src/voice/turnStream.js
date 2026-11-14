@@ -1,6 +1,45 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/turnStream.js
+//
+// FILE PURPOSE:
+// Client for the streamed live-interview turn: POST /student/interviews/{id}/turn with Server-Sent
+// Events.
+//
+// WHAT THIS FILE DOES:
+// 1. Sends the answer as JSON with the login cookie.
+// 2. Reads the streamed response and splits it into events.
+// 3. Calls handlers such as scored, sentence, audio, question, done.
+//
+// HOW THIS FILE WORKS:
+// Uses fetch with a readable stream instead of EventSource so it can POST a body. createSseParser()
+// parses chunks.
+//
+// IMPORTANT FUNCTIONS:
+//    - streamTurn()
+//        Streams one interview turn.
+//    - streamPost()
+//        Generic SSE-over-POST helper (also used for English replies).
+//    - createSseParser()
+//        Pure parser for SSE text chunks.
+//
+// INPUT:
+// Session id, answer body, event handlers.
+//
+// OUTPUT:
+// Handler calls as events arrive.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js
+//    Used by: pages/student/EnglishSession.jsx, pages/student/LiveVoiceInterview.jsx
+//    Tested by: voice/streaming.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Client for POST /api/student/interviews/{id}/turn (Server-Sent Events over fetch, so it can carry a JSON body
 // and the auth cookie). Calls handlers[eventName](data) as events arrive; resolves when the stream ends.
-import { ApiError, apiUrl } from "../api";
+import { ApiError, apiUrl } from "../apiClient";
 
 /** Pure SSE parser: feed text chunks, get complete {event, data} objects back. */
 export function createSseParser() {

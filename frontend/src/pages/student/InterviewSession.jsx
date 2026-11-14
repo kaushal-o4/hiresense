@@ -1,3 +1,75 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/InterviewSession.jsx
+//
+// FILE PURPOSE:
+// Text-mode interview page and the results/report view for any finished interview.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads the session (GET /student/interviews/{id}).
+// 2. Runs the setup screen (consent + device check) and typed monitoring.
+// 3. Submits typed answers (POST /student/interviews/{id}/answer) and shows the score.
+// 4. Finishes (POST .../complete), retries scoring (POST .../retry-evaluation) or abandons (DELETE
+//    /student/interviews/{id}).
+// 5. Shows the full InterviewReport: overall score, band, per-question scores, feedback, sample
+//    answers, strengths and weaknesses.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: GET/DELETE /student/interviews/{id}, POST .../answer, POST .../complete,
+// POST .../retry-evaluation.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewSession()
+//        Page component.
+//    - InterviewReport()
+//        Full report view (exported, reused elsewhere).
+//    - AnswerDetails()
+//        Feedback, strengths and missing points for one answer.
+//    - SampleAnswer()
+//        Shows the model answer.
+//    - QuestionRow()
+//        One question with its score.
+//    - Indicators()
+//        Observable answer indicators.
+//    Other helper functions: scoreTone, scoreText, BulletList
+//
+// INPUT:
+// Interview id from the URL; typed answers.
+//
+// OUTPUT:
+// Questions, scores and the final report.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, components/scoreBandLabel.js,
+//    components/useSpeechAndPreferences.jsx, monitoring/InterviewMonitorBar.jsx,
+//    monitoring/useTypedMonitoring.js, pages/student/InterviewSetup.jsx,
+//    pages/student/InterviewerFeedback.jsx, voice/useInterviewers.js
+//    Used by: App.jsx, pages/admin/AdminMonitoring.jsx, pages/mentor/MentorStudentDetail.jsx,
+//    pages/recruiter/CandidateDetail.jsx, pages/student/LiveVoiceInterview.jsx
+//
+// EXECUTION FLOW:
+//    Load session
+//       |
+//       v
+//    Show question
+//       |
+//       v
+//    Student types answer
+//       |
+//       v
+//    POST .../answer -> score + next question
+//       |
+//       v
+//    POST .../complete -> report
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Text-mode interview and the results view for any finished interview. Loads the session,
  * submits typed answers (POST .../answer), finishes (POST .../complete) and retries scoring (POST .../retry-evaluation).
@@ -7,17 +79,17 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Lightbulb, Mic, MicOff, RefreshCw, Send, Square, Volume2 } from "lucide-react";
-import { del, get, post } from "../../api";
-import { Subtitles, speak, usePrefs, useSpeaker, useSpeechToText } from "../../components/useSpeech";
+import { del, get, post } from "../../apiClient";
+import { Subtitles, speak, usePrefs, useSpeaker, useSpeechToText } from "../../components/useSpeechAndPreferences";
 import {
   Button, Card, ConfirmButton, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, useApi, useToast,
-} from "../../components/ui";
+} from "../../components/SharedUiComponents";
 import { findInterviewer, useInterviewers } from "../../voice/useInterviewers";
 import InterviewerFeedback from "./InterviewerFeedback";
 import InterviewSetup from "./InterviewSetup";
-import { MonitorBar } from "../../monitoring/MonitorBar";
+import { MonitorBar } from "../../monitoring/InterviewMonitorBar";
 import { useTypedMonitoring } from "../../monitoring/useTypedMonitoring";
-import { scoreBand } from "../../components/scoreBand";
+import { scoreBand } from "../../components/scoreBandLabel";
 
 export function SampleAnswer({ text }) {
   const [open, setOpen] = useState(false);

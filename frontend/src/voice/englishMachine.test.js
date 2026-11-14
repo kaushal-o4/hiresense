@@ -1,3 +1,30 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/englishMachine.test.js
+//
+// FILE PURPOSE:
+// Unit tests for the spoken-English conversation state machine.
+//
+// WHAT THIS FILE DOES:
+// 1. Hands-free loop order.
+// 2. No recording while Aria speaks; double sends ignored.
+// 3. Pause/resume and clean ending.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests on englishTransition.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: run
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/englishMachine.js, voice/recorder.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Unit tests for the spoken-English (Aria) conversation loop.
 import { describe, expect, it } from "vitest";
 import { E, confidenceLabel, englishAvatarMode, englishTransition, initialEnglishState } from "./englishMachine";

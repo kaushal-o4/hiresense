@@ -1,3 +1,47 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/admin/InterviewConfig.jsx
+//
+// FILE PURPOSE:
+// Interview setup for admins: question bank, interview categories and evaluation rubrics.
+//
+// WHAT THIS FILE DOES:
+// 1. Manages categories (GET/POST /admin/categories, PUT /admin/categories/{id}).
+// 2. Manages the question bank (GET/POST /admin/questions, PUT/DELETE /admin/questions/{id}).
+// 3. Manages scoring rubrics (GET/POST /admin/rubrics, PUT /admin/rubrics/{id}).
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: /admin/categories, /admin/questions,
+// /admin/rubrics endpoints.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewConfig()
+//        Tabbed page.
+//    - Categories()
+//        Category tab.
+//    - QuestionBank()
+//        Question bank tab.
+//    - Rubrics()
+//        Rubrics tab.
+//
+// INPUT:
+// Admin input.
+//
+// OUTPUT:
+// Saved configuration.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Interview setup: question bank, interview categories and evaluation rubrics. The bank is the
  * fallback when the AI model cannot write a question; rubrics are the criteria the AI scores against.
@@ -5,8 +49,8 @@
 
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { del, get, post, put } from "../../api";
-import { Button, Card, ConfirmButton, ErrorBox, Field, Modal, PageHeader, Pagination, Pill, Spinner, Table, Tabs, useApi, useToast } from "../../components/ui";
+import { del, get, post, put } from "../../apiClient";
+import { Button, Card, ConfirmButton, ErrorBox, Field, Modal, PageHeader, Pagination, Pill, Spinner, Table, Tabs, useApi, useToast } from "../../components/SharedUiComponents";
 
 function Categories() {
   const toast = useToast();

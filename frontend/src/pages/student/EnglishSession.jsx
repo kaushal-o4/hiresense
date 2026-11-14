@@ -1,3 +1,48 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/EnglishSession.jsx
+//
+// FILE PURPOSE:
+// One English conversation: text chat, ending and final scores.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads the session (GET /student/english/{id}).
+// 2. For voice sessions in progress, renders EnglishAvatarSession.
+// 3. Text chat: streams Aria's reply (POST /api/student/english/{id}/message/stream via
+//    streamPost).
+// 4. Ends the session (POST /student/english/{id}/end) and shows grammar, vocabulary, fluency
+//    scores and feedback.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: GET /student/english/{id}, POST /student/english/{id}/message/stream,
+// POST /student/english/{id}/end.
+//
+// IMPORTANT FUNCTIONS:
+//    - EnglishSession()
+//        Page component.
+//    - EnglishChat()
+//        Text chat panel.
+//
+// INPUT:
+// Session id and typed messages.
+//
+// OUTPUT:
+// Chat UI and evaluation.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/ConversationMemory.jsx, components/DashboardCharts.jsx,
+//    components/SharedUiComponents.jsx, components/useSpeechAndPreferences.jsx,
+//    pages/student/EnglishAvatarSession.jsx, voice/turnStream.js
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * One English conversation. Voice sessions in progress render EnglishAvatarSession; otherwise this
  * page shows the text chat (POST .../message), ending (POST .../end) and the final scores and feedback.
@@ -6,11 +51,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowRight, CheckCircle2, Send, Sparkles, Volume2 } from "lucide-react";
-import { get, post } from "../../api";
+import { get, post } from "../../apiClient";
 import { streamPost } from "../../voice/turnStream";
-import { SkillRadar } from "../../components/charts";
-import { Subtitles, useSpeaker } from "../../components/useSpeech";
-import { Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, useApi, useToast } from "../../components/ui";
+import { SkillRadar } from "../../components/DashboardCharts";
+import { Subtitles, useSpeaker } from "../../components/useSpeechAndPreferences";
+import { Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, useApi, useToast } from "../../components/SharedUiComponents";
 import ConversationMemory, { LEARNING_MODE_LABEL } from "../../components/ConversationMemory";
 import EnglishAvatarSession from "./EnglishAvatarSession";
 

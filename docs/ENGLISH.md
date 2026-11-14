@@ -4,10 +4,10 @@ Spoken and typed English practice with Aria (the English companion), plus vocabu
 view and English rewards (added 2026-11-04). The old pronunciation/speaking drills were removed on 2026-10-11 at the
 owner's request; their data is kept and the `/student/english-learning` route redirects to `/student/english`.
 
-Code: `backend/app/routers/english.py`, `services/english_companion.py`, `services/english_profile.py`,
-`services/english_vocab.py`, `services/ai_english.py`; `frontend/src/pages/student/English.jsx`,
-`EnglishSession.jsx`, `EnglishAvatarSession.jsx`, `Vocabulary.jsx`, `components/DailyPlan.jsx`,
-`components/EnglishProgress.jsx`, `src/english/vocab.js`.
+Code: `backend/app/routers/english_practice_routes.py`, `services/english/english_companion_memory.py`, `services/english/english_mistake_profile.py`,
+`services/english/english_vocabulary_trainer.py`, `services/english/ai_english_conversation.py`; `frontend/src/pages/student/EnglishPracticeHome.jsx`,
+`EnglishSession.jsx`, `EnglishAvatarSession.jsx`, `VocabularyTrainer.jsx`, `components/EnglishDailyPlan.jsx`,
+`components/EnglishProgress.jsx`, `src/english/vocabularyReview.js`.
 
 ## Speak with Aria (avatar)
 
@@ -17,7 +17,7 @@ hands-free: Aria speaks with lip sync and highlighted subtitles → the mic open
 or **Done** → local Whisper (`POST /api/student/english/{id}/transcribe`) → Aria thinks → replies. Text-mode
 sessions keep the plain chat page, whose replies stream from `POST /api/student/english/{id}/message/stream`.
 
-- Persona: `ARIA_SYSTEM` in `backend/app/services/ai_english.py`. Each reply returns `reply`, `avatar_mode`
+- Persona: `ARIA_SYSTEM` in `backend/app/services/english/ai_english_conversation.py`. Each reply returns `reply`, `avatar_mode`
   (`speaking`/`encouraging`), `encouragement`, `corrections` and `suggested_followups`, stored in
   `english_messages.meta`. Corrections are checked server-side: they must quote the student, and
   punctuation-only fixes are dropped because punctuation in voice replies comes from the speech recogniser.
@@ -34,7 +34,7 @@ sessions keep the plain chat page, whose replies stream from `POST /api/student/
 
 ## English conversation companion (2026-10-11)
 
-**English conversation companion** (`services/english_companion.py`): a separate personality from the interviewers
+**English conversation companion** (`services/english/english_companion_memory.py`): a separate personality from the interviewers
 (Aria's avatar and voice, no interview pressure). Three learning modes chosen on the start screen:
 *Free conversation* (at most one on-screen tip, spaced out, never spoken), *English learning* (a short spoken "a more
 natural way to say that is...", then the conversation continues; the same correction is never repeated) and
@@ -49,14 +49,14 @@ Evaluation of the companion (topic following, 3 sessions, 100% incl. 2 topic swi
 
 ## Recurring-mistake profile (2026-10-25)
 
-`services/english_profile.py`, collection `english_mistake_patterns`. Rule-based categories (verb tense, articles,
+`services/english/english_mistake_profile.py`, collection `english_mistake_patterns`. Rule-based categories (verb tense, articles,
 prepositions, subject-verb agreement) from corrections already given; "recurring" needs 3 corrections in 2+ sessions.
 Students can dismiss one or clear all (card on the English page). In "English learning" mode the top 2 recurring
 patterns are added to the chat prompt. Categories are approximate; the effect on learning has **not** been measured.
 
 ## Vocabulary review (spaced repetition, 2026-11-04)
 
-Page `/student/english/vocabulary`, `services/english_vocab.py`, collections `english_vocabulary` and
+Page `/student/english/vocabulary`, `services/english/english_vocabulary_trainer.py`, collections `english_vocabulary` and
 `english_vocabulary_reviews`.
 
 - Each correction Aria gives becomes a card automatically: what the student said → the better way to say it, plus

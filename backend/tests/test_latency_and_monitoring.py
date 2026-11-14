@@ -1,3 +1,71 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_latency_and_monitoring.py
+#
+# FILE PURPOSE:
+# Streamed interview turns, response modes, performance metrics and camera-monitoring integrity
+# events.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 18 test(s), e.g.: partial json string handles unfinished values and escapes; split
+#    complete never cuts words or abbreviations; spoken stream emits preface then question and
+#    skips greeting; ollama url avoids slow localhost lookup; question starting like a greeting is
+#    still spoken; long first sentence split at a natural pause only; live interview prefetches
+#    first question and streams turns; turn lock blocks concurrent turns; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# All model calls are MOCKED (no Ollama/Kokoro): these tests prove the pipeline logic, ordering,
+# access control and privacy rules. Real latency is measured by tests_perf/bench_interview_latency.py
+# and tests_e2e/.
+#
+# IMPORTANT FUNCTIONS:
+#    - test_ollama_url_avoids_slow_localhost_lookup()
+#        Windows: 'localhost' tried IPv6 first and cost ~2.1 s per connection to Ollama
+#        (measured).
+#    - test_question_starting_like_a_greeting_is_still_spoken()
+#        Regression (browser run): "Hi Priya, how did you ...?" matched the greeting filter and
+#        was never spoken.
+#    - streaming_ai()
+#        Fake model that streams its question JSON through on_delta like Ollama does, plus fake
+#        TTS.
+#    Other helper functions: _join_background_threads, parse_sse,
+#    test_partial_json_string_handles_unfinished_values_and_escapes,
+#    test_split_complete_never_cuts_words_or_abbreviations,
+#    test_spoken_stream_emits_preface_then_question_and_skips_greeting,
+#    test_long_first_sentence_split_at_a_natural_pause_only, _start, _wait_question,
+#    test_live_interview_prefetches_first_question_and_streams_turns,
+#    test_turn_lock_blocks_concurrent_turns, test_repeated_question_is_retracted_and_replaced,
+#    test_text_mode_start_is_unchanged, test_perf_metrics_whitelisted_and_admin_only, _consent,
+#    test_policy_discloses_processing_retention_and_access,
+#    test_events_only_for_consented_features_with_server_side_severity,
+#    test_attention_signal_never_above_low_and_no_score_change,
+#    test_camera_required_setting_blocks_start_without_camera,
+#    test_withdraw_stops_recording_events, test_reviewer_access_is_least_privilege_and_audited,
+#    test_expired_events_are_purged
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    FEATURES
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/database_models.py,
+#    app/routers/interview_monitoring_routes.py, app/routers/interview_routes.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/interview/ai_interview_service.py,
+#    app/services/monitoring/interview_integrity_rules.py,
+#    app/services/voice/streamed_reply_sentence_splitter.py, app/services/voice/text_to_speech.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Streamed interview turns, response modes, performance metrics and camera-monitoring integrity events.
 
 All model calls are MOCKED (no Ollama/Kokoro): these tests prove the pipeline logic, ordering, access control and
@@ -38,7 +106,7 @@ def parse_sse(text: str) -> list[tuple[str, dict]]:
 # --------------------------------------------------------------------------- sentence streaming (pure)
 
 def test_partial_json_string_handles_unfinished_values_and_escapes():
-    from app.services.speech_stream import partial_json_string
+    from app.services.voice.streamed_reply_sentence_splitter import partial_json_string
     assert partial_json_string('{"preface": "', "question") is None
     assert partial_json_string('{"preface": "", "question": "How do yo', "question") == ("How do yo", False)
     assert partial_json_string('{"question": "Say \\"hi\\" now", "x"', "question") == ('Say "hi" now', True)
@@ -46,7 +114,7 @@ def test_partial_json_string_handles_unfinished_values_and_escapes():
 
 
 def test_split_complete_never_cuts_words_or_abbreviations():
-    from app.services.speech_stream import split_complete
+    from app.services.voice.streamed_reply_sentence_splitter import split_complete
     done, rest = split_complete("Good point about indexes. Now, e.g. in Postgres, how would yo", final=False)
     assert done == ["Good point about indexes."]
     assert rest == "Now, e.g. in Postgres, how would yo"
@@ -56,7 +124,7 @@ def test_split_complete_never_cuts_words_or_abbreviations():
 
 
 def test_spoken_stream_emits_preface_then_question_and_skips_greeting():
-    from app.services.speech_stream import SpokenStream, final_sentences, remaining_after
+    from app.services.voice.streamed_reply_sentence_splitter import SpokenStream, final_sentences, remaining_after
     full = json.dumps({"preface": "You covered the basics well. You missed indexing.",
                        "question": "Hello, I'm Aria. How would you speed up a slow query in PostgreSQL?",
                        "question_type": "technical", "is_followup": False})
@@ -75,8 +143,8 @@ def test_spoken_stream_emits_preface_then_question_and_skips_greeting():
 
 def test_ollama_url_avoids_slow_localhost_lookup(monkeypatch):
     """Windows: 'localhost' tried IPv6 first and cost ~2.1 s per connection to Ollama (measured)."""
-    from app.config import get_settings
-    from app.services import local_llm
+    from app.application_configuration import get_settings
+    from app.services.ai_models import language_model_client as local_llm
     for given, expected in [("http://localhost:11434", "http://127.0.0.1:11434"),
                             ("http://localhost:11434/", "http://127.0.0.1:11434"),
                             ("http://gpu-box:11434", "http://gpu-box:11434")]:
@@ -86,7 +154,7 @@ def test_ollama_url_avoids_slow_localhost_lookup(monkeypatch):
 
 def test_question_starting_like_a_greeting_is_still_spoken():
     """Regression (browser run): "Hi Priya, how did you ...?" matched the greeting filter and was never spoken."""
-    from app.services.speech_stream import final_sentences
+    from app.services.voice.streamed_reply_sentence_splitter import final_sentences
     q = "Hi Priya, how did you decide to build the Placement Tracker app with React and Flask?"
     assert final_sentences("", q) == [q]
     assert final_sentences("", "Hello, I'm Victor. How would you index a large table?") == \
@@ -94,7 +162,7 @@ def test_question_starting_like_a_greeting_is_still_spoken():
 
 
 def test_long_first_sentence_split_at_a_natural_pause_only():
-    from app.services.speech_stream import split_first_clause
+    from app.services.voice.streamed_reply_sentence_splitter import split_first_clause
     long = ("Thanks for walking me through your library API, so tell me how you decided which columns to index "
             "in PostgreSQL?")
     head, tail = split_first_clause(long)
@@ -109,7 +177,8 @@ def test_long_first_sentence_split_at_a_natural_pause_only():
 @pytest.fixture()
 def streaming_ai(monkeypatch):
     """Fake model that streams its question JSON through on_delta like Ollama does, plus fake TTS."""
-    from app.services import ai, tts
+    from app.services.interview import ai_interview_service as ai
+    from app.services.voice import text_to_speech as tts
     monkeypatch.setattr(ai, "ai_status", lambda db: {"configured": True, "enabled": True, "available": True,
                                                      "model": "stub"})
     state = {"n": 0, "kwargs": [], "repeat_once": False}
@@ -202,7 +271,7 @@ def test_live_interview_prefetches_first_question_and_streams_turns(client, stre
 
 
 def test_turn_lock_blocks_concurrent_turns(client, streaming_ai):
-    from app.routers import interviews
+    from app.routers import interview_routes as interviews
     register_student(client)
     s = _start(client)
     _wait_question(client, s["id"])
@@ -250,8 +319,8 @@ def test_perf_metrics_whitelisted_and_admin_only(client, new_client, streaming_a
     rows = {m["metric"]: m for m in admin.get("/api/admin/performance").json()["metrics"]}
     m = rows["client.answer_to_next_question"]
     assert m["count"] == 1 and m["p95_ms"] == 4200
-    from app import database
-    from app.models import PerfMetric
+    from app import database_connection as database
+    from app.database_models import PerfMetric
     db = database.SessionLocal()
     stored = db.query(PerfMetric).filter_by(metric="client.answer_to_next_question").one()
     assert stored.meta == {"mode": "fast"}  # non-whitelisted / text fields never stored
@@ -305,7 +374,7 @@ def test_events_only_for_consented_features_with_server_side_severity(client, st
 
 
 def test_attention_signal_never_above_low_and_no_score_change(client, streaming_ai):
-    from app.services.integrity import severity
+    from app.services.monitoring.interview_integrity_rules import severity
     assert severity("attention_away", 10 * 60_000, 1.0)[0] == "low"
     assert severity("multiple_faces", 120_000, 0.95)[0] == "high"
     assert severity("monitoring_unavailable", 999_999, 1.0)[0] == "info"
@@ -394,8 +463,8 @@ def test_reviewer_access_is_least_privilege_and_audited(client, new_client, stre
 
 def test_expired_events_are_purged(client, streaming_ai, db):
     from datetime import datetime, timedelta, timezone
-    from app.models import IntegrityEvent
-    from app.routers.monitoring import purge_expired
+    from app.database_models import IntegrityEvent
+    from app.routers.interview_monitoring_routes import purge_expired
     register_student(client)
     s = _start(client)
     _wait_question(client, s["id"])

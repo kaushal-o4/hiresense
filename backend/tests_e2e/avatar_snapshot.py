@@ -1,3 +1,31 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/avatar_snapshot.py
+#
+# FILE PURPOSE:
+# Browser check: the realistic 3D interviewer loads, has its viseme blendshapes, and renders.
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Saves tests_e2e/output/avatar_idle.png (and avatar_speaking_*.png if --speak). Run from backend:
+# .\venv\Scripts\python.exe tests_e2e\avatar_snapshot.py [--speak]
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    OUT, BASE, CREDS
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Browser check: the realistic 3D interviewer loads, has its viseme blendshapes, and renders.
 
 Saves tests_e2e/output/avatar_idle.png (and avatar_speaking_*.png if --speak).

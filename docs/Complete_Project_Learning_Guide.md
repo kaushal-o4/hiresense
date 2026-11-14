@@ -104,9 +104,9 @@ TTS (Kokoro) -> audio -> browser player
 | Authentication | Who are you | Login JWT cookie |
 | Authorization | What you can do | Role checks (student/recruiter/etc) |
 | Model | Learned AI pattern | qwen3:4b, MiniLM |
-| Prompt | Instruction to AI | ai.py prompts |
+| Prompt | Instruction to AI | ai_interview_service.py prompts |
 | Inference | Running a model | generate question |
-| Embedding | Text turned into numbers | matching.py |
+| Embedding | Text turned into numbers | semantic_job_matcher.py |
 | Token | Words/pieces of text | Model input |
 | Ollama | Local AI runtime | Runs qwen3:4b locally (fallback when Gemini fails) |
 | Gemini | Google's hosted model | Default language-model provider |
@@ -116,7 +116,7 @@ TTS (Kokoro) -> audio -> browser player
 
 ### Frontend
 
-The frontend is written in React and runs in the browser. It shows pages, buttons, forms, dashboards, and charts. It collects input and sends it to the backend through API calls in src/api.js.
+The frontend is written in React and runs in the browser. It shows pages, buttons, forms, dashboards, and charts. It collects input and sends it to the backend through API calls in src/apiClient.js.
 
 
 ### Backend
@@ -126,7 +126,7 @@ The backend is written in FastAPI (Python). It receives requests, checks login, 
 
 ### Database
 
-The database stores users, profiles, resumes, interviews, questions, answers, assessments, jobs, applications, mentoring, progress, and logs. It is MongoDB; collections and relationships are defined in backend/app/models.py and handled by a small data layer in backend/app/odm/.
+The database stores users, profiles, resumes, interviews, questions, answers, assessments, jobs, applications, mentoring, progress, and logs. It is MongoDB; collections and relationships are defined in backend/app/database_models.py and handled by a small data layer in backend/app/mongodb_data_layer/.
 
 
 ### APIs
@@ -136,7 +136,7 @@ An API is like a menu of operations. The frontend places an order (request) to a
 
 ### Authentication and roles
 
-Authentication checks identity using JWT in an httpOnly cookie. Authorization checks role. Roles: student, recruiter (admin-approved), mentor, admin. Backend guards are in backend/app/deps.py.
+Authentication checks identity using JWT in an httpOnly cookie. Authorization checks role. Roles: student, recruiter (admin-approved), mentor, admin. Backend guards are in backend/app/authentication_dependencies.py.
 
 
 ## 4. Complete User Workflow (Rahul example)
@@ -149,7 +149,7 @@ Rahul opens the React app and registers as a student. Frontend calls POST /api/a
 
 ### Step 2: Profile and resume
 
-Rahul uploads a PDF/DOCX resume. Backend extracts text using pypdf or python-docx (resume_parser.py), stores it, and runs AI analysis.
+Rahul uploads a PDF/DOCX resume. Backend extracts text using pypdf or python-docx (resume_text_extractor.py), stores it, and runs AI analysis.
 
 
 ### Step 3: Resume analysis
@@ -197,12 +197,12 @@ Admin manages users, settings, question bank, badges, and monitoring.
 
 ### 5.1 Ollama local LLM
 
-Model: qwen3:4b via Ollama. It is a 4-billion parameter general-purpose language model. It runs locally on CPU/GPU, is Apache-2.0 licensed, and is configured by OLLAMA_MODEL, OLLAMA_BASE_URL, OLLAMA_NUM_CTX, etc. Backend service: backend/app/services/local_llm.py and ai.py.
+Model: qwen3:4b via Ollama. It is a 4-billion parameter general-purpose language model. It runs locally on CPU/GPU, is Apache-2.0 licensed, and is configured by OLLAMA_MODEL, OLLAMA_BASE_URL, OLLAMA_NUM_CTX, etc. Backend service: backend/app/services/ai_models/language_model_client.py and ai_interview_service.py.
 
 
 ### 5.2 Sentence Transformers
 
-Model: sentence-transformers/all-MiniLM-L6-v2. It turns text into numbers (embeddings) for semantic similarity. Used in job matching and duplicate-question detection. Backend service: backend/app/services/embeddings.py, matching.py, interview_engine.py.
+Model: sentence-transformers/all-MiniLM-L6-v2. It turns text into numbers (embeddings) for semantic similarity. Used in job matching and duplicate-question detection. Backend service: backend/app/services/ai_models/sentence_embedding_model.py, semantic_job_matcher.py, interview_intelligence_rules.py.
 
 
 ### 5.3 Question-type classifier
@@ -225,9 +225,9 @@ Camera monitoring uses MediaPipe Face Landmarker running in the browser. It anal
 ```
 User clicks 'Start interview'
 -> frontend/src/pages/student/Interviews*.jsx
--> backend/app/routers/interviews.py
--> backend/app/services/ai.py (prompt construction)
--> backend/app/services/local_llm.py (Ollama request)
+-> backend/app/routers/interview_routes.py
+-> backend/app/services/interview/ai_interview_service.py (prompt construction)
+-> backend/app/services/ai_models/language_model_client.py (Ollama request)
 -> model returns JSON
 -> backend validates schema and fixes fields
 -> backend stores question in DB
@@ -288,7 +288,7 @@ Cross-checks LLM question type; never changes interview.
 - Planning: defined problem, roles, and modules from PROJECT_SPEC.md and README.md.
 - Frontend: built React pages, components, state machines, monitoring, voice UI.
 - Backend: FastAPI routers, services, security, database, seed data.
-- Database: started on SQLite/SQLAlchemy with Alembic migrations, moved to MongoDB with a small SQLAlchemy-style data layer (`backend/app/odm/`); no migrations are needed now.
+- Database: started on SQLite/SQLAlchemy with Alembic migrations, moved to MongoDB with a small SQLAlchemy-style data layer (`backend/app/mongodb_data_layer/`); no migrations are needed now.
 - AI integration: started with local Ollama and embeddings, then added Google Gemini as the default provider with Ollama fallback; wrote prompts, schemas, validation rules, and calibrated scoring on a labelled answer set.
 - ML: trained question-type classifier offline using scikit-learn.
 - Integration: connected frontend and backend through API client; added voice pipeline.
@@ -300,15 +300,15 @@ Cross-checks LLM question type; never changes interview.
 | File | Purpose |
 | ---|--- |
 | backend/app/main.py | App creation, routers, middleware, startup warmup |
-| backend/app/config.py | Settings from environment |
-| backend/app/models.py | All collections |
-| backend/app/odm/ | MongoDB data layer |
-| backend/app/schemas.py | Request validation |
-| backend/app/services/ai.py (+ ai_base, ai_resume, ai_english, ai_tasks) | AI prompts and validation; ai_base.py is the single model gateway |
-| backend/app/services/matching.py | Job matching |
-| backend/app/services/rewards.py | Points/badges/streaks |
-| backend/app/routers/interviews.py, interview_live.py | Interview API (text; streamed voice turns) |
-| frontend/src/api.js | Frontend HTTP client |
+| backend/app/application_configuration.py | Settings from environment |
+| backend/app/database_models.py | All collections |
+| backend/app/mongodb_data_layer/ | MongoDB data layer |
+| backend/app/request_validation_schemas.py | Request validation |
+| backend/app/services/interview/ai_interview_service.py (+ ai_base, ai_resume, ai_english, ai_tasks) | AI prompts and validation; ai_structured_call_base.py is the single model gateway |
+| backend/app/services/resume_and_jobs/semantic_job_matcher.py | Job matching |
+| backend/app/services/student_progress/rewards_and_badges.py | Points/badges/streaks |
+| backend/app/routers/interview_routes.py, live_voice_interview_routes.py | Interview API (text; streamed voice turns) |
+| frontend/src/apiClient.js | Frontend HTTP client |
 | frontend/src/App.jsx | Routes and guards |
 | frontend/src/voice/* | Avatar/lip-sync/state machines |
 
@@ -330,7 +330,7 @@ python -m venv venv
 .\venv\Scripts\activate
 pip install -r requirements.txt
 copy .env.example .env
-python -m app.seed
+python -m app.seed_initial_data
 uvicorn app.main:app --reload --port 8000
 ```
 

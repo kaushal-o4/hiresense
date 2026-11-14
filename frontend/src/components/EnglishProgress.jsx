@@ -1,12 +1,49 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/components/EnglishProgress.jsx
+//
+// FILE PURPOSE:
+// Shows English learning progress: words learned, review accuracy and skill scores over time.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /student/english/progress.
+// 2. Shows stat cards (words, learned, accuracy, plan days).
+// 3. Draws skill scores by session (TimelineChart) and weekly review accuracy (SimpleBar).
+//
+// HOW THIS FILE WORKS:
+// Data is loaded with useApi and shaped with trendRows() from english/vocabularyReview.js before
+// charting.
+//
+// IMPORTANT FUNCTIONS:
+//    - EnglishProgress()
+//        The progress view with stat cards and two charts.
+//
+// INPUT:
+// Data from /student/english/progress.
+//
+// OUTPUT:
+// Stat cards and charts.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/DashboardCharts.jsx, components/SharedUiComponents.jsx,
+//    english/vocabularyReview.js
+//    Used by: pages/student/EnglishPracticeHome.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * English progress (GET /student/english/progress): words in the review list, review accuracy by week, and the
  * skill scores of recent evaluated sessions.
  */
 import { BookOpen, CalendarCheck, GraduationCap, Target } from "lucide-react";
-import { get } from "../api";
-import { trendRows } from "../english/vocab";
-import { SimpleBar, TimelineChart } from "./charts";
-import { Card, StatCard, useApi } from "./ui";
+import { get } from "../apiClient";
+import { trendRows } from "../english/vocabularyReview";
+import { SimpleBar, TimelineChart } from "./DashboardCharts";
+import { Card, StatCard, useApi } from "./SharedUiComponents";
 
 const SKILLS = [
   { key: "overall", label: "Overall" }, { key: "grammar", label: "Grammar" }, { key: "vocabulary", label: "Vocabulary" },

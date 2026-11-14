@@ -1,7 +1,50 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_interview_engine.py
+#
+# FILE PURPOSE:
+# Deterministic interview intelligence (no model): context, answer signals, coverage, duplicates,
+# fallbacks.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 13 test(s), e.g.: context includes project details but not soft skills; answer
+#    signals; strong answer has no vagueness signals; paraphrases are duplicates without
+#    embeddings; different followups on the same project are allowed; semantic and concept checks;
+#    coverage tracks aspects and suggests open ones; output checks; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: test_context_includes_project_details_but_not_soft_skills,
+#    test_answer_signals, test_strong_answer_has_no_vagueness_signals,
+#    test_paraphrases_are_duplicates_without_embeddings,
+#    test_different_followups_on_the_same_project_are_allowed, test_semantic_and_concept_checks,
+#    test_coverage_tracks_aspects_and_suggests_open_ones, test_output_checks,
+#    test_fallback_is_grounded_and_never_repeats,
+#    test_topic_is_derived_from_the_resume_not_generated, test_greeting_with_comma_is_removed,
+#    test_candidate_name_is_not_given_to_the_question_writer, test_history_block_compacts_old_turns
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    ANALYSIS, DUPLICATES, DIFFERENT
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/interview/ai_interview_service.py,
+#    app/services/interview/interview_intelligence_rules.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Deterministic interview intelligence (no model): context, answer signals, coverage, duplicates, fallbacks."""
 import pytest
 
-from app.services import interview_engine as ie
+from app.services.interview import interview_intelligence_rules as ie
 
 ANALYSIS = {
     "candidate_summary": "Final-year student who built a hospital resource management web app.",
@@ -138,7 +181,7 @@ def test_topic_is_derived_from_the_resume_not_generated():
 
 
 def test_greeting_with_comma_is_removed():
-    from app.services.ai import strip_greeting
+    from app.services.interview.ai_interview_service import strip_greeting
     assert strip_greeting("Hi there, what's one thing a Python developer must understand about web apps?") == \
         "what's one thing a Python developer must understand about web apps?"
     # regression (live interview): "Hi Priya, how did you decide ..." - greeting + name

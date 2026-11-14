@@ -1,10 +1,54 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_echoed_placeholders.py
+#
+# FILE PURPOSE:
+# The model copying the prompt's instructions back as content (seen 2026-11-05 on the interview report
+# with the Ollama fallback) is treated as invalid output: retried once, then reported as unavailable.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 7 test(s), e.g.: exact bad payload is detected; genuine report with one count phrase
+#    is not flagged; conversation reply repeating the students words is not flagged; identical list
+#    items are flagged; report retries once after an echo and uses the real answer; report echoed
+#    twice is unavailable not shown; report prompt has no copyable count phrases.
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: test_exact_bad_payload_is_detected,
+#    test_genuine_report_with_one_count_phrase_is_not_flagged,
+#    test_conversation_reply_repeating_the_students_words_is_not_flagged,
+#    test_identical_list_items_are_flagged, ai_on, _fake,
+#    test_report_retries_once_after_an_echo_and_uses_the_real_answer,
+#    test_report_echoed_twice_is_unavailable_not_shown,
+#    test_report_prompt_has_no_copyable_count_phrases
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    ECHOED_REPORT, GOOD_REPORT, QA
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/ai_models/ai_structured_call_base.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/interview/ai_interview_service.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """The model copying the prompt's instructions back as content (seen 2026-11-05 on the interview report with the
 Ollama fallback) is treated as invalid output: retried once, then reported as unavailable."""
 import json
 
 import pytest
 
-from app.services import ai, ai_base, local_llm
+from app.services.interview import ai_interview_service as ai
+from app.services.ai_models import ai_structured_call_base as ai_base, language_model_client as local_llm
 
 # Exact payload stored for interview session 1 in the screenshot run (Gemini at quota -> Ollama fallback).
 ECHOED_REPORT = {

@@ -1,11 +1,49 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/recruiter/CandidateDetail.jsx
+//
+// FILE PURPOSE:
+// One candidate's profile and resume analysis as seen by a recruiter.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /recruiter/candidates/{id}.
+// 2. Shows profile, resume analysis and interview overview.
+// 3. Downloads the resume (GET /resumes/{id}/download).
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /recruiter/candidates/{id}, GET
+// /resumes/{id}/download.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: CandidateDetail
+//
+// INPUT:
+// Student id from URL.
+//
+// OUTPUT:
+// Candidate view.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, pages/shared/IntegrityReview.jsx,
+//    pages/student/InterviewSession.jsx, pages/student/ResumeUploadAndAnalysis.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* One candidate's profile, resume analysis and resume download, as visible to a recruiter. */
 
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Download } from "lucide-react";
-import { download, get } from "../../api";
-import { Button, Card, ErrorBox, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatCard, StatusPill, Table, fmtDate, useApi, useToast } from "../../components/ui";
-import { ResumeAnalysisView } from "../student/Resume";
+import { download, get } from "../../apiClient";
+import { Button, Card, ErrorBox, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatCard, StatusPill, Table, fmtDate, useApi, useToast } from "../../components/SharedUiComponents";
+import { ResumeAnalysisView } from "../student/ResumeUploadAndAnalysis";
 import { InterviewReport } from "../student/InterviewSession";
 import { IntegrityReview } from "../shared/IntegrityReview";
 

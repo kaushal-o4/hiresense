@@ -1,15 +1,55 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_account_security.py
+#
+# FILE PURPOSE:
+# Password reset, self-service account deletion, upload storage and the admin password policy.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 10 test(s), e.g.: forgot password does not reveal accounts; reset password flow is
+#    single use; reset rejects weak password and garbage token; reset token cannot be used as a
+#    session; reset requests are rate limited; student can delete own account and files; only
+#    students can self delete; uploads go to temp dir not backend uploads; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: docx_bytes, upload, capture_mail, token_from,
+#    test_forgot_password_does_not_reveal_accounts, test_reset_password_flow_is_single_use,
+#    test_reset_rejects_weak_password_and_garbage_token,
+#    test_reset_token_cannot_be_used_as_a_session, test_reset_requests_are_rate_limited,
+#    test_student_can_delete_own_account_and_files, test_only_students_can_self_delete,
+#    test_uploads_go_to_temp_dir_not_backend_uploads, test_resume_history_is_capped,
+#    test_seed_generates_random_admin_password_when_unset
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_models.py,
+#    app/mongodb_data_layer/__init__.py, app/password_and_token_security.py,
+#    app/routers/authentication_routes.py, app/routers/student_portal_routes.py,
+#    app/seed_initial_data.py, app/services/platform_support/rate_limiter.py
+#
+# IMPORTANT DEPENDENCIES:
+#    docx
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Password reset, self-service account deletion, upload storage and the admin password policy."""
 import io
 import re
 from pathlib import Path
 
 from docx import Document
-from app.odm import select
+from app.mongodb_data_layer import select
 
-from app.config import get_settings
-from app.models import AuditLog, Resume, User
-from app.routers import auth as auth_router
-from app.security import COOKIE_NAME, create_reset_token
+from app.application_configuration import get_settings
+from app.database_models import AuditLog, Resume, User
+from app.routers import authentication_routes as auth_router
+from app.password_and_token_security import COOKIE_NAME, create_reset_token
 from conftest import login, register_student
 
 
@@ -33,7 +73,7 @@ def capture_mail(monkeypatch):
         sent.append({"to": to, "subject": subject, "body": body})
         return True
     monkeypatch.setattr(auth_router.mailer, "send", fake_send)
-    from app.services import limiter
+    from app.services.platform_support import rate_limiter as limiter
     limiter.reset()
     return sent
 
@@ -134,7 +174,7 @@ def test_uploads_go_to_temp_dir_not_backend_uploads(client, db, fake_ai):
 
 
 def test_resume_history_is_capped(client, db, fake_ai, monkeypatch):
-    from app.routers import students
+    from app.routers import student_portal_routes as students
     monkeypatch.setattr(students, "RESUME_HISTORY", 3)
     register_student(client, email="many@test.dev")
     for i in range(5):
@@ -148,7 +188,7 @@ def test_resume_history_is_capped(client, db, fake_ai, monkeypatch):
 # ---------------------------------------------------------------- admin password
 
 def test_seed_generates_random_admin_password_when_unset(db_session_factory, monkeypatch, capsys):
-    from app import seed as seed_module
+    from app import seed_initial_data as seed_module
     s = get_settings()
     monkeypatch.setattr(s, "admin_password", "")
     monkeypatch.setattr(s, "admin_email", "fresh-admin@test.dev")
@@ -157,7 +197,7 @@ def test_seed_generates_random_admin_password_when_unset(db_session_factory, mon
     generated = re.search(r"Generated password .*: (\S+)", out).group(1)
     assert generated and generated != seed_module.PUBLISHED_ADMIN_PASSWORD
     db = db_session_factory()
-    from app.security import verify_password
+    from app.password_and_token_security import verify_password
     admin = db.scalar(select(User).where(User.email == "fresh-admin@test.dev"))
     assert verify_password(generated, admin.password_hash)
     assert not verify_password(seed_module.PUBLISHED_ADMIN_PASSWORD, admin.password_hash)

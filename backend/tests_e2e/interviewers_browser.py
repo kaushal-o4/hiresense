@@ -1,3 +1,40 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/interviewers_browser.py
+#
+# FILE PURPOSE:
+# Real-browser end-to-end test of the multi-interviewer experience (Chromium via Playwright).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# 1. Selection screen: 4 interviewer cards with live 3D previews, filters, a voice preview that is
+# lip-synced. 2. Full VOICE interview with Victor: his own 3D model and voice, greeting -> speaking ->
+# listening -> reaction -> thinking states, mouth moving only with audio, true pause/resume, fake-
+# microphone answer transcribed by local Whisper, a real follow-up from the local LLM, report with
+# skill breakdown + Victor's spoken closing remarks, and microphone/audio released at the end. 3.
+# Stress interview with Marcus: the answer is stopped at the (shortened, test-only) time limit and
+# stored as interrupted. Run (backend + frontend + Ollama running), from the backend folder:
+# .\venv\Scripts\python.exe...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: say, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT, MIC, BASE, INIT, SAMPLE
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Real-browser end-to-end test of the multi-interviewer experience (Chromium via Playwright).
 
 1. Selection screen: 4 interviewer cards with live 3D previews, filters, a voice preview that is lip-synced.

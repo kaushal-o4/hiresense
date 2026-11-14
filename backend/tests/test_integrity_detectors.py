@@ -1,5 +1,48 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_integrity_detectors.py
+#
+# FILE PURPOSE:
+# Integrity detectors added on top of the camera monitoring: paste, full screen / second display,
+# phone or notes.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 9 test(s), e.g.: new detectors are never high severity; paste is informational and
+#    long pastes escalate only when repeated; phone needs duration and confidence for medium;
+#    policy discloses new features and marks them optional; new events are stored only with their
+#    own consent; new events get server side severity; repeated long pastes escalate across
+#    batches; object detection is switched off without camera; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: _events, _send, test_new_detectors_are_never_high_severity,
+#    test_paste_is_informational_and_long_pastes_escalate_only_when_repeated,
+#    test_phone_needs_duration_and_confidence_for_medium,
+#    test_policy_discloses_new_features_and_marks_them_optional,
+#    test_new_events_are_stored_only_with_their_own_consent,
+#    test_new_events_get_server_side_severity, test_repeated_long_pastes_escalate_across_batches,
+#    test_object_detection_is_switched_off_without_camera, test_unknown_event_type_is_rejected
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    ALL
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_connection.py, app/database_models.py,
+#    app/services/monitoring/interview_integrity_rules.py
+#
+# IMPORTANT DEPENDENCIES:
+#    test_latency_and_monitoring
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Integrity detectors added on top of the camera monitoring: paste, full screen / second display, phone or notes."""
-from app.services import integrity
+from app.services.monitoring import interview_integrity_rules as integrity
 from conftest import register_student
 # shared helpers and fixtures from the monitoring tests (imported, so pytest sees the fixtures here too)
 from test_latency_and_monitoring import _consent, _join_background_threads, _start, streaming_ai  # noqa: F401
@@ -95,8 +138,8 @@ def test_object_detection_is_switched_off_without_camera(client, streaming_ai):
     s = _start(client)
     from conftest import join_app_threads
     join_app_threads(("prefetch-",))  # the first-question prefetch shares the test DB connection: let it finish
-    from app import database
-    from app.models import PlatformSetting
+    from app import database_connection as database
+    from app.database_models import PlatformSetting
     db = database.SessionLocal()
     db.merge(PlatformSetting(key="monitoring_camera_required", value=False))  # camera optional for this check
     db.commit()

@@ -1,4 +1,36 @@
-/* Small helpers and defaults of the live interview room (pages/student/VoiceInterview.jsx). */
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/roomUtils.js
+//
+// FILE PURPOSE:
+// Small helpers and default settings for the live interview room.
+//
+// WHAT THIS FILE DOES:
+// 1. Default room settings and loading saved settings.
+// 2. Fallback interviewer if the list cannot load.
+// 3. Helpers: split sentences, make a turn id, format a clock, storage wrappers, find the current
+//    question.
+//
+// HOW THIS FILE WORKS:
+// Plain functions and constants imported by LiveVoiceInterview.jsx and RoomSidePanels.jsx.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: savedSettings, splitSentences, turnId, fmtClock, store,
+//    currentQuestion
+//
+// IMPORTANT VARIABLES / STATE:
+//    - DEFAULT_SETTINGS
+//        Voice, captions, auto-mic, auto-send defaults.
+//    - INTERJECTION
+//        Stress-interview interruption line.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: pages/student/LiveVoiceInterview.jsx, voice/RoomSidePanels.jsx
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
+/* Small helpers and defaults of the live interview room (pages/student/LiveVoiceInterview.jsx). */
 
 // Used only if the interviewer list cannot be loaded: the original Aria behaviour.
 export const FALLBACK = {

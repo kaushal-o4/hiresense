@@ -1,3 +1,52 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_deploy.py
+#
+# FILE PURPOSE:
+# Deployment features: shared rate limiter (memory / Redis), cross-site cookies, hosted-AI consent,
+# Gemini speech recognition and the graceful-shutdown drain. Uses only the standard library and the
+# slim cloud requirements, so it also runs in a requirements-cloud.txt environment (the Redis tests
+# need `fakeredis`, otherwise they are skipped).
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 17 test(s), e.g.: memory limiter; redis limiter and shared state; login lockout uses
+#    redis when configured; redis outage falls back to memory; no redis url means memory; cookie is
+#    lax by default; cross site cookie is samesite none and secure; privacy info local; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: pcm_wav, _exercise, test_memory_limiter,
+#    test_redis_limiter_and_shared_state, test_login_lockout_uses_redis_when_configured,
+#    limiter_max, test_redis_outage_falls_back_to_memory, test_no_redis_url_means_memory,
+#    test_cookie_is_lax_by_default, test_cross_site_cookie_is_samesite_none_and_secure, hosted_ai,
+#    test_privacy_info_local, test_consent_required_before_ai_features_with_gemini,
+#    test_consent_at_registration_is_recorded, test_consent_not_needed_locally,
+#    test_wav_stats_without_numpy, test_gemini_stt_engine, test_gemini_stt_errors_are_readable,
+#    test_gemini_transcribe_request, test_drain_waits_for_background_jobs,
+#    test_drain_gives_up_after_the_deadline
+#
+# IMPORTANT CLASSES:
+#    - _BrokenRedis
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_models.py,
+#    app/mongodb_data_layer/__init__.py, app/routers/authentication_routes.py,
+#    app/services/ai_models/gemini_api_client.py, app/services/ai_models/language_model_client.py,
+#    app/services/platform_support/background_jobs.py,
+#    app/services/platform_support/hosted_ai_consent.py,
+#    app/services/platform_support/rate_limiter.py, app/services/voice/speech_to_text.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Deployment features: shared rate limiter (memory / Redis), cross-site cookies, hosted-AI consent, Gemini speech
 recognition and the graceful-shutdown drain. Uses only the standard library and the slim cloud requirements, so it
 also runs in a requirements-cloud.txt environment (the Redis tests need `fakeredis`, otherwise they are skipped)."""
@@ -10,8 +59,14 @@ import wave
 
 import pytest
 
-from app.config import get_settings
-from app.services import background, consent, gemini_llm, limiter, stt
+from app.application_configuration import get_settings
+from app.services.platform_support import (
+    background_jobs as background,
+    hosted_ai_consent as consent,
+    rate_limiter as limiter,
+)
+from app.services.ai_models import gemini_api_client as gemini_llm
+from app.services.voice import speech_to_text as stt
 from conftest import register_student
 
 
@@ -72,7 +127,7 @@ def test_login_lockout_uses_redis_when_configured(client):
 
 
 def limiter_max():
-    from app.routers import auth
+    from app.routers import authentication_routes as auth
     return auth.MAX_FAILED
 
 
@@ -155,8 +210,8 @@ def test_consent_required_before_ai_features_with_gemini(client, hosted_ai):
 def test_consent_at_registration_is_recorded(client, hosted_ai, db):
     user = register_student(client, "yes@test.dev", ai_consent=True)
     assert user["ai_data_consent_at"]
-    from app.models import AuditLog
-    from app.odm import select
+    from app.database_models import AuditLog
+    from app.mongodb_data_layer import select
     actions = [a.action for a in db.scalars(select(AuditLog).where(AuditLog.actor_id == user["id"]))]
     assert "user.ai_consent_given" in actions
 
@@ -194,7 +249,7 @@ def test_gemini_stt_engine(monkeypatch):
 
 
 def test_gemini_stt_errors_are_readable(monkeypatch):
-    from app.services.local_llm import LLMError
+    from app.services.ai_models.language_model_client import LLMError
     monkeypatch.setattr(get_settings(), "stt_engine", "gemini")
     monkeypatch.setattr(get_settings(), "stt_enabled", True)
 

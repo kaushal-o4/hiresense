@@ -1,3 +1,52 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/avatarStates.js
+//
+// FILE PURPOSE:
+// Defines the avatar's animation states and each interviewer's facial expression profile.
+//
+// WHAT THIS FILE DOES:
+// 1. avatarStateFor() picks exactly one avatar state from the conversation state.
+// 2. PROFILES give each interviewer (Aria, Victor, Marcus, Elena) a different face for each state.
+// 3. Stores and reads the chosen graphics quality in localStorage.
+//
+// HOW THIS FILE WORKS:
+// Pure data and functions; the 3D renderer blends smoothly between expressions. The mouth is NOT part
+// of the state - it follows the audio.
+//
+// IMPORTANT FUNCTIONS:
+//    - avatarStateFor()
+//        Single avatar state for the current status.
+//    - expressionFor()
+//        Expression of an interviewer in a state.
+//    - profileFor()
+//        Full profile of an interviewer.
+//    - storedQuality()
+//        Saved graphics quality.
+//    - saveQuality()
+//        Save graphics quality.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - A
+//        Avatar state names.
+//    - PROFILES
+//        Expression profiles per interviewer.
+//    - AVATAR_QUALITY
+//        Quality presets.
+//
+// INPUT:
+// Interview status and flags.
+//
+// OUTPUT:
+// State name and expression weights.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: pages/student/LiveVoiceInterview.jsx, voice/Avatar3D.jsx, voice/RoomSettingsPanel.jsx
+//    Tested by: voice/interviewers.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Avatar animation states and per-interviewer expression profiles. Pure (no React / three.js), so it is tested.
 //
 // Exactly ONE avatar state is active at a time, derived from the conversation state, so animations can never

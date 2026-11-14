@@ -1,9 +1,46 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/ForgotPassword.jsx
+//
+// FILE PURPOSE:
+// Page to request a password-reset link by email.
+//
+// WHAT THIS FILE DOES:
+// 1. Takes the account email.
+// 2. Calls POST /auth/forgot-password.
+// 3. Always shows the same neutral message.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: POST /auth/forgot-password.
+//
+// IMPORTANT FUNCTIONS:
+//    - ForgotPassword()
+//        Form component.
+//
+// INPUT:
+// Email address.
+//
+// OUTPUT:
+// Confirmation message.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, pages/AuthShell.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Request a password-reset link by email (POST /auth/forgot-password). */
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { post } from "../api";
-import { Button, ErrorBox, Field, Notice } from "../components/ui";
+import { post } from "../apiClient";
+import { Button, ErrorBox, Field, Notice } from "../components/SharedUiComponents";
 import AuthShell from "./AuthShell";
 
 export default function ForgotPassword() {

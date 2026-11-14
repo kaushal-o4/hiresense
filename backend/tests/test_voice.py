@@ -1,3 +1,44 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_voice.py
+#
+# FILE PURPOSE:
+# Voice-interview API tests. TTS/STT engines are MOCKED here (real engines:
+# tests_integration/test_voice_real.py).
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 12 test(s), e.g.: voice endpoints require login; speak reports disabled engine
+#    honestly; speak returns audio and visemes; viseme timeline from durations; pronunciation
+#    normalisation; transcribe mocked then submit through existing answer api; live captions have
+#    their own rate limit; transcribe rejects wrong question other student and recruiter; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: wav_bytes, start_interview, send, test_voice_endpoints_require_login,
+#    test_speak_reports_disabled_engine_honestly, test_speak_returns_audio_and_visemes,
+#    test_viseme_timeline_from_durations, test_pronunciation_normalisation,
+#    test_transcribe_mocked_then_submit_through_existing_answer_api,
+#    test_live_captions_have_their_own_rate_limit,
+#    test_transcribe_rejects_wrong_question_other_student_and_recruiter,
+#    test_transcribe_when_stt_disabled_suggests_typing, test_transcribe_finished_interview_refused,
+#    test_bad_and_silent_audio, test_speech_activity_measure
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/routers/voice_speech_routes.py,
+#    app/services/platform_support/rate_limiter.py, app/services/voice/speech_to_text.py,
+#    app/services/voice/text_to_speech.py
+#
+# IMPORTANT DEPENDENCIES:
+#    numpy, pytest, soundfile, test_local_ai
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Voice-interview API tests. TTS/STT engines are MOCKED here (real engines: tests_integration/test_voice_real.py)."""
 import io
 
@@ -45,7 +86,7 @@ def test_speak_reports_disabled_engine_honestly(client):
 
 
 def test_speak_returns_audio_and_visemes(client, monkeypatch):
-    from app.services import tts
+    from app.services.voice import text_to_speech as tts
     monkeypatch.setattr(tts, "synthesize", lambda text, voice=None, speed=None: {
         "audio_wav_b64": "UklGRg==", "sample_rate": 24000, "duration": 1.0,
         "visemes": [{"t": 0.0, "d": 0.2, "v": "PP"}], "voice": "af_heart", "text": text})
@@ -57,7 +98,7 @@ def test_speak_returns_audio_and_visemes(client, monkeypatch):
 
 
 def test_viseme_timeline_from_durations():
-    from app.services.tts import visemes_from_durations
+    from app.services.voice.text_to_speech import visemes_from_durations
     # "map" with stress mark: m->PP, ˈ extends PP, a->AA, p->PP ; pads 2 units each side (25 ms per unit)
     tl = visemes_from_durations("mˈap", [2, 4, 1, 6, 3, 2])
     assert [s["v"] for s in tl] == ["PP", "AA", "PP"]
@@ -71,7 +112,7 @@ def test_viseme_timeline_from_durations():
 
 
 def test_pronunciation_normalisation():
-    from app.services.tts import normalize_text
+    from app.services.voice.text_to_speech import normalize_text
     out = normalize_text("Compare MySQL vs PostgreSQL in C++ and Node.js, e.g. for CI/CD.")
     assert "My sequel" in out and "Postgres Q L" in out and "C plus plus" in out and "Node J S" in out
     assert "for example" in out and "C I C D" in out and "versus" in out
@@ -80,7 +121,7 @@ def test_pronunciation_normalisation():
 # --------------------------------------------------------------------------- speech input
 
 def test_transcribe_mocked_then_submit_through_existing_answer_api(client, mock_llm, monkeypatch):
-    from app.services import stt
+    from app.services.voice import speech_to_text as stt
     register_student(client)
     s = start_interview(client, mock_llm)
     q = s["questions"][0]
@@ -104,9 +145,9 @@ def test_transcribe_mocked_then_submit_through_existing_answer_api(client, mock_
 
 
 def test_live_captions_have_their_own_rate_limit(client, mock_llm, monkeypatch):
-    from app.routers import voice
-    from app.services import limiter
-    from app.services import stt
+    from app.routers import voice_speech_routes as voice
+    from app.services.platform_support import rate_limiter as limiter
+    from app.services.voice import speech_to_text as stt
     register_student(client)
     s = start_interview(client, mock_llm)
     q = s["questions"][0]
@@ -151,8 +192,8 @@ def test_transcribe_finished_interview_refused(client, mock_llm, monkeypatch):
 
 
 def test_bad_and_silent_audio(monkeypatch):
-    from app.config import get_settings
-    from app.services import stt
+    from app.application_configuration import get_settings
+    from app.services.voice import speech_to_text as stt
     monkeypatch.setattr(get_settings(), "stt_enabled", True)
     with pytest.raises(stt.BadAudio):
         stt.transcribe(b"not a wav file at all, just some bytes ......................")
@@ -165,7 +206,7 @@ def test_bad_and_silent_audio(monkeypatch):
 
 
 def test_speech_activity_measure():
-    from app.services.stt import decode_wav, speech_seconds
+    from app.services.voice.speech_to_text import decode_wav, speech_seconds
     tone, dur = decode_wav(wav_bytes(seconds=2.0, sr=24000))   # also checks resampling to 16 kHz
     assert abs(dur - 2.0) < 0.01 and speech_seconds(tone) > 1.8
     silent, _ = decode_wav(wav_bytes(seconds=2.0, amp=0.0))

@@ -1,8 +1,44 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/Privacy.jsx
+//
+// FILE PURPOSE:
+// Public privacy notice page (/privacy).
+//
+// WHAT THIS FILE DOES:
+// 1. Loads GET /auth/privacy (through usePrivacyInfo) to know which AI provider this server uses.
+// 2. Explains what data is processed and where.
+// 3. Shows the AI consent card for students when needed.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: GET /auth/privacy.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: Privacy
+//
+// INPUT:
+// Server privacy info.
+//
+// OUTPUT:
+// Privacy text.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: AuthContext.jsx, components/HostedAiConsentGate.jsx
+//    Used by: App.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* Public privacy notice (/privacy). Short and specific to how this server is configured (GET /auth/privacy). */
 
 import { Link } from "react-router-dom";
-import { usePrivacyInfo } from "../components/AIConsent";
-import { useAuth } from "../auth";
+import { usePrivacyInfo } from "../components/HostedAiConsentGate";
+import { useAuth } from "../AuthContext";
 
 export default function Privacy() {
   const info = usePrivacyInfo();

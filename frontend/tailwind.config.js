@@ -1,3 +1,32 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/tailwind.config.js
+//
+// FILE PURPOSE:
+// Configuration of Tailwind CSS: which files to scan and the custom theme colours and fonts.
+//
+// WHAT THIS FILE DOES:
+// 1. Tells Tailwind to scan index.html and src/**/*.js(x) for class names.
+// 2. Maps colour names (slate, brand, emerald, ...) to the CSS variables in index.css.
+// 3. Sets the Geist font family.
+//
+// HOW THIS FILE WORKS:
+// The helper v(name) creates a colour scale whose values are rgb(var(--name-N)), so colours come from
+// index.css.
+//
+// IMPORTANT FUNCTIONS:
+//    - v()
+//        Theme: "dark premium".
+//
+// OUTPUT:
+// The Tailwind theme used when the CSS is built.
+//
+// IMPORTANT DEPENDENCIES:
+//    tailwindcss
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /** @type {import('tailwindcss').Config} */
 // Theme: "dark premium". Every colour family the app uses is a CSS variable (RGB triplet, defined in index.css), so
 // the whole UI is themed in one place and opacity modifiers (bg-white/90) keep working.

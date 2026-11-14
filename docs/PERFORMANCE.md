@@ -22,7 +22,7 @@ Measured on the development laptop (i5-12450H, 16 GB RAM, RTX 3050 4 GB). Raw re
 
 | Bottleneck found | Fix |
 |---|---|
-| **`localhost` on Windows**: every connection to Ollama tried IPv6 first and waited **~2.1 s** (and the 2 s status check could time out) | Ollama URL uses `127.0.0.1`; one kept-alive HTTP connection (`services/local_llm.py`) |
+| **`localhost` on Windows**: every connection to Ollama tried IPv6 first and waited **~2.1 s** (and the 2 s status check could time out) | Ollama URL uses `127.0.0.1`; one kept-alive HTTP connection (`services/ai_models/language_model_client.py`) |
 | **Token generation** is the slow part (~17-25 tokens/s, model split between the 4 GB GPU and CPU); prompt reading is 0.1-0.6 s | shorter questions (Fast mode), compact history, an unused scoring field removed, tighter output limits |
 | Speech waited for the **whole** question and the **whole** audio | `/turn` streams: each finished sentence is synthesised and played while the rest is written |
 | **Cold model**: first AI call 64 s | model, voice and transcription loaded at server start and again from the setup screen (`POST /api/voice/warmup`); first question written while the student does the setup |

@@ -1,3 +1,39 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/pasteGuard.js
+//
+// FILE PURPOSE:
+// Notices when text is pasted into an answer box, without recording the pasted text.
+//
+// WHAT THIS FILE DOES:
+// 1. Ignores short pastes (under 40 characters).
+// 2. Records 'paste_detected' or, from 200 characters, 'paste_long'.
+// 3. Warns the candidate only for long pastes.
+//
+// HOW THIS FILE WORKS:
+// PasteGuard.attach() listens for paste events on answer fields; pasteEvent() builds the event.
+//
+// IMPORTANT FUNCTIONS:
+//    - PasteGuard()
+//        Attaches/detaches the paste listener.
+//    - pasteEvent()
+//        Creates an event for one paste or returns null.
+//    - isAnswerField()
+//        Checks whether the paste happened in an answer field.
+//
+// INPUT:
+// Browser paste events.
+//
+// OUTPUT:
+// Paste events for the reporter.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/interviewMonitor.js
+//    Tested by: monitoring/browserGuards.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Notices text pasted into an answer box (typed interview answers, coding questions). Only the fact that a paste
 // happened, and whether it was long, is recorded - never the pasted text. Short pastes (a variable name, a fixed
 // typo) are ignored. Pasting is also a legitimate input route (dictation and accessibility tools), so a normal

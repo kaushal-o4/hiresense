@@ -1,12 +1,66 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/Login.jsx
+//
+// FILE PURPOSE:
+// The sign-in page for all four roles.
+//
+// WHAT THIS FILE DOES:
+// 1. Shows email and password fields inside AuthShell.
+// 2. Calls login() from AuthContext (POST /auth/login sets the session cookie).
+// 3. Shows an error message if sign-in fails.
+// 4. After login, App.jsx sends the user to their portal home.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads its data with useApi()/get() from apiClient.js, keeps form and
+// modal state with useState, sends changes with post/put/patch/del and shows the result with the
+// shared components from SharedUiComponents.jsx. API calls used: POST /auth/login (through
+// AuthContext.login).
+//
+// IMPORTANT FUNCTIONS:
+//    - Login()
+//        Login form component.
+//
+// INPUT:
+// Email and password typed by the user.
+//
+// OUTPUT:
+// A signed-in session or an error message.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: AuthContext.jsx, components/SharedUiComponents.jsx, pages/AuthShell.jsx
+//    Used by: App.jsx
+//
+// EXECUTION FLOW:
+//    User enters email + password
+//       |
+//       v
+//    login() calls POST /auth/login
+//       |
+//       v
+//    Backend sets cookie
+//       |
+//       v
+//    /auth/me loads user
+//       |
+//       v
+//    Redirect to portal
+//
+// IMPORTANT DEPENDENCIES:
+//    react, react-router-dom
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
- * Sign-in page. Calls login() from auth.jsx (POST /auth/login sets the session cookie); App.jsx then routes
+ * Sign-in page. Calls login() from AuthContext.jsx (POST /auth/login sets the session cookie); App.jsx then routes
  * the user to their portal's home page.
  */
 
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../auth";
-import { Button, ErrorBox, Field } from "../components/ui";
+import { useAuth } from "../AuthContext";
+import { Button, ErrorBox, Field } from "../components/SharedUiComponents";
 import AuthShell from "./AuthShell";
 
 export default function Login() {

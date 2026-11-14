@@ -1,3 +1,69 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/frameAnalysis.js
+//
+// FILE PURPOSE:
+// Pure maths functions that turn MediaPipe face results into simple measurements: number of faces,
+// head angle, eye direction, brightness.
+//
+// WHAT THIS FILE DOES:
+// 1. Measures picture brightness (to detect a covered camera or low light).
+// 2. Calculates head yaw/pitch and approximate eye gaze.
+// 3. Counts faces and checks if the face is partly outside the frame.
+// 4. Calibration: learns the candidate's own neutral position for 5 seconds.
+// 5. observe() turns one frame into an observation (face absent, multiple faces, looking away...).
+//
+// HOW THIS FILE WORKS:
+// Only geometry is used. Nothing identifies a person and no emotions are computed. Being pure
+// functions, they are unit-tested.
+//
+// IMPORTANT FUNCTIONS:
+//    - analyzeFaces()
+//        Summarises all faces in one MediaPipe result.
+//    - observe()
+//        Converts faces + light into one observation.
+//    - brightness()
+//        Mean and spread of pixel brightness.
+//    - headAngles()
+//        Yaw/pitch from the face transformation matrix.
+//    - setupGuidance()
+//        Advice for the setup screen (move closer, more light...).
+//    - Calibration()
+//        Class that computes the neutral baseline.
+//    - yawFromLandmarks()
+//        Rough yaw from landmarks when no matrix is available: nose position between the outer
+//        eye corners.
+//    - gazeFromBlendshapes()
+//        Horizontal / vertical eye direction from ARKit-style eye blendshapes (-1..1,
+//        approximate).
+//    - mouthOpen()
+//        Mouth opening (0-1) from the jawOpen blendshape; used only to tell whether the visible
+//        person is speaking.
+//    - observeMeta()
+//        Facts that go with the conditions above (kept per episode by SignalTracker: max faces,
+//        gaze cause, edge).
+//    Other helper functions: median
+//
+// IMPORTANT VARIABLES / STATE:
+//    - ATTENTION_LIMITS
+//        Head/eye angle limits for 'looking toward the screen'.
+//    - LIGHT
+//        Brightness limits for obstructed / low light.
+//
+// INPUT:
+// MediaPipe face results and a small pixel buffer.
+//
+// OUTPUT:
+// Observation objects.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/faceMonitor.js, monitoring/interviewMonitor.js,
+//    pages/student/InterviewSetup.jsx
+//    Tested by: monitoring/frameAnalysisAndSignals.test.js, monitoring/interviewSecurity.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Per-frame measurements from MediaPipe Face Landmarker output and a tiny downscaled frame. Pure functions.
 // Only geometry is used: number of faces, where the face is, approximate head direction and eye direction.
 // Nothing here identifies a person, and expressions/emotions are never computed. None of it leaves the browser.

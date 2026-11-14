@@ -1,3 +1,51 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_integration/test_real_features.py
+#
+# FILE PURPOSE:
+# REAL-model checks for the features README section 9 listed as "not yet verified with the real
+# model": English conversation + evaluation, AI MCQ generation, code review, student/mentor
+# recommendations and job-role suggestions. Uses whatever provider backend/.env configures (Gemini
+# with Ollama fallback, or Ollama only).
+#
+# WHAT THIS FILE DOES:
+# 1. Integration test against the REAL local AI models.
+# 2. Contains 5 test(s), e.g.: real english conversation and evaluation; real mcq generation; real
+#    code review separates correct and buggy; real student recommendations; real job role
+#    suggestions.
+# 3. Run from backend/: pytest tests_integration -s (needs Ollama and the voice models).
+#
+# HOW THIS FILE WORKS:
+# Each test prints the model that answered and the time it took (run with -s). Smoke tests of quality,
+# not benchmarks.
+#
+# IMPORTANT FUNCTIONS:
+#    - answered_by()
+#        Records which model answered each language-model call (from the result's timings).
+#    - test_real_student_recommendations()
+#        Used by both the student page (POST /students/recommendations) and the mentor page
+#        (POST /mentors/students/{id}/recommendations) - same function, same prompt.
+#    Other helper functions: _timed, test_real_english_conversation_and_evaluation,
+#    test_real_mcq_generation, test_real_code_review_separates_correct_and_buggy,
+#    test_real_job_role_suggestions
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    SNAPSHOT
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/ai_models/language_model_client.py,
+#    app/services/interview/ai_interview_service.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """REAL-model checks for the features README section 9 listed as "not yet verified with the real model":
 English conversation + evaluation, AI MCQ generation, code review, student/mentor recommendations and job-role
 suggestions. Uses whatever provider backend/.env configures (Gemini with Ollama fallback, or Ollama only).
@@ -24,7 +72,7 @@ SNAPSHOT = {
 @pytest.fixture()
 def answered_by(monkeypatch):
     """Records which model answered each language-model call (from the result's timings)."""
-    from app.services import local_llm
+    from app.services.ai_models import language_model_client as local_llm
     seen: list[str] = []
     real = local_llm.chat_json
 
@@ -43,7 +91,7 @@ def _timed(fn):
 
 
 def test_real_english_conversation_and_evaluation(db, llm_ready, answered_by):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     history = [{"sender": "ai", "content": "Hi! What do you like to do at the weekend?"},
                {"sender": "student", "content": "On weekend I am going to cricket ground with my friends and we "
                                                 "plays a match, it is very fun for me."}]
@@ -65,7 +113,7 @@ def test_real_english_conversation_and_evaluation(db, llm_ready, answered_by):
 
 
 def test_real_mcq_generation(db, llm_ready, answered_by):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     qs, secs = _timed(lambda: ai.generate_assessment(db, None, topic="SQL joins", count=4, difficulty="medium"))
     print(f"\nMCQ generation ({secs}s, {answered_by}): {len(qs)} questions")
     for q in qs:
@@ -79,7 +127,7 @@ def test_real_mcq_generation(db, llm_ready, answered_by):
 
 
 def test_real_code_review_separates_correct_and_buggy(db, llm_ready, answered_by):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     task = "Write a function second_largest(nums) that returns the second largest DISTINCT value, or None."
     cases = [{"input": [3, 1, 4, 4], "expected": 3}, {"input": [5], "expected": None},
              {"input": [2, 2], "expected": None}]
@@ -101,7 +149,7 @@ def test_real_code_review_separates_correct_and_buggy(db, llm_ready, answered_by
 def test_real_student_recommendations(db, llm_ready, answered_by):
     """Used by both the student page (POST /students/recommendations) and the mentor page
     (POST /mentors/students/{id}/recommendations) - same function, same prompt."""
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     r, secs = _timed(lambda: ai.student_recommendations(db, None, snapshot=SNAPSHOT))
     print(f"\nrecommendations ({secs}s, {answered_by}): weak={r['weak_areas']}")
     for x in r["recommendations"]:
@@ -115,7 +163,7 @@ def test_real_student_recommendations(db, llm_ready, answered_by):
 
 
 def test_real_job_role_suggestions(db, llm_ready, answered_by):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     r, secs = _timed(lambda: ai.job_role_recommendations(db, None, snapshot=SNAPSHOT, interests="backend, APIs"))
     print(f"\nrole suggestions ({secs}s, {answered_by}): " +
           ", ".join(f"{x['role']} ({x['fit_score']})" for x in r["roles"]))

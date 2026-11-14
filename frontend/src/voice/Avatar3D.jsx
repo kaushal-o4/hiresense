@@ -1,3 +1,67 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/Avatar3D.jsx
+//
+// FILE PURPOSE:
+// Renders the realistic 3D interviewer with three.js, including lip sync, blinking, gaze and head
+// motion.
+//
+// WHAT THIS FILE DOES:
+// 1. Loads the interviewer's .glb 3D model (an optional HD model first, else the normal model).
+// 2. Maps the model's blendshapes with faceRig.js.
+// 3. Every frame: applies visemes (mouth shapes) from the speech player and expressions from
+//    avatarStates.js.
+// 4. Adds natural motion (blinks, gaze, head movement) from motion.js.
+// 5. Reports failure if WebGL is missing so the page can use a fallback.
+//
+// HOW THIS FILE WORKS:
+// A useEffect creates a WebGLRenderer, scene, camera and lights, loads the model with GLTFLoader and
+// starts an animation loop. It reads the latest props through refs so it does not re-render React
+// every frame.
+//
+// IMPORTANT FUNCTIONS:
+//    - Avatar3D()
+//        The 3D avatar component (props: getVisemes, mode, interviewer, modelUrl, hdModelUrl,
+//        quality, lite...).
+//    Other helper functions: skinMaterial, upgradeMaterials, smooth, findBone
+//
+// IMPORTANT VARIABLES / STATE:
+//    - AVATAR_URL
+//        Default interviewer model path.
+//
+// INPUT:
+// Props: getVisemes callback, mode, interviewer id, model URLs, quality.
+//
+// OUTPUT:
+// A WebGL canvas with the animated interviewer.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/avatarStates.js, voice/faceRig.js, voice/motion.js
+//    Used by: components/InterviewerStage.jsx, pages/student/EnglishAvatarSession.jsx,
+//    pages/student/InterviewerFeedback.jsx, pages/student/InterviewerPicker.jsx,
+//    pages/student/LiveVoiceInterview.jsx
+//
+// EXECUTION FLOW:
+//    Load .glb model
+//       |
+//       v
+//    Build face rig
+//       |
+//       v
+//    Animation loop reads visemes + mode
+//       |
+//       v
+//    Compose face and body motion
+//       |
+//       v
+//    Render frame
+//
+// IMPORTANT DEPENDENCIES:
+//    react, three
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";

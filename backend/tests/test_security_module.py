@@ -1,3 +1,57 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_security_module.py
+#
+# FILE PURPOSE:
+# Interview security module (2026-10-23): event engine (validation, idempotency, time window, rate
+# limit), session reconnects, admin security settings, recruiter access, review history and the risk
+# summary.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 15 test(s), e.g.: own interview events carry taxonomy details and wall clock; cannot
+#    post to or read another candidates interview; duplicate events are stored once; malformed
+#    events are rejected; too many events in one request rejected; expired interview and future
+#    timestamps; rate limit; reconsent records reconnect and keeps the interview clock; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# Detector outputs are SIMULATED here (events posted as the browser would send them). These tests
+# prove the server's rules; they say nothing about how well the on-device computer vision works - see
+# README for the camera checks.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: _start, _events, _finish, _recruiter,
+#    test_own_interview_events_carry_taxonomy_details_and_wall_clock,
+#    test_cannot_post_to_or_read_another_candidates_interview,
+#    test_duplicate_events_are_stored_once, test_malformed_events_are_rejected,
+#    test_too_many_events_in_one_request_rejected, test_expired_interview_and_future_timestamps,
+#    test_rate_limit, test_reconsent_records_reconnect_and_keeps_the_interview_clock,
+#    test_session_events_need_some_consent_but_not_a_specific_feature,
+#    test_security_settings_admin_only_validated_audited_and_applied,
+#    test_monitoring_can_be_switched_off_by_policy, _applied_student,
+#    test_recruiter_sees_only_completed_interviews_of_own_applicants,
+#    test_recruiter_access_requires_disclosure_at_consent, test_reviewer_filters, _ev,
+#    test_risk_summary_aggregates_caps_and_excludes_uncertain_or_cleared
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    ALL
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/routers/interview_monitoring_routes.py,
+#    app/services/monitoring/interview_integrity_rules.py,
+#    app/services/platform_support/rate_limiter.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest, test_latency_and_monitoring
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Interview security module (2026-10-23): event engine (validation, idempotency, time window, rate limit), session
 reconnects, admin security settings, recruiter access, review history and the risk summary.
 
@@ -29,7 +83,7 @@ def _events(client, sid, *events):
 
 
 def _finish(db, sid, ago=timedelta(0)):
-    from app.models import InterviewSession
+    from app.database_models import InterviewSession
     s = db.get(InterviewSession, sid)
     s.status = "completed"
     s.completed_at = datetime.now(timezone.utc) - ago
@@ -127,8 +181,8 @@ def test_expired_interview_and_future_timestamps(client, streaming_ai, db):
 
 
 def test_rate_limit(client, streaming_ai, monkeypatch):
-    from app.routers import monitoring
-    from app.services import limiter
+    from app.routers import interview_monitoring_routes as monitoring
+    from app.services.platform_support import rate_limiter as limiter
     monkeypatch.setattr(monitoring, "RATE_LIMIT", (3, 60.0))
     register_student(client)
     s = _start(client)
@@ -313,7 +367,7 @@ def _ev(i, t, secs=0, sure=True, status="pending"):
 
 
 def test_risk_summary_aggregates_caps_and_excludes_uncertain_or_cleared():
-    from app.services.integrity import SecurityConfig, risk_summary
+    from app.services.monitoring.interview_integrity_rules import SecurityConfig, risk_summary
     assert risk_summary([])["band"]["code"] == "none"
     brief = [_ev(1, "attention_away", 4), _ev(2, "focus_change", 2), _ev(3, "face_absent", 5)]
     assert risk_summary(brief)["points"] == 0  # brief, natural events add nothing

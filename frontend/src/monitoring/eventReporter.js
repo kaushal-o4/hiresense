@@ -1,10 +1,54 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/eventReporter.js
+//
+// FILE PURPOSE:
+// Sends monitoring events to the backend in small, retry-safe batches.
+//
+// WHAT THIS FILE DOES:
+// 1. Gives each event a unique client id so re-sending never duplicates it.
+// 2. Sends batches with POST /student/interviews/{id}/integrity-events.
+// 3. Sends attention totals with PUT /student/interviews/{id}/attention.
+// 4. Keeps unsent events in sessionStorage so a reload does not lose them.
+// 5. reportMetric() sends browser timing metrics to POST /perf/client.
+//
+// HOW THIS FILE WORKS:
+// EventReporter queues events, flushes on an interval (8 s) and on page exit (keepalive), and reports
+// connection problems.
+//
+// IMPORTANT FUNCTIONS:
+//    - EventReporter()
+//        Batching sender (add, flush, sendAttention, flushOnExit, close).
+//    - reportMetric()
+//        Sends one client performance metric.
+//    - eventId()
+//        Creates a unique event id.
+//    Other helper functions: storeKey
+//
+// INPUT:
+// Event objects from the detectors.
+//
+// OUTPUT:
+// API requests to the backend.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js
+//    Used by: monitoring/interviewMonitor.js, pages/student/LiveVoiceInterview.jsx
+//    Tested by: monitoring/interviewSecurity.test.js
+//
+// IMPORTANT NOTE:
+// Only short event records leave the browser - never video, images, audio or face measurements.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Sends integrity events to the server in small batches. Only the event record is sent (type, interview-relative
 // time, duration, agreement ratio, whitelisted details) - never images, video, audio or face measurements.
 //
 // Reliability: every event gets a client id, so a batch can be re-sent safely (the server stores each id once).
 // Unsent events are kept in sessionStorage, so a reload or crash does not lose them (the reloaded page sends them),
 // and the page-close handler flushes with a keepalive request. Network failures are reported to onConnection.
-import { apiUrl, post, put } from "../api";
+import { apiUrl, post, put } from "../apiClient";
 
 const storeKey = (id) => `hs-integrity-queue-${id}`;
 const store = {

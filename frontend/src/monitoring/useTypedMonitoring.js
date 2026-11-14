@@ -1,5 +1,42 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/useTypedMonitoring.js
+//
+// FILE PURPOSE:
+// React hook that runs consent-based monitoring on the typed (text) interview page.
+//
+// WHAT THIS FILE DOES:
+// 1. Waits until the setup screen calls begin with the consented features.
+// 2. Starts the camera and an InterviewMonitor.
+// 3. Keeps status, warnings and camera state for the page.
+// 4. Stops monitoring, and on withdrawal calls POST /student/interviews/{id}/monitoring/withdraw.
+//
+// HOW THIS FILE WORKS:
+// Uses refs for the camera, monitor and policy, and React state for UI values; reuses the same
+// detectors as the voice room.
+//
+// IMPORTANT FUNCTIONS:
+//    - useTypedMonitoring()
+//        Hook returning monitoring state and begin/stop controls.
+//
+// INPUT:
+// Interview session id; setup choices.
+//
+// OUTPUT:
+// Monitoring state for InterviewSession.jsx.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, monitoring/interviewMonitor.js, monitoring/mediaSession.js
+//    Used by: pages/student/InterviewSession.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { useCallback, useEffect, useRef, useState } from "react";
-import { post } from "../api";
+import { post } from "../apiClient";
 import { InterviewMonitor } from "./interviewMonitor";
 import { CameraSession } from "./mediaSession";
 

@@ -1,7 +1,46 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/pages/student/InterviewerFeedback.jsx
+//
+// FILE PURPOSE:
+// End-of-interview closing remarks spoken by the interviewer.
+//
+// WHAT THIS FILE DOES:
+// 1. Reads the AI-written closing_remarks from the report.
+// 2. Plays them with the local voice (POST /voice/speak) and lip sync on the 3D avatar.
+// 3. Nothing plays automatically; the student presses play.
+//
+// HOW THIS FILE WORKS:
+// A React page component. It loads data with useApi()/get() from apiClient.js, keeps local state with
+// useState and sends changes with post/put/patch/del, then shows results with the shared UI
+// components. API calls used: GET /voice/status, POST /voice/speak.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewerFeedback()
+//        Feedback component.
+//    Other helper functions: Avatar3D
+//
+// INPUT:
+// Props: session, persona.
+//
+// OUTPUT:
+// Spoken feedback with an animated avatar.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js, components/SharedUiComponents.jsx, voice/Avatar3D.jsx,
+//    voice/speechPlayer.js, voice/useInterviewers.js
+//    Used by: pages/student/InterviewSession.jsx, pages/student/LiveVoiceInterview.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    lucide-react, react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import { Square, Volume2 } from "lucide-react";
-import { get, post } from "../../api";
-import { Button } from "../../components/ui";
+import { get, post } from "../../apiClient";
+import { Button } from "../../components/SharedUiComponents";
 import { SpeechPlayer } from "../../voice/speechPlayer";
 import { browserVoiceOpts, speakBody } from "../../voice/useInterviewers";
 

@@ -1,14 +1,54 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_live_notifications_and_recruiter.py
+#
+# FILE PURPOSE:
+# Live notification stream (SSE) and the recruiter comparison / candidate report endpoints.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 11 test(s), e.g.: notify signals only after commit; failing after commit hook does
+#    not break commit; stream requires login; stream delivers new notification and heartbeats; mark
+#    read signals other tabs; stream limit per user; publish reaches only that user; compare two to
+#    four applicants with breakdown; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: _recruiter, _job, short_streams, _events,
+#    test_notify_signals_only_after_commit, test_failing_after_commit_hook_does_not_break_commit,
+#    test_stream_requires_login, test_stream_delivers_new_notification_and_heartbeats,
+#    test_mark_read_signals_other_tabs, test_stream_limit_per_user,
+#    test_publish_reaches_only_that_user, _two_applicants,
+#    test_compare_two_to_four_applicants_with_breakdown,
+#    test_compare_and_report_respect_recruiter_ownership, test_candidate_report_contents_and_audit,
+#    test_integrity_overview_only_when_shared
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/database_models.py,
+#    app/services/platform_support/audit_and_notification_helpers.py,
+#    app/services/platform_support/live_notification_events.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Live notification stream (SSE) and the recruiter comparison / candidate report endpoints."""
 import threading
 import time
 
 import pytest
 
-from app import database
-from app.config import get_settings
-from app.models import IntegrityEvent, InterviewSession
-from app.services import live_events
-from app.services.common import notify
+from app import database_connection as database
+from app.application_configuration import get_settings
+from app.database_models import IntegrityEvent, InterviewSession
+from app.services.platform_support import live_notification_events as live_events
+from app.services.platform_support.audit_and_notification_helpers import notify
 from conftest import admin_login, login, register_student
 
 

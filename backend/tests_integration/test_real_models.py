@@ -1,3 +1,41 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_integration/test_real_models.py
+#
+# FILE PURPOSE:
+# REAL local-model checks (not mocked). These measure behaviour of the actual models on a few fixed
+# examples.
+#
+# WHAT THIS FILE DOES:
+# 1. Integration test against the REAL local AI models.
+# 2. Contains 5 test(s), e.g.: real embeddings rank candidates; real resume analysis; real question
+#    is personalised; real evaluation separates good and bad answers; real struggling followup is
+#    simpler.
+# 3. Run from backend/: pytest tests_integration -s (needs Ollama and the voice models).
+#
+# HOW THIS FILE WORKS:
+# Passing means the pipeline works end to end with the real model on these examples - it is a smoke
+# test of quality, not a benchmark. Timings are printed with -s.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: _timed, test_real_embeddings_rank_candidates,
+#    test_real_resume_analysis, test_real_question_is_personalised,
+#    test_real_evaluation_separates_good_and_bad_answers, test_real_struggling_followup_is_simpler
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    RESUME_TEXT, JOB
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/routers/interview_routes.py, app/services/interview/ai_interview_service.py,
+#    app/services/resume_and_jobs/semantic_job_matcher.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """REAL local-model checks (not mocked). These measure behaviour of the actual models on a few fixed examples.
 
 Passing means the pipeline works end to end with the real model on these examples - it is a smoke test of
@@ -28,7 +66,7 @@ def _timed(fn):
 # --------------------------------------------------------------------------- embeddings
 
 def test_real_embeddings_rank_candidates(embeddings_ready):
-    from app.services.matching import compute_match
+    from app.services.resume_and_jobs.semantic_job_matcher import compute_match
     strong = {"target_role": "Backend Developer", "skills": ["Python", "MySQL", "REST APIs", "Docker"],
               "projects": [{"name": "Library API", "description": "REST API in Python with MySQL",
                             "technologies": ["Python", "MySQL"]}], "experience": [], "internships": []}
@@ -52,7 +90,7 @@ def test_real_embeddings_rank_candidates(embeddings_ready):
 # --------------------------------------------------------------------------- resume
 
 def test_real_resume_analysis(db, llm_ready):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     a, secs = _timed(lambda: ai.analyze_resume(db, None, RESUME_TEXT, "Backend Developer"))
     skills = {s["name"].lower() for s in a["skills"]}
     print(f"\nresume analysis: {secs}s | name={a['full_name']} | skills={sorted(skills)}")
@@ -73,7 +111,7 @@ def test_real_resume_analysis(db, llm_ready):
 # --------------------------------------------------------------------------- interview
 
 def test_real_question_is_personalised(db, llm_ready):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     q, secs = _timed(lambda: ai.next_interview_question(
         db, None, job_role="Backend Developer", category="technical", position=1, total=5,
         resume_summary="CS student who built a placement tracker with React and Flask; interned at Infosys.",
@@ -87,8 +125,8 @@ def test_real_question_is_personalised(db, llm_ready):
 
 
 def test_real_evaluation_separates_good_and_bad_answers(db, llm_ready):
-    from app.services import ai
-    from app.routers.interviews import DEFAULT_RUBRIC
+    from app.services.interview import ai_interview_service as ai
+    from app.routers.interview_routes import DEFAULT_RUBRIC
     q = "What is a database index and what is its trade-off?"
     good = ("An index is a separate data structure, usually a B-tree, that stores column values with pointers to "
             "rows so the database can find matching rows without scanning the whole table. Lookups and range "
@@ -108,7 +146,7 @@ def test_real_evaluation_separates_good_and_bad_answers(db, llm_ready):
 
 
 def test_real_struggling_followup_is_simpler(db, llm_ready):
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     history = [{"question": "Explain how a B-tree index speeds up range queries.", "type": "technical",
                 "difficulty": "hard", "answer": "I am not sure, maybe it sorts things.", "score": 20.0}]
     q, secs = _timed(lambda: ai.next_interview_question(

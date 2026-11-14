@@ -1,3 +1,39 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/typed_monitoring_browser.py
+#
+# FILE PURPOSE:
+# Typed interview monitoring, end to end in a real browser (headless Chromium, Chromium's built-in
+# fake camera).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# The fake camera shows a test pattern (no face), so this checks the wiring, not face detection: the
+# setup screen with the notice, consent, the status bar, the self-view, tab-switch/offline events
+# reaching the database, and that the camera is released when the interview finishes. Face detection
+# itself is covered by security_module_browser.py. Needs backend + frontend running and the demo
+# accounts. From the backend folder: .\venv\Scripts\python.exe tests_e2e\typed_monitoring_browser.py
+# Leaves one abandoned or completed demo typed interview.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: ok, api
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    BASE, STUDENT, LOGIN, FETCH
+#
+# IMPORTANT DEPENDENCIES:
+#    playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Typed interview monitoring, end to end in a real browser (headless Chromium, Chromium's built-in fake camera).
 
 The fake camera shows a test pattern (no face), so this checks the wiring, not face detection: the setup screen with

@@ -1,10 +1,67 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/ml/train_question_classifier.py
+#
+# FILE PURPOSE:
+# Trains the project's own machine-learning model that predicts an interview question's type
+# (technical, HR, behavioral, ...) and difficulty, and saves it for the backend.
+#
+# WHAT THIS FILE DOES:
+# 1. Loads the hand-labelled CSV dataset from ml/data/.
+# 2. Builds TF-IDF text features.
+# 3. Trains scikit-learn classifiers for type and difficulty.
+# 4. Evaluates accuracy and writes ml/models/metrics.json.
+# 5. Saves the trained model as ml/models/question_classifier.joblib.
+#
+# HOW THIS FILE WORKS:
+# Run offline from backend/: python -m ml.train_question_classifier. The web app only loads the saved
+# file (services/ai_models/question_type_classifier.py); it never trains during a request.
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: load_data, make_model, rule_type, rule_difficulty, report, evaluate,
+#    main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, SEED, TYPE_RULES
+#
+# INPUT:
+# ml/data/interview_questions_dev.csv.
+#
+# OUTPUT:
+# question_classifier.joblib and metrics.json.
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/seed_initial_data.py
+#
+# EXECUTION FLOW:
+#    Load CSV
+#       |
+#       v
+#    TF-IDF features
+#       |
+#       v
+#    Train classifiers
+#       |
+#       v
+#    Evaluate
+#       |
+#       v
+#    Save joblib + metrics
+#
+# IMPORTANT DEPENDENCIES:
+#    joblib, numpy, sklearn
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Train the interview-question classifier (type + difficulty) and save it for the backend.
 
 Run from the backend folder:
     .\\venv\\Scripts\\python.exe -m ml.train_question_classifier
 
 Data: ml/data/interview_questions_dev.csv (hand-labelled DEVELOPMENT data written for this project) plus the
-admin-labelled seed question bank in app/seed.py. This is a small dataset; the metrics printed below describe
+admin-labelled seed question bank in app/seed_initial_data.py. This is a small dataset; the metrics printed below describe
 this dataset only and do NOT show production accuracy.
 
 Method: TF-IDF (word 1-2 grams + character 3-5 grams) -> logistic regression, one model per target.
@@ -41,7 +98,7 @@ def load_data() -> list[dict]:
         for r in csv.DictReader(f):
             rows.append({"question": r["question"].strip(), "type": r["type"].strip(),
                          "difficulty": r["difficulty"].strip(), "source": "dev_csv"})
-    from app.seed import BANK
+    from app.seed_initial_data import BANK
     for qtype, items in BANK.items():
         for q, diff, _tag in items:
             rows.append({"question": q, "type": qtype, "difficulty": diff, "source": "seed_bank"})

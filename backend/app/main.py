@@ -1,3 +1,111 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/app/main.py
+#
+# FILE PURPOSE:
+# The entry point of the backend. It creates the FastAPI application, plugs in every API route file,
+# adds security headers and a global error handler, and prepares the AI models when the server starts.
+#
+# MAIN RESPONSIBILITY:
+# Start and configure the whole HireSense API server.
+#
+# WHAT THIS FILE DOES:
+# 1. Creates the FastAPI `app` object with CORS settings so the React frontend can call it.
+# 2. Adds a middleware that gives every request an ID, logs slow requests and adds security
+#    headers.
+# 3. Registers all routers (auth, student, interviews, live interview, English, assessments, jobs,
+#    mentor, admin, voice, monitoring).
+# 4. On startup: checks the SECRET_KEY, creates MongoDB indexes, warms up the AI models in a
+#    background thread and purges expired integrity events.
+# 5. On shutdown: waits for background jobs (feedback, reports) to finish saving.
+# 6. Exposes health endpoints used by Docker/Render and the frontend.
+#
+# HOW THIS FILE WORKS:
+# uvicorn imports this module and serves `app`. Each router file adds its own URLs to `app`. Unhandled
+# exceptions are caught by `unhandled_error`, saved to the error_logs collection and returned as a
+# polite 500 message. Model warm-up runs in a separate thread so the server is ready immediately.
+#
+# IMPORTANT FUNCTIONS:
+#    - security_headers()
+#        Middleware: request ID, slow-request log, X-Frame-Options / nosniff headers.
+#    - unhandled_error()
+#        Saves any unexpected error to ErrorLog and returns a generic 500 response.
+#    - warm_up_models()
+#        Startup hook: secret-key check, indexes, background model warm-up, retention purge.
+#    - drain_background_jobs()
+#        Shutdown hook: lets running background jobs finish their database writes.
+#    - readiness()
+#        GET /api/health/ready - reports database and AI component status (503 if DB is down).
+#    - check_secret_key()
+#        Anyone who knows the SECRET_KEY can forge login cookies, and the placeholder values
+#        are public (README, .env.example).
+#    - warn_published_admin_password()
+#        Loud warning while any admin account still accepts the password older versions
+#        published in the README.
+#    - liveness()
+#        The process is up.
+#    Other helper functions: health
+#
+# API ENDPOINTS DEFINED HERE:
+#    - GET /api/health
+#        health() - public
+#    - GET /api/health/live
+#        liveness() - public - The process is up.
+#    - GET /api/health/ready
+#        readiness() - public - Whether the app can serve requests.
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    PLACEHOLDER_SECRETS
+#
+# INPUT:
+# HTTP requests from the browser (through the Vite proxy in development) and settings from
+# backend/.env.
+#
+# OUTPUT:
+# HTTP responses produced by the routers; health/readiness JSON.
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_connection.py, app/database_models.py,
+#    app/mongodb_data_layer/__init__.py, app/password_and_token_security.py,
+#    app/routers/admin/__init__.py, app/routers/authentication_routes.py,
+#    app/routers/english_practice_routes.py, app/routers/interview_monitoring_routes.py,
+#    app/routers/interview_routes.py, app/routers/jobs/__init__.py,
+#    app/routers/live_voice_interview_routes.py, app/routers/mentor_portal_routes.py,
+#    app/routers/profile_and_notification_routes.py, app/routers/skill_assessment_routes.py,
+#    app/routers/student_portal_routes.py, app/routers/voice_speech_routes.py,
+#    app/seed_initial_data.py, app/services/ai_models/ai_task_model_router.py,
+#    app/services/ai_models/language_model_client.py,
+#    app/services/ai_models/sentence_embedding_model.py,
+#    app/services/platform_support/background_jobs.py, app/services/voice/speech_to_text.py,
+#    app/services/voice/text_to_speech.py
+#    Tested by: eval/run_eval.py, tests/conftest.py, tests/test_health_and_routing.py
+#
+# EXECUTION FLOW:
+#    uvicorn starts app.main:app
+#       |
+#       v
+#    Startup hook: indexes + model warm-up thread
+#       |
+#       v
+#    Request arrives -> middleware adds request ID and headers
+#       |
+#       v
+#    Matching router function runs
+#       |
+#       v
+#    Response (or logged error) returned to the frontend
+#
+# IMPORTANT DEPENDENCIES:
+#    fastapi
+#
+# IMPORTANT NOTE:
+# This file does not contain business logic; it only wires the application together. Run with: uvicorn
+# app.main:app --reload (see start-backend.bat).
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """HireSense FastAPI application entry point.
 
 Creates the FastAPI app, registers all routers, adds security headers and the global error handler, and warms up the local AI models at startup.
@@ -13,11 +121,22 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .config import get_settings
-from .database import SessionLocal
-from .models import ErrorLog
+from .application_configuration import get_settings
+from .database_connection import SessionLocal
+from .database_models import ErrorLog
 from .routers import (
-    admin, assessments, auth, common, english, interview_live, interviews, jobs, mentors, monitoring, students, voice,
+    admin,
+    skill_assessment_routes as assessments,
+    authentication_routes as auth,
+    profile_and_notification_routes as common,
+    english_practice_routes as english,
+    live_voice_interview_routes as interview_live,
+    interview_routes as interviews,
+    jobs,
+    mentor_portal_routes as mentors,
+    interview_monitoring_routes as monitoring,
+    student_portal_routes as students,
+    voice_speech_routes as voice,
 )
 
 logger = logging.getLogger("hiresense")
@@ -99,15 +218,16 @@ def check_secret_key() -> None:
 @app.on_event("startup")
 def warm_up_models():
     check_secret_key()
-    from .services import background
+    from .services.platform_support import background_jobs as background
     background.started()
-    from .database import init_db
+    from .database_connection import init_db
     init_db()  # MongoDB indexes and unique constraints
     # Load the models in the background so the first request doesn't wait for them (the language model alone took
     # ~64 s on its first call in tests_perf). Never blocks startup.
     import threading
 
-    from .services import embeddings, local_llm, stt, tts
+    from .services.ai_models import sentence_embedding_model as embeddings, language_model_client as local_llm
+    from .services.voice import speech_to_text as stt, text_to_speech as tts
 
     def warm():  # one after another, to avoid large loads competing for memory at once
         for fn in (local_llm.warmup, embeddings.warmup, tts.warmup, stt.warmup, tts.prewarm_static):
@@ -117,7 +237,7 @@ def warm_up_models():
                 logger.warning("warm-up step %s failed", getattr(fn, "__name__", fn), exc_info=True)
     threading.Thread(target=warm, daemon=True, name="model-warmup").start()
     try:  # delete integrity events past their retention period
-        from . import database
+        from . import database_connection as database
         db = database.SessionLocal()
         try:
             monitoring.purge_expired(db)
@@ -132,19 +252,19 @@ def warm_up_models():
 def drain_background_jobs():
     """SIGTERM / Ctrl+C: uvicorn stops accepting requests and lets open ones finish, then this waits (up to
     SHUTDOWN_GRACE_SECONDS) for background jobs such as answer feedback and reports to save their results."""
-    from .services import background
+    from .services.platform_support import background_jobs as background
     left = background.drain(settings.shutdown_grace_seconds)
     logger.info("shutdown complete (%d background job(s) cut off)", left)
 
 
 def warn_published_admin_password():
     """Loud warning while any admin account still accepts the password older versions published in the README."""
-    from .odm import select
+    from .mongodb_data_layer import select
 
-    from . import database
-    from .models import User
-    from .security import verify_password
-    from .seed import PUBLISHED_ADMIN_PASSWORD
+    from . import database_connection as database
+    from .database_models import User
+    from .password_and_token_security import verify_password
+    from .seed_initial_data import PUBLISHED_ADMIN_PASSWORD
     try:
         db = database.SessionLocal()
         try:
@@ -176,8 +296,13 @@ def readiness():
     """Whether the app can serve requests. The database is required (503 if it fails). The AI parts are reported per
     component but never make the app 'not ready': the app is designed to keep working, with clearly labelled
     reduced features, while Ollama or a voice model is unavailable. No user data or file paths are returned."""
-    from .database import get_database
-    from .services import embeddings, local_llm, model_router, stt, tts
+    from .database_connection import get_database
+    from .services.ai_models import (
+        sentence_embedding_model as embeddings,
+        language_model_client as local_llm,
+        ai_task_model_router as model_router,
+    )
+    from .services.voice import speech_to_text as stt, text_to_speech as tts
 
     try:
         get_database().command("ping")

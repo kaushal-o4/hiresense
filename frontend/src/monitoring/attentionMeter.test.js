@@ -1,3 +1,32 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/attentionMeter.test.js
+//
+// FILE PURPOSE:
+// Unit tests for attentionMeter.js.
+//
+// WHAT THIS FILE DOES:
+// 1. Percentage comes from elapsed time, not frame count.
+// 2. Missing data is unobserved, never attention or looking away.
+// 3. Old values are not shown as current; enough valid time is needed before a number appears.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests feed synthetic timed samples into AttentionMeter.
+//
+// IMPORTANT FUNCTIONS:
+//    - feed()
+//        samples every `step` ms from `from` (inclusive) to `to` (exclusive), all in `state`
+//    Other helper functions: meter
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: monitoring/attentionMeter.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { describe, expect, it } from "vitest";
 import { AttentionMeter, STATE, classifyFrame } from "./attentionMeter";
 

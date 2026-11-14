@@ -1,3 +1,40 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/face_video_check.py
+#
+# FILE PURPOSE:
+# Camera-analysis check with a face in view (Chromium fake camera fed with a generated video).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# Chromium's default fake camera shows a test pattern without a face, so the main E2E only exercises
+# "face not visible". This script builds a looping fake-camera video from the app's own synthetic 3D
+# interviewer (Rocketbox model, not a real person; taken from an earlier E2E screenshot) and checks,
+# on the setup screen and in the room: * 0-12 s one face, centred -> "face is visible", no warning *
+# 12-24 s two faces -> "More than one face" guidance, warning after the grace period, event stored *
+# 24-36 s one face at the edge -> "move ... center" guidance Needs backend + frontend running (no AI
+# calls beyond the first question). From the backend folder: .\venv\Scripts\python.exe
+# tests_e2e\face_video_...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: rgba_to_i420, make_video, ok
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, SRC, BASE, SEGMENT_S, COMPOSE
+#
+# IMPORTANT DEPENDENCIES:
+#    numpy, playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Camera-analysis check with a face in view (Chromium fake camera fed with a generated video).
 
 Chromium's default fake camera shows a test pattern without a face, so the main E2E only exercises "face not

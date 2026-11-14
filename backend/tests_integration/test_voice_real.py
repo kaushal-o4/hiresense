@@ -1,3 +1,38 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_integration/test_voice_real.py
+#
+# FILE PURPOSE:
+# REAL local voice engines (Kokoro TTS + Whisper STT). Not mocked. Run: pytest tests_integration -s -k
+# voice
+#
+# WHAT THIS FILE DOES:
+# 1. Integration test against the REAL local AI models.
+# 2. Contains 4 test(s), e.g.: voice tts audio and viseme timeline; voice mouth is closed in
+#    pauses; voice round trip tts to stt; voice silence is not transcribed.
+# 3. Run from backend/: pytest tests_integration -s (needs Ollama and the voice models).
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: engines, _wav16k, test_voice_tts_audio_and_viseme_timeline,
+#    test_voice_mouth_is_closed_in_pauses, test_voice_round_trip_tts_to_stt,
+#    test_voice_silence_is_not_transcribed
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    QUESTION
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/voice/speech_to_text.py, app/services/voice/text_to_speech.py
+#
+# IMPORTANT DEPENDENCIES:
+#    numpy, pytest, soundfile
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """REAL local voice engines (Kokoro TTS + Whisper STT). Not mocked. Run: pytest tests_integration -s -k voice"""
 import base64
 import io
@@ -13,7 +48,7 @@ QUESTION = ("Hello Priya. Can you walk me through how you designed the REST API 
 
 @pytest.fixture(scope="module")
 def engines():
-    from app.services import stt, tts
+    from app.services.voice import speech_to_text as stt, text_to_speech as tts
     try:
         tts._load()
         stt._load()

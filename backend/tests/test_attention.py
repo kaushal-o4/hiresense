@@ -1,3 +1,54 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_attention.py
+#
+# FILE PURPOSE:
+# Estimated visual attention: server storage rules, the report, and who can read it.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 13 test(s), e.g.: percentage is toward over valid time and unobserved time is
+#    separate; half and half and too little data; no percentage without enough valid data and never
+#    zero for a dead camera; a running total can grow but not shrink and resends are idempotent;
+#    totals cannot exceed the interview clock; malformed snapshots are rejected; only the owner
+#    with attention consent can send; a reload re consent keeps the totals and they stay out of the
+#    config; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# The percentage is measured in the browser (frontend/src/monitoring/attentionMeter.js, unit-tested
+# there). These tests prove what the server accepts, how it combines monitor runs and that unobserved
+# time is never counted as attention.
+#
+# IMPORTANT FUNCTIONS:
+#    - spread()
+#        Fill consecutive 10-second buckets with the time, the way the browser does.
+#    Other helper functions: snap, put, started, report,
+#    test_percentage_is_toward_over_valid_time_and_unobserved_time_is_separate,
+#    test_half_and_half_and_too_little_data,
+#    test_no_percentage_without_enough_valid_data_and_never_zero_for_a_dead_camera,
+#    test_a_running_total_can_grow_but_not_shrink_and_resends_are_idempotent,
+#    test_totals_cannot_exceed_the_interview_clock, test_malformed_snapshots_are_rejected,
+#    test_only_the_owner_with_attention_consent_can_send,
+#    test_a_reload_re_consent_keeps_the_totals_and_they_stay_out_of_the_config,
+#    test_report_counts_deviation_events_and_tracking_failures,
+#    test_no_measurements_means_unavailable_not_a_fake_zero, test_updates_are_rate_limited,
+#    test_recruiter_and_other_roles_see_it_only_where_they_may_review,
+#    test_attention_summary_is_purged_with_the_events
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/database_models.py, app/routers/interview_monitoring_routes.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest, test_latency_and_monitoring, test_security_module
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Estimated visual attention: server storage rules, the report, and who can read it.
 
 The percentage is measured in the browser (frontend/src/monitoring/attentionMeter.js, unit-tested there). These tests
@@ -46,7 +97,7 @@ def started(client, db, minutes_ago=10, features=ALL):
     register_student(client)
     s = _start(client)
     assert _consent(client, s["id"], features).status_code == 200
-    from app.models import InterviewSession
+    from app.database_models import InterviewSession
     row = db.get(InterviewSession, s["id"])
     m = dict(row.monitoring)  # the interview clock started `minutes_ago`
     m["clock_origin"] = (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).isoformat()
@@ -173,7 +224,7 @@ def test_recruiter_and_other_roles_see_it_only_where_they_may_review(client, new
     rec = _applied_student(client, new_client, admin)
     s = _start(client)
     _consent(client, s["id"], ALL)
-    from app.models import InterviewSession
+    from app.database_models import InterviewSession
     row = db.get(InterviewSession, s["id"])
     m = dict(row.monitoring)
     m["clock_origin"] = (datetime.now(timezone.utc) - timedelta(minutes=10)).isoformat()
@@ -191,8 +242,8 @@ def test_recruiter_and_other_roles_see_it_only_where_they_may_review(client, new
 
 
 def test_attention_summary_is_purged_with_the_events(client, streaming_ai, db):
-    from app.models import InterviewSession
-    from app.routers import monitoring as mon
+    from app.database_models import InterviewSession
+    from app.routers import interview_monitoring_routes as mon
     s = started(client, db)
     put(client, s["id"], snap())
     row = db.get(InterviewSession, s["id"])

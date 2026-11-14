@@ -1,3 +1,41 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests_e2e/attention_browser.py
+#
+# FILE PURPOSE:
+# Visual-attention percentage, end to end in a real browser (headless Chromium, fake camera + fake
+# microphone).
+#
+# WHAT THIS FILE DOES:
+# 1. Browser end-to-end check (Playwright + Chromium against a running app).
+# 2. Run manually with the backend and frontend running: python tests_e2e/<file>.py.
+#
+# HOW THIS FILE WORKS:
+# REAL: the app and backend, MediaPipe face analysis in the browser, the attention meter, the live
+# card, the upload of cumulative totals, the stored report. SIMULATED: the person - the fake camera
+# plays the app's own synthetic 3D interviewer (not a real person) facing the camera, with the head
+# turned 45 degrees, and an empty room. This is NOT a test with a human face, glasses, real lighting
+# or a real webcam. Fake camera timeline (seconds after the camera opens, loops): 0-25 facing | 25-40
+# head turned | 40-60 facing | 60-70 nobody in view | 70-90 facing. Checks, independent of the meter:
+# while polling the page every 0.5 s the test counts for itself what the monitor saw (dev hook
+# window.__hsMoni...
+#
+# IMPORTANT FUNCTIONS:
+#    Other helper functions: say, ok, api, render_heads, make_video, setup_and_start, report
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT, MIC, BASE, STUDENT, TIMELINE, LOGIN, FETCH
+#
+# IMPORTANT DEPENDENCIES:
+#    PIL, numpy, playwright
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Visual-attention percentage, end to end in a real browser (headless Chromium, fake camera + fake microphone).
 
 REAL: the app and backend, MediaPipe face analysis in the browser, the attention meter, the live card, the upload of

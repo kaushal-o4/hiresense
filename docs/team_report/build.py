@@ -1,3 +1,36 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# docs/team_report/build.py
+#
+# FILE PURPOSE:
+# Builds docs/HireSense_Team_Work_Distribution.pdf from content.py.
+#
+# HOW THIS FILE WORKS:
+# Run from the repository root with the backend venv (needs playwright + pypdf):
+# backend\venv\Scripts\python docs\team_report\build.py Two passes: render, find the page of every
+# section heading, then render again with page numbers in the contents. The cover is rendered
+# separately (no header/footer) and merged in front; body pages are numbered from 1.
+#
+# IMPORTANT FUNCTIONS:
+#    - fmt()
+#        Escape, then show file paths in a monospace style.
+#    - simple_arch_svg()
+#        Three-layer architecture: browser -> backend -> data and AI.
+#    - flow_svg()
+#        Numbered boxes in a snake layout with arrows: left-to-right, then right-to-left on the
+#        next row.
+#    Other helper functions: ul, cover, toc, arch_svg, body, page, render, find_pages, main
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    HERE, OUT_PDF, SHOTS, CSS, COVER_CSS, SECTIONS, HEADER, FOOTER
+#
+# IMPORTANT DEPENDENCIES:
+#    content, playwright, pypdf
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Builds docs/HireSense_Team_Work_Distribution.pdf from content.py.
 
 Run from the repository root with the backend venv (needs playwright + pypdf):
@@ -347,10 +380,10 @@ def body(pages):
                + '<h2>Integration points between members</h2><table class="tight" style="font-size:8.8pt"><tr><th>Interface</th><th>Between</th><th>Agreement</th></tr>'
                + "".join(f"<tr><td>{e(a)}</td><td>{e(b)}</td><td>{e(c)}</td></tr>" for a, b, c in [
                    ("REST API contract (/api/...)", "Samrath ↔ Aryan, Shardha, Kaushal", "Pydantic schemas and the generated Swagger page at /docs"),
-                   ("AI gateway functions", "Yash ↔ Kaushal", "Every AI call goes through services/ai_base.py with a JSON schema"),
+                   ("AI gateway functions", "Yash ↔ Kaushal", "Every AI call goes through services/ai_models/ai_structured_call_base.py with a JSON schema"),
                    ("Interview session data", "Yash ↔ Kaushal ↔ Shardha", "Same session and answer records for typed and voice interviews and the report page"),
-                   ("Access rules", "Samrath ↔ Kaushal", "services/access.py decides who may see which student in the mentor, recruiter and admin portals"),
-                   ("Design system", "Aryan ↔ all frontend work", "Colours as CSS variables, shared components in components/ui.jsx"),
+                   ("Access rules", "Samrath ↔ Kaushal", "services/platform_support/student_record_access.py decides who may see which student in the mentor, recruiter and admin portals"),
+                   ("Design system", "Aryan ↔ all frontend work", "Colours as CSS variables, shared components in components/SharedUiComponents.jsx"),
                    ("Tests before merge", "Yash ↔ all", "Full backend and frontend suites must pass on GitHub Actions"),
                ]) + "</table></div>")
 

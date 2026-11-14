@@ -1,3 +1,55 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/live/notificationStream.js
+//
+// FILE PURPOSE:
+// Keeps one live connection per browser tab to receive 'new notification' signals from the server.
+//
+// WHAT THIS FILE DOES:
+// 1. Opens GET /api/notifications/stream (Server-Sent Events) with the login cookie.
+// 2. Tells subscribers to re-fetch notifications when a signal arrives.
+// 3. Reconnects with exponential backoff (1-60 s) and polls every 30 s while disconnected.
+// 4. Shares one connection between the header bell and the Notifications page.
+//
+// HOW THIS FILE WORKS:
+// NotificationStream wraps EventSource; subscribeNotifications() adds a listener and returns an
+// unsubscribe function.
+//
+// IMPORTANT FUNCTIONS:
+//    - subscribeNotifications()
+//        Subscribe to change signals.
+//    - onNotificationStatus()
+//        Subscribe to connection status.
+//    - backoffDelay()
+//        Reconnect delay with jitter.
+//    - NotificationStream()
+//        The shared stream class.
+//
+// IMPORTANT VARIABLES / STATE:
+//    - BACKOFF_MIN_MS
+//        1 s
+//    - BACKOFF_MAX_MS
+//        60 s
+//    - POLL_MS
+//        30 s polling fallback
+//
+// INPUT:
+// Server signals.
+//
+// OUTPUT:
+// Callbacks to subscribed components.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: apiClient.js
+//    Used by: components/AppShellLayout.jsx, pages/Notifications.jsx
+//    Tested by: live/notificationStream.test.js
+//
+// IMPORTANT NOTE:
+// Signals carry no content; components re-fetch /notifications so normal access checks apply.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /*
  * Live notifications: one Server-Sent Events connection per browser tab (GET /api/notifications/stream), shared by
  * every component that subscribes (header bell, Notifications page).
@@ -11,7 +63,7 @@
  * login is re-checked) reconnects after a short pause without counting as a failure.
  */
 
-import { apiUrl } from "../api";
+import { apiUrl } from "../apiClient";
 
 export const BACKOFF_MIN_MS = 1000;
 export const BACKOFF_MAX_MS = 60000;

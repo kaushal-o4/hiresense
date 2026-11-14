@@ -1,3 +1,50 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/faceRig.js
+//
+// FILE PURPOSE:
+// Adapter that maps any avatar model's face shapes onto one common vocabulary (ARKit names + visemes).
+//
+// WHAT THIS FILE DOES:
+// 1. canonicalName() normalises different blendshape spellings.
+// 2. buildRig() finds which shapes a model has.
+// 3. composeFace() combines lip sync, expressions, blinks and gaze into final weights between 0 and
+//    1.
+// 4. Spells visemes with ARKit mouth shapes when a model has no viseme shapes.
+//
+// HOW THIS FILE WORKS:
+// Pure functions without three.js, so they are unit-tested.
+//
+// IMPORTANT FUNCTIONS:
+//    - buildRig()
+//        Builds a rig description from a model's morph target names.
+//    - composeFace()
+//        Final face weights for one frame.
+//    - canonicalName()
+//        Normalised channel name.
+//    Other helper functions: clamp01
+//
+// IMPORTANT VARIABLES / STATE:
+//    - VISEMES
+//        The 15 viseme ids.
+//    - ARKIT
+//        ARKit blendshape names.
+//    - VISEME_ARKIT
+//        Viseme to ARKit mix.
+//
+// INPUT:
+// Morph target names; face state.
+//
+// OUTPUT:
+// Weights per morph target.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: voice/Avatar3D.jsx
+//    Tested by: voice/faceRig.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Face-rig adapter: one vocabulary for every avatar model. Pure (no three.js), so it is unit-tested.
 //
 // The renderer always speaks "canonical" channel names:

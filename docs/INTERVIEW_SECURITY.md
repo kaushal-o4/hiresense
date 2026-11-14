@@ -14,7 +14,7 @@ Disclosed, opt-in, on-device camera, microphone and browser signals during inter
 * Signals: face not visible, more than one face, sustained looking away (approximate), camera blocked/dark, low light,
   camera disconnected, permission revoked, tab/window focus changes, monitoring stopped/unavailable. Grace periods,
   hysteresis and frame-agreement confidence (`src/monitoring/signalTracker.js`); neutral warnings only.
-* Severity is assigned by the server (`services/integrity.py`); gaze is never above "low", and low-confidence signals
+* Severity is assigned by the server (`services/monitoring/interview_integrity_rules.py`); gaze is never above "low", and low-confidence signals
   stay "info". Events **never change scores** and never trigger a penalty.
 * Review: admin → AI & Monitoring → **Interview integrity**; mentors only with the extra permission
   `review_integrity` and only for students they can access; recruiters: only completed interviews of their own applicants (see [INTERVIEW_SECURITY.md](INTERVIEW_SECURITY.md)). Views and reviews are audit-logged.
@@ -27,8 +27,8 @@ Disclosed, opt-in, on-device camera, microphone and browser signals during inter
 
 Extends the camera monitoring of the camera monitoring section of [INTERVIEW_SECURITY.md](INTERVIEW_SECURITY.md) into one security module: more detectors, one event engine, a security summary,
 recruiter reports and admin settings. Everything in the camera monitoring section of [INTERVIEW_SECURITY.md](INTERVIEW_SECURITY.md) still applies (disclosed, opt-in per feature, on-device,
-never changes scores). Code: `frontend/src/monitoring/*`, `backend/app/services/integrity.py`,
-`backend/app/routers/monitoring.py`.
+never changes scores). Code: `frontend/src/monitoring/*`, `backend/app/services/monitoring/interview_integrity_rules.py`,
+`backend/app/routers/interview_monitoring_routes.py`.
 
 ### What is detected, and how
 | Category (`event_type`) | How | Where it runs |
@@ -110,7 +110,7 @@ copy of the settings that applied at consent, so later changes affect new interv
 * `backend/tests/test_security_module.py` (20): own/other interview, duplicates, malformed events, too many events,
   expired interview, future timestamps, rate limit, reconnect + clock, session events, admin-only settings with
   validation/audit/caps/snapshot, monitoring switched off, recruiter access rules, review history, filters, risk.
-* `frontend/src/monitoring/security.test.js` (22): calibration, screen-facing / brief glance / prolonged / repeated /
+* `frontend/src/monitoring/interviewSecurity.test.js` (22): calibration, screen-facing / brief glance / prolonged / repeated /
   flickering / low light / no face, partial face, multiple faces, brief dropout, audio attribution, tab switch,
   network outage, reporter ids/retry/reload/429, reminder cooldown and pause rule. Detector inputs are simulated.
 * `backend/tests_e2e/security_module_browser.py`: real browser + real MediaPipe + real AI interviewer, fake camera

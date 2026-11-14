@@ -1,3 +1,40 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# frontend/avatar-src/convert_rocketbox.py
+#
+# FILE PURPOSE:
+# One-time build script that converts a Microsoft Rocketbox avatar (FBX, MIT licence) into a web-ready
+# .glb file for the 3D interviewer.
+#
+# WHAT THIS FILE DOES:
+# 1. Imports the '_facial' FBX (rigged body + facial blendshapes) into Blender.
+# 2. Keeps only the blendshapes the app animates (15 visemes + about 25 ARKit expressions).
+# 3. Relinks, downsizes and converts textures to JPEG/PNG (browsers cannot read TGA).
+# 4. Exports a GLB with skin and morph targets, no animations.
+#
+# HOW THIS FILE WORKS:
+# Runs inside Blender: blender -b --factory-startup --python convert_rocketbox.py -- <avatar_folder>
+# <output.glb>.
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    TEX, TMP, KEEP_PREFIX, KEEP_ARKIT
+#
+# INPUT:
+# A Rocketbox avatar folder (Export/*_facial.fbx and Textures/*.tga).
+#
+# OUTPUT:
+# A .glb model saved to frontend/public/avatars/.
+#
+# IMPORTANT DEPENDENCIES:
+#    bpy
+#
+# IMPORTANT NOTE:
+# A developer tool, not part of the running application.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Convert a Microsoft Rocketbox avatar (MIT licence) from FBX to a web-ready GLB for the live interviewer.
 
 Run with Blender (one-time build step, output is committed to frontend/public/avatars/):

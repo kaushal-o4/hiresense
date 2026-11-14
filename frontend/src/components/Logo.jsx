@@ -1,3 +1,33 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/components/Logo.jsx
+//
+// FILE PURPOSE:
+// Draws the HireSense logo (an 'H' mark) and the product name.
+//
+// WHAT THIS FILE DOES:
+// 1. LogoMark draws the SVG icon with a gradient.
+// 2. Logo shows the icon plus the 'HireSense' text.
+//
+// HOW THIS FILE WORKS:
+// useId() gives each logo a unique gradient id so several logos on one page do not break each other.
+//
+// IMPORTANT FUNCTIONS:
+//    Other helper functions: LogoMark, Logo
+//
+// OUTPUT:
+// SVG logo.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: components/AppShellLayout.jsx, pages/AuthShell.jsx,
+//    pages/recruiter/CandidateReport.jsx
+//
+// IMPORTANT DEPENDENCIES:
+//    react
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 /* HireSense wordmark: a gradient "H" monogram with a single accent dot, plus the name. */
 
 import { useId } from "react";

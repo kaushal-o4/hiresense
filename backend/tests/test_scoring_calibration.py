@@ -1,6 +1,39 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_scoring_calibration.py
+#
+# FILE PURPOSE:
+# Scoring post-processing added after the 2026-11-04 calibration run (eval/calibrate_scoring.py).
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 7 test(s), e.g.: completeness counts when rubric leaves it out; rubric with
+#    completeness is used as is; uniform scores unchanged; open question skips similarity cap; open
+#    question still trusts the model; score bands; prompt has anchors.
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    - test_open_question_skips_similarity_cap()
+#        Strong project answers to an open question measured 0.13-0.17 similarity with the real
+#        MiniLM model.
+#    Other helper functions: _ev, test_completeness_counts_when_rubric_leaves_it_out,
+#    test_rubric_with_completeness_is_used_as_is, test_uniform_scores_unchanged,
+#    test_open_question_still_trusts_the_model, test_score_bands, test_prompt_has_anchors
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/routers/interview_routes.py, app/services/interview/ai_interview_service.py,
+#    app/services/interview/score_band_labels.py
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Scoring post-processing added after the 2026-11-04 calibration run (eval/calibrate_scoring.py)."""
-from app.routers.interviews import DEFAULT_RUBRIC
-from app.services import ai, scoring_bands
+from app.routers.interview_routes import DEFAULT_RUBRIC
+from app.services.interview import ai_interview_service as ai, score_band_labels as scoring_bands
 
 
 def _ev(**kw):

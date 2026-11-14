@@ -1,3 +1,50 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_interviewers.py
+#
+# FILE PURPOSE:
+# Interviewer personalities: selection list, per-personality behaviour, fair scoring and the report.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 10 test(s), e.g.: interviewer list is public but prompts stay private; default is
+#    aria and unknown interviewer rejected; each personality gets its own instructions; greeting is
+#    not repeated in the question; followup and hint policies differ; scores do not depend on the
+#    interviewer; difficulty steps depend on interviewer; report has dimensions indicators and
+#    closing remarks; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# HOW THIS FILE WORKS:
+# The LLM is MOCKED (prompts are inspected); real-model checks are in tests_integration and tests_e2e.
+#
+# IMPORTANT FUNCTIONS:
+#    - test_greeting_is_not_repeated_in_the_question()
+#        Regression (real model): Aria's first question started 'Hi Priya!
+#    - test_revision_topics_are_deduplicated()
+#        Regression (real run): near-identical missing concepts were listed separately.
+#    Other helper functions: start, answer,
+#    test_interviewer_list_is_public_but_prompts_stay_private,
+#    test_default_is_aria_and_unknown_interviewer_rejected,
+#    test_each_personality_gets_its_own_instructions, test_followup_and_hint_policies_differ,
+#    test_scores_do_not_depend_on_the_interviewer, test_difficulty_steps_depend_on_interviewer,
+#    test_report_has_dimensions_indicators_and_closing_remarks,
+#    test_report_numbers_survive_ai_outage
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/services/ai_models/language_model_client.py,
+#    app/services/interview/ai_interview_service.py,
+#    app/services/interview/interview_report_metrics.py
+#
+# IMPORTANT DEPENDENCIES:
+#    pytest, test_local_ai
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Interviewer personalities: selection list, per-personality behaviour, fair scoring and the report.
 
 The LLM is MOCKED (prompts are inspected); real-model checks are in tests_integration and tests_e2e."""
@@ -68,7 +115,7 @@ def test_each_personality_gets_its_own_instructions(client, mock_llm, who, expec
 
 def test_greeting_is_not_repeated_in_the_question():
     """Regression (real model): Aria's first question started 'Hi Priya! I'm Aria...' after her spoken greeting."""
-    from app.services.ai import strip_greeting
+    from app.services.interview.ai_interview_service import strip_greeting
     q = ("Hi Priya! I'm Aria, your interviewer today. Let's start with something simple - can you tell me how "
          "you'd explain REST API design?")
     assert strip_greeting(q).startswith("Let's start with something simple")
@@ -165,14 +212,14 @@ def test_report_has_dimensions_indicators_and_closing_remarks(client, mock_llm):
 
 def test_revision_topics_are_deduplicated():
     """Regression (real run): near-identical missing concepts were listed separately."""
-    from app.services.report_metrics import _near
+    from app.services.interview.interview_report_metrics import _near
     assert _near("Specific middleware implementation for security", "Specific middleware implementation details")
     assert _near("Token validation", "token validation.")
     assert not _near("Database indexing", "Authentication token handling mechanism")
 
 
 def test_report_numbers_survive_ai_outage(client, mock_llm):
-    from app.services.local_llm import LLMError
+    from app.services.ai_models.language_model_client import LLMError
     register_student(client)
     s = start(client, mock_llm, "elena", question_count=3)
     for _ in range(2):

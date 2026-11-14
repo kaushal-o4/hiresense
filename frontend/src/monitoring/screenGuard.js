@@ -1,3 +1,40 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/screenGuard.js
+//
+// FILE PURPOSE:
+// Tracks leaving fullscreen and notes a second connected display during the interview.
+//
+// WHAT THIS FILE DOES:
+// 1. Requests fullscreen at the start.
+// 2. Records time spent outside fullscreen (ignoring sub-second flickers).
+// 3. Notes once if the browser reports an extended (second) screen.
+//
+// HOW THIS FILE WORKS:
+// FullscreenTracker measures episodes; ScreenGuard listens to fullscreenchange and uses
+// screen.isExtended when available.
+//
+// IMPORTANT FUNCTIONS:
+//    - ScreenGuard()
+//        Manages fullscreen and display checks.
+//    - FullscreenTracker()
+//        Pure episode tracker.
+//    - secondDisplayEvent()
+//        Event for a second display, if detectable.
+//
+// INPUT:
+// Browser fullscreen and screen information.
+//
+// OUTPUT:
+// Fullscreen-exit and second-display events.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Used by: monitoring/interviewMonitor.js
+//    Tested by: monitoring/browserGuards.test.js
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Fullscreen and extra displays. Fullscreen keeps notes and other windows off the interview screen; leaving it is
 // recorded with its duration. A second connected display is noted once (Chromium browsers expose
 // screen.isExtended; elsewhere it simply can't be checked). Neither says what was on the other screen, and both can

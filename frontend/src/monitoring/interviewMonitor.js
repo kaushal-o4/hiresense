@@ -1,3 +1,76 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/interviewMonitor.js
+//
+// FILE PURPOSE:
+// Runs all the interview monitoring checks the candidate agreed to, for one interview, and stops them
+// at the end.
+//
+// MAIN RESPONSIBILITY:
+// Coordinator of camera, face, attention, object, paste, screen, focus and audio checks.
+//
+// WHAT THIS FILE DOES:
+// 1. Starts only the detectors the candidate ticked on the setup screen (consented features).
+// 2. Analyses camera frames with FaceMonitor and ObjectMonitor and turns them into events with
+//    SignalTracker.
+// 3. Tracks attention time with AttentionMeter and focus/fullscreen/paste with the guards.
+// 4. Sends every event through ONE EventReporter (batched, retry-safe).
+// 5. Shows candidate reminders through one rate-limited warning function and can request a pause.
+// 6. Stops everything and flushes pending events on stop().
+//
+// HOW THIS FILE WORKS:
+// InterviewMonitor is a class created with the session id, consented features, the admin policy and an
+// optional calibration baseline. start(video) begins frame analysis; callbacks (onStatus, onWarning,
+// onPauseRequest) update the interview page.
+//
+// IMPORTANT FUNCTIONS:
+//    - InterviewMonitor()
+//        Class that wires all detectors together for one interview (start, recalibrate, paused,
+//        resumed, cameraLost, micLost, stop).
+//
+// IMPORTANT VARIABLES / STATE:
+//    - FOCUS_WARNING
+//        Message shown when the candidate leaves the interview window.
+//
+// INPUT:
+// Session id, consented features, policy (GET /monitoring/policy), camera video element, microphone
+// levels.
+//
+// OUTPUT:
+// Integrity events and attention totals sent to the backend; status and warnings for the UI.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: monitoring/attentionMeter.js, monitoring/audioMonitor.js, monitoring/eventReporter.js,
+//    monitoring/faceMonitor.js, monitoring/frameAnalysis.js, monitoring/objectMonitor.js,
+//    monitoring/pasteGuard.js, monitoring/screenGuard.js, monitoring/signalTracker.js
+//    Used by: monitoring/useTypedMonitoring.js, pages/student/LiveVoiceInterview.jsx
+//    Tested by: monitoring/interviewSecurity.test.js
+//
+// EXECUTION FLOW:
+//    Candidate gives consent on setup screen
+//       |
+//       v
+//    InterviewMonitor.start(video)
+//       |
+//       v
+//    Detectors analyse frames on the device
+//       |
+//       v
+//    Persistent conditions become events
+//       |
+//       v
+//    EventReporter sends events to the server
+//       |
+//       v
+//    stop() ends monitoring
+//
+// IMPORTANT NOTE:
+// Only short event records leave the browser - never video, images, audio or face measurements.
+// Signals are approximate and are only reviewed by humans; they never change interview scores.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // Runs the monitoring the candidate agreed to, and nothing else, for one interview. Stops completely on stop().
 // Every detector reports through ONE EventReporter (standard event records, client ids, batching), and every
 // candidate-facing reminder goes through one rate-limited warning function.

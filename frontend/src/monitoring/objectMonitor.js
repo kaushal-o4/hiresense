@@ -1,3 +1,62 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/monitoring/objectMonitor.js
+//
+// FILE PURPOSE:
+// Detects a phone or book/notes in the camera view on the device (MediaPipe Object Detector,
+// EfficientDet-Lite0).
+//
+// WHAT THIS FILE DOES:
+// 1. Runs object detection about once per second.
+// 2. Keeps only confident 'cell phone' and 'book' detections.
+// 3. ObjectTracker requires the object to be seen in most frames for several seconds before warning
+//    or recording.
+// 4. Can run detection in a Web Worker or on the page.
+//
+// HOW THIS FILE WORKS:
+// observeObjects() filters detections by score; ObjectTracker turns repeated detections into events.
+//
+// IMPORTANT FUNCTIONS:
+//    - ObjectMonitor()
+//        Runs the object detector on the camera video.
+//    - ObjectTracker()
+//        Debounces detections into events.
+//    - observeObjects()
+//        Filters detection results to phone/notes.
+//    - preloadObjectDetector()
+//        Loads the model early.
+//    - workerDetector()
+//        Each detection takes ~70-85 ms (measured in the browser E2E).
+//    - loadDetector()
+//        -> {detect(video, t): Promise<ObjectDetectorResult>}
+//    Other helper functions: pageDetector
+//
+// IMPORTANT VARIABLES / STATE:
+//    - OBJECT_CLASSES
+//        COCO labels we care about.
+//    - OBJECT_MIN_SCORE
+//        Minimum confidence per object.
+//
+// INPUT:
+// Camera video frames.
+//
+// OUTPUT:
+// phone_in_view / notes_in_view events.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: monitoring/signalTracker.js
+//    Used by: monitoring/interviewMonitor.js, pages/student/InterviewSetup.jsx
+//    Tested by: monitoring/browserGuards.test.js
+//
+// IMPORTANT DEPENDENCIES:
+//    @mediapipe/tasks-vision
+//
+// IMPORTANT NOTE:
+// Detection is approximate; the server caps the severity and a reviewer decides what it means.
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 // On-device detection of a phone or book/notes in the camera view, using MediaPipe Object Detector with
 // EfficientDet-Lite0 (Apache-2.0, COCO classes). The model and WebAssembly runtime are served by this app
 // (public/models, public/mediapipe) - frames never leave the browser and nothing about the person is analysed.

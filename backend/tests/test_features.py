@@ -1,3 +1,48 @@
+# HIRESENSE COMMENT INDEX - START
+# ------------------------------------------------------------
+# FILE NAME:
+# backend/tests/test_features.py
+#
+# FILE PURPOSE:
+# Tests for the extended feature set: English learning, coding tests, readiness, challenges, recruiter
+# communication/assignments, mentor tools and admin management.
+#
+# WHAT THIS FILE DOES:
+# 1. Automated test (pytest, mocked AI - no real model needed).
+# 2. Contains 9 test(s), e.g.: speaking drills are not available to students; challenge completes
+#    once per period; coding assessment pending then ai review; readiness report history and role
+#    recs; settings preferences and consent; recruiter messages assignment on hold export; mentor
+#    dashboard cards remedies and reports; admin announcements drives challenges verification; ....
+# 3. Run from backend/: python -m pytest tests -q. These tests run in CI on every push.
+#
+# IMPORTANT FUNCTIONS:
+#    - test_speaking_drills_are_not_available_to_students()
+#        The pronunciation/speaking drill feature was removed from the student portal
+#        (2026-10-11).
+#    Other helper functions: _recruiter, test_challenge_completes_once_per_period,
+#    test_coding_assessment_pending_then_ai_review, test_readiness_report_history_and_role_recs,
+#    test_settings_preferences_and_consent, test_recruiter_messages_assignment_on_hold_export,
+#    test_mentor_dashboard_cards_remedies_and_reports,
+#    test_admin_announcements_drives_challenges_verification,
+#    test_interview_difficulty_and_sample_answers
+#
+# IMPORTANT VARIABLES / SETTINGS:
+#    CODING_TEST
+#
+# FILES CONNECTED TO THIS FILE:
+#    Uses: app/application_configuration.py, app/database_models.py,
+#    app/services/interview/ai_interview_service.py,
+#    app/services/student_progress/rewards_and_badges.py
+#
+# IMPORTANT DEPENDENCIES:
+#    bson
+#
+# IMPORTANT NOTE:
+# Test/tool file: it checks or measures the application and is not used by the running app.
+#
+# ------------------------------------------------------------
+# HIRESENSE COMMENT INDEX - END
+
 """Tests for the extended feature set: English learning, coding tests, readiness, challenges,
 recruiter communication/assignments, mentor tools and admin management."""
 import io
@@ -6,7 +51,7 @@ from datetime import datetime, timedelta, timezone
 
 from bson import json_util
 
-from app.config import get_settings
+from app.application_configuration import get_settings
 from conftest import admin_login, login, register_student
 
 
@@ -27,7 +72,7 @@ def test_speaking_drills_are_not_available_to_students(client):
 
 
 def test_challenge_completes_once_per_period(client, db):
-    from app.models import Challenge, EnglishSession
+    from app.database_models import Challenge, EnglishSession
     sid = register_student(client)["id"]
     db.add(Challenge(title="Two chats", description="", metric="english_sessions", target=2, period="daily", points=10))
     now = datetime.now(timezone.utc)
@@ -35,7 +80,7 @@ def test_challenge_completes_once_per_period(client, db):
         db.add(EnglishSession(student_id=sid, topic="t", mode="text", status="completed", active_seconds=120,
                               ended_at=now))
     db.commit()
-    from app.services.rewards import evaluate_challenges
+    from app.services.student_progress.rewards_and_badges import evaluate_challenges
     for _ in range(2):  # evaluated after two activities: must not award twice
         evaluate_challenges(db, sid)
         db.commit()
@@ -68,7 +113,7 @@ def test_coding_assessment_pending_then_ai_review(client, new_client, monkeypatc
     assert r["result"]["evaluation_status"] == "pending" and r["result"]["score"] is None
     assert client.post(f"/api/student/assessments/results/{started['result_id']}/evaluate").status_code == 503
 
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     monkeypatch.setattr(ai, "evaluate_code", lambda db, uid, **kw: {
         "score": 90, "verdicts": [{"case": 1, "traced_output": "3", "likely_passes": True, "reason": "ok"}], "feedback": "Correct",
         "improved_solution": code})
@@ -142,7 +187,7 @@ def test_mentor_dashboard_cards_remedies_and_reports(client, new_client, db):
     m = admin.post("/api/admin/users", json={"full_name": "Meera Mentor", "email": "m@test.dev",
                                             "password": "Passw0rd!", "role": "mentor"}).json()
     admin.post("/api/admin/assignments", json={"mentor_id": m["id"], "student_ids": [student["id"]]})
-    from app.models import User
+    from app.database_models import User
     u = db.get(User, student["id"])
     u.created_at = datetime.now(timezone.utc) - timedelta(days=30)  # joined long ago, never practised
     db.commit()
@@ -217,7 +262,7 @@ def test_admin_announcements_drives_challenges_verification(client, new_client):
 
 def test_interview_difficulty_and_sample_answers(client, fake_ai, monkeypatch):
     register_student(client)
-    from app.services import ai
+    from app.services.interview import ai_interview_service as ai
     seen = []
     topics = iter(["Explain recursion?", "How does a hash map handle collisions?", "Design a rate limiter."])
 

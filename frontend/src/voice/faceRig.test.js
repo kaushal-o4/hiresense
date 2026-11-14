@@ -1,3 +1,27 @@
+// HIRESENSE COMMENT INDEX - START
+// ------------------------------------------------------------
+// FILE NAME:
+// frontend/src/voice/faceRig.test.js
+//
+// FILE PURPOSE:
+// Unit tests for faceRig.js.
+//
+// WHAT THIS FILE DOES:
+// 1. Name mapping across model formats.
+// 2. Rig detection for Rocketbox and ARKit models.
+// 3. Face composition rules and weight limits.
+//
+// HOW THIS FILE WORKS:
+// Vitest tests.
+//
+// FILES CONNECTED TO THIS FILE:
+//    Uses: voice/faceRig.js
+//
+// IMPORTANT DEPENDENCIES:
+//    vitest
+//
+// ------------------------------------------------------------
+// HIRESENSE COMMENT INDEX - END
 import { describe, expect, it } from "vitest";
 import { ARKIT, VISEME_ARKIT, VISEMES, buildRig, canonicalName, composeFace } from "./faceRig";
 
