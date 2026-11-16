@@ -34,7 +34,7 @@
 // FILES CONNECTED TO THIS FILE:
 //    Uses: AuthContext.jsx, apiClient.js, components/DashboardCharts.jsx,
 //    components/EnglishDailyPlan.jsx, components/InterviewerStage.jsx,
-//    components/PlacementReadinessCard.jsx, components/SharedUiComponents.jsx
+//    components/SharedUiComponents.jsx
 //    Used by: App.jsx
 //
 // EXECUTION FLOW:
@@ -55,24 +55,38 @@
 // ------------------------------------------------------------
 // HIRESENSE COMMENT INDEX - END
 /*
- * Student home: summary stats, readiness score, today's challenges, progress, upcoming events,
- * weak areas, recent achievements, applications and interviews (GET /student/dashboard), plus on-demand AI job-role
- * suggestions (POST /student/role-recommendations).
+ * Student home: welcome, headline stats, placement readiness, recommended next steps (derived from the backend's
+ * weak areas / remedies / missing readiness parts), progress chart, live-interviewer entry, AI job-role suggestions,
+ * applications, upcoming events, challenges and achievements (GET /student/dashboard; POST /student/role-recommendations).
+ * Everything shown comes from the API; nothing is filled in with sample numbers.
  */
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, Award, Briefcase, CalendarClock, CheckCircle2, Circle, FileText, Flame, MessagesSquare, Mic, Sparkles, Target, TrendingUp } from "lucide-react";
+import {
+  ArrowUpRight, Award, BarChart3, Briefcase, CalendarClock, CheckCircle2, Circle, ClipboardCheck, FileText, Flame,
+  Gauge, MessagesSquare, Mic, Sparkles, Target, UserRound,
+} from "lucide-react";
 import { get, post } from "../../apiClient";
 import { useAuth } from "../../AuthContext";
 import { ProgressChart } from "../../components/DashboardCharts";
+import { CardLink, LinkRow, Meter, scoreTone } from "../../components/DashboardWidgets";
 import DailyPlan from "../../components/EnglishDailyPlan";
 import InterviewerStage from "../../components/InterviewerStage";
-import { ReadinessCard } from "../../components/PlacementReadinessCard";
 import {
-  Button, Card, EmptyState, ErrorBox, Pill, ScoreBar, Spinner, StatCard, StatusPill, fmtDate,
+  Button, Card, EmptyState, ErrorBox, PageHeader, PageSkeleton, Pill, StatCard, StatusPill, buttonClass, fmtDate,
   fmtDateTime, useApi, useToast,
 } from "../../components/SharedUiComponents";
+
+// Where each kind of recommended step is practised (same mapping as the mentoring goals page).
+const GOAL_LINKS = { mock_interview: "/student/interviews", english_practice: "/student/english", assessment: "/student/assessments", resume_update: "/student/resume" };
+const GOAL_ICONS = { mock_interview: Mic, english_practice: MessagesSquare, assessment: ClipboardCheck, resume_update: FileText };
+const MISSING_STEP = {
+  interviews: { title: "Take your first mock interview", meta: "About 10 minutes with an AI interviewer", to: "/student/interviews", icon: Mic },
+  assessments: { title: "Complete an assessment", meta: "Aptitude, technical or coding", to: "/student/assessments", icon: ClipboardCheck },
+  english: { title: "Start an English conversation", meta: "Build spoken confidence", to: "/student/english", icon: MessagesSquare },
+  resume: { title: "Upload your resume for analysis", meta: "Strengths, gaps and fixes", to: "/student/resume", icon: FileText },
+};
 
 function RoleRecommendations() {
   const toast = useToast();
@@ -83,17 +97,32 @@ function RoleRecommendations() {
     try { setRec(await post("/student/role-recommendations")); } catch (e) { toast(e.message, "error"); } finally { setBusy(false); }
   };
   return (
-    <Card title="Job roles that suit you" actions={<Button size="sm" variant="secondary" onClick={load} loading={busy}><Sparkles size={14} /> {rec ? "Refresh" : "Suggest roles"}</Button>}>
-      {!rec ? <p className="text-sm text-slate-500">AI suggests suitable job roles based on your skills, projects, scores and career interests.</p> : (
+    <Card title="Roles that suit you" actions={<Button size="sm" variant="secondary" onClick={load} loading={busy}><Sparkles size={14} /> {rec ? "Refresh" : "Suggest roles"}</Button>}>
+      {!rec ? (
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Sparkles size={16} /></span>
+          <p className="text-sm leading-relaxed text-slate-500">HireSense matches your skills, projects, scores and interests against job roles and links any openings that fit right now.</p>
+        </div>
+      ) : (
         <>
-          <p className="mb-3 text-sm">{rec.summary}</p>
+          {rec.summary && <p className="mb-4 text-sm leading-relaxed text-slate-600">{rec.summary}</p>}
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {rec.roles.map((r) => (
-              <div key={r.role} className="rounded-lg border border-slate-200 p-3">
-                <div className="flex items-center justify-between"><p className="font-medium">{r.role}</p><span className="num text-sm font-semibold text-slate-900">{r.fit_score}%</span></div>
-                <ul className="mt-1 list-disc pl-4 text-xs text-slate-600">{r.reasons.map((x, i) => <li key={i}>{x}</li>)}</ul>
-                {r.skills_to_learn.length > 0 && <div className="mt-2 flex flex-wrap gap-1">{r.skills_to_learn.map((x) => <Pill key={x} tone="amber">{x}</Pill>)}</div>}
-                {r.open_jobs.length > 0 && <p className="mt-2 text-xs">Open now: {r.open_jobs.map((j) => <Link key={j.id} className="text-brand-600 hover:underline" to="/student/jobs">{j.title} ({j.company_name}) </Link>)}</p>}
+              <div key={r.role} className="rounded-lg border border-slate-200 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="font-semibold text-slate-900">{r.role}</p>
+                  <span className={`num shrink-0 text-sm font-semibold ${scoreTone(r.fit_score) === "green" ? "text-emerald-600" : scoreTone(r.fit_score) === "amber" ? "text-amber-600" : "text-slate-600"}`}>{r.fit_score}% fit</span>
+                </div>
+                <ul className="mt-2 space-y-1 text-xs leading-relaxed text-slate-600">
+                  {r.reasons.map((x, i) => <li key={i} className="flex gap-2"><span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-slate-400" />{x}</li>)}
+                </ul>
+                {r.skills_to_learn.length > 0 && <div className="mt-3 flex flex-wrap gap-1">{r.skills_to_learn.map((x) => <Pill key={x} tone="amber">{x}</Pill>)}</div>}
+                {r.open_jobs.length > 0 && (
+                  <div className="mt-3 border-t border-slate-100 pt-2">
+                    <p className="eyebrow mb-1">Open now</p>
+                    {r.open_jobs.map((j) => <Link key={j.id} className="block truncate text-xs font-medium text-brand-600 hover:underline" to="/student/jobs">{j.title} · {j.company_name}</Link>)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -103,183 +132,176 @@ function RoleRecommendations() {
   );
 }
 
-const QUICK = [
-  { to: "/student/interviews", title: "Mock interview", text: "Aria, Victor, Marcus or Elena", icon: Mic },
-  { to: "/student/english", title: "English conversation", text: "Talk about anything you like", icon: MessagesSquare },
-  { to: "/student/resume", title: "Resume analysis", text: "Strengths, gaps and fixes", icon: FileText },
-  { to: "/student/jobs", title: "Jobs & drives", text: "Roles that match your profile", icon: Briefcase },
-];
-
-const greeting = () => {
-  const h = new Date().getHours();
-  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
-};
-
 export default function StudentDashboard() {
   const { user } = useAuth();
   const { data, error, loading, reload } = useApi(() => get("/student/dashboard"));
-  if (loading) return <Spinner />;
+  if (loading) return <PageSkeleton />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   const s = data.summary;
+  const first = (user.full_name || "").split(" ")[0];
   const upcomingCount = data.upcoming.mentor_sessions.length + data.upcoming.job_interviews.length + data.upcoming.goals.length;
+  const sessions = s.interviews.completed + s.english.sessions + s.assessments.taken;
+  const resume = s.resume;
+
+  // Recommended next steps: backend remedies first (each maps to a practice area), then readiness parts not started.
+  const steps = [];
+  for (const r of s.remedies || []) {
+    if (steps.length >= 4) break;
+    steps.push({ key: r.weakness, title: r.goal?.title || r.remedy, meta: r.weakness, to: GOAL_LINKS[r.goal?.goal_type], icon: GOAL_ICONS[r.goal?.goal_type] || Target });
+  }
+  for (const k of s.readiness?.missing || []) {
+    if (steps.length >= 4 || !MISSING_STEP[k] || steps.some((x) => x.to === MISSING_STEP[k].to)) continue;
+    steps.push({ key: k, ...MISSING_STEP[k] });
+  }
 
   return (
     <div className="space-y-6">
-      <section className="card card-glow grid overflow-hidden lg:grid-cols-[1fr_400px]">
-        <div className="flex flex-col justify-between gap-6 p-6 sm:p-8">
-          <div>
-            <p className="text-sm text-slate-500">{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
-            <h1 className="text-gradient mt-1 text-[30px] font-semibold leading-tight tracking-tight sm:text-[34px]">{greeting()}, {user.full_name.split(" ")[0]}</h1>
-            <p className="mt-2 max-w-md text-[15px] leading-relaxed text-slate-500">
-              {s.interviews.completed
-                ? `You've completed ${s.interviews.completed} mock interview${s.interviews.completed === 1 ? "" : "s"}. Keep the streak going with one more today.`
-                : "Start with a short mock interview - it takes about 10 minutes and shows exactly where to improve."}
-            </p>
-          </div>
-          {s.readiness && (
-            <div className="flex items-center gap-5">
-              <div>
-                <p className="text-xs font-medium text-slate-500">Placement readiness</p>
-                <p className="num mt-0.5 text-3xl font-semibold tracking-tight text-slate-900">{Math.round(s.readiness.score)}<span className="text-base font-normal text-slate-400">/100</span></p>
-              </div>
-              <div className="h-10 w-px bg-slate-200" />
-              <div className="min-w-0 flex-1">
-                <div className="h-1.5 max-w-xs overflow-hidden rounded-full bg-slate-100">
-                  <div className={`h-full rounded-full ${s.readiness.score >= s.readiness.threshold ? "bg-emerald-500" : "bg-gradient-to-r from-brand-500 to-violet-500"}`} style={{ width: `${Math.min(100, s.readiness.score)}%` }} />
-                </div>
-                <p className="mt-1.5 text-xs text-slate-500">"Placement ready" from {s.readiness.threshold}</p>
-              </div>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            <Link to="/student/interviews"><Button size="lg"><Mic size={16} /> Start mock interview</Button></Link>
-            <Link to="/student/english"><Button size="lg" variant="secondary"><MessagesSquare size={16} /> Practise English</Button></Link>
-          </div>
-        </div>
-        <Link to="/student/interviews" className="group relative block min-h-[280px] bg-night-950 lg:min-h-0" aria-label="Start a mock interview with Aria">
-          <InterviewerStage who="aria" className="absolute inset-0" />
-          <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3 rounded-lg border border-snow/10 bg-black/45 px-3.5 py-2.5 text-snow backdrop-blur-md transition-colors group-hover:bg-black/60">
-            <span className="min-w-0">
-              <span className="block text-sm font-medium">Ready when you are</span>
-              <span className="block truncate text-xs text-snow/60">Live voice interview · 4 interviewer styles</span>
-            </span>
-            <ArrowUpRight size={16} className="shrink-0 text-snow/70 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-          </div>
-        </Link>
-      </section>
-
-      <div className="grid gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 shadow-soft sm:grid-cols-2 lg:grid-cols-4">
-        {QUICK.map(({ to, title, text, icon: Icon }) => (
-          <Link key={to} to={to} className="group flex items-center gap-3 bg-white px-4 py-3.5 transition-colors hover:bg-slate-50">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 transition-colors group-hover:border-slate-300 group-hover:text-slate-900"><Icon size={17} /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-slate-900">{title}</span>
-              <span className="block truncate text-xs text-slate-500">{text}</span>
-            </span>
-            <ArrowUpRight size={15} className="shrink-0 text-slate-600 transition-colors group-hover:text-slate-600" />
-          </Link>
-        ))}
-      </div>
-
-      {data.profile_completeness < 100 && (
-        <div className="card flex flex-wrap items-center gap-4 p-4">
-          <div className="min-w-[12rem] flex-1">
-            <p className="text-sm font-medium">Profile {data.profile_completeness}% complete</p>
-            <ScoreBar value={data.profile_completeness} />
-          </div>
-          <Link to={s.resume ? "/profile" : "/student/resume"}><Button variant="secondary" size="sm">{s.resume ? "Complete profile" : "Upload resume"}</Button></Link>
-        </div>
-      )}
+      <PageHeader
+        eyebrow={new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}
+        title={`Welcome back, ${first}`}
+        subtitle="Let's take another step towards your career goals."
+        actions={<>
+          <Link to="/student/english" className={buttonClass("secondary")}><MessagesSquare size={16} /> Practise English</Link>
+          <Link to="/student/interviews" className={buttonClass("primary")}><Mic size={16} /> Start mock interview</Link>
+        </>} />
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
-        <StatCard label="Reward points" value={s.rewards.points} icon={Award} tone="amber" hint={`${s.rewards.badges} badges earned`} />
-        <StatCard label="Avg interview score" value={s.interviews.average_score ?? "—"} icon={TrendingUp} tone="violet" hint={`${s.interviews.completed} interview${s.interviews.completed === 1 ? "" : "s"} completed`} />
-        <StatCard label="English practice" value={`${s.english.minutes} min`} icon={MessagesSquare} tone="sky" hint={`${s.english.sessions} sessions`} />
-        <StatCard label="Practice streak" value={`${s.rewards.current_streak} day${s.rewards.current_streak === 1 ? "" : "s"}`} icon={Flame} tone="red" hint={`Longest: ${s.rewards.longest_streak}`} />
+        <StatCard label="Practice streak" value={`${s.rewards.current_streak} day${s.rewards.current_streak === 1 ? "" : "s"}`} icon={Flame} tone="amber"
+          hint={`Longest ${s.rewards.longest_streak} · ${s.rewards.points} points`} />
+        <StatCard label="Resume score" value={resume?.resume_score ?? "—"} icon={FileText} tone="sky"
+          hint={!resume ? "No resume uploaded" : resume.analysis_status === "completed" ? `Analysed ${fmtDate(resume.uploaded_at)}` : `Analysis ${String(resume.analysis_status || "pending").replace(/_/g, " ")}`} />
+        <StatCard label="Practice sessions" value={sessions} icon={BarChart3} tone="green"
+          hint={`${s.interviews.completed} interviews · ${s.english.sessions} English · ${s.assessments.taken} tests`} />
+        <StatCard label="Interview readiness" value={s.readiness ? Math.round(s.readiness.score) : "—"} icon={Gauge}
+          hint={s.readiness ? `Placement ready from ${s.readiness.threshold}` : "Not calculated yet"} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <ReadinessCard readiness={s.readiness} className="lg:col-span-2" />
-        <Card title="Today's challenges" actions={<Link className="text-sm text-brand-600 hover:underline" to="/student/rewards">All</Link>}>
-          {data.challenges.length === 0 ? <p className="text-sm text-slate-500">No active challenges.</p> : (
-            <ul className="space-y-3">
-              {data.challenges.slice(0, 4).map((c) => (
-                <li key={c.id}>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className={`flex items-center gap-2 ${c.completed ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"}`}>
-                      {c.completed ? <CheckCircle2 size={15} className="shrink-0 text-emerald-600" /> : <Circle size={15} className="shrink-0 text-slate-600" />} {c.title}
-                    </span>
-                    <Pill tone="gray">{c.period}</Pill>
-                  </div>
-                  <div className="mt-1"><ScoreBar value={c.percent} /></div>
-                  <p className="num mt-1 text-[11px] text-slate-500">{c.progress}/{c.target} · +{c.points} pts</p>
-                </li>
-              ))}
-            </ul>
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
+        {/* Practice section - shown first, in place of the placement-readiness card. */}
+        <Card title="Practice" className="lg:col-span-2">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              { to: "/student/interviews", label: "Mock interview", icon: Mic, count: s.interviews.completed, unit: "completed" },
+              { to: "/student/english", label: "English practice", icon: MessagesSquare, count: s.english.sessions, unit: "sessions" },
+              { to: "/student/assessments", label: "Assessments", icon: ClipboardCheck, count: s.assessments.taken, unit: "taken" },
+            ].map(({ to, label, icon: Icon, count, unit }) => (
+              <Link key={to} to={to} className="card-hover flex flex-col gap-2 rounded-lg border border-slate-200 p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Icon size={18} aria-hidden /></span>
+                <span className="font-medium text-slate-900">{label}</span>
+                <span className="text-xs text-slate-500"><span className="num font-semibold text-slate-700">{count}</span> {unit}</span>
+                <span className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-brand-600">Start <ArrowUpRight size={14} /></span>
+              </Link>
+            ))}
+          </div>
+        </Card>
+        <Card title="Recommended next steps">
+          {data.profile_completeness < 100 && (
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <Meter label="Profile completion" value={data.profile_completeness} suffix="%" />
+              <Link to={resume ? "/profile" : "/student/resume"} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:underline">
+                {resume ? "Complete your profile" : "Upload your resume"} <ArrowUpRight size={12} />
+              </Link>
+            </div>
+          )}
+          {steps.length === 0 ? (
+            <EmptyState icon={CheckCircle2} title="You're on track" message="No gaps detected right now. Keep a steady practice rhythm." />
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {steps.map((x) => <LinkRow key={x.key} to={x.to} icon={x.icon} title={x.title} meta={x.meta} tone="brand" />)}
+            </div>
           )}
         </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
+        <Card title="Score progress" className="lg:col-span-2" actions={<CardLink to="/student/progress">Details</CardLink>}>
+          <ProgressChart series={data.progress} />
+        </Card>
+        <Link to="/student/interviews" aria-label="Open the live mock interview room"
+          className="group relative flex min-h-[300px] flex-col overflow-hidden rounded-xl bg-night-900 ring-1 ring-slate-200 transition hover:ring-slate-300">
+          <InterviewerStage who="aria" className="absolute inset-0" />
+          <div className="relative mt-auto bg-gradient-to-t from-night-950/90 via-night-950/60 to-transparent p-5 pt-16 text-snow">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-snow/60">Live interview room</p>
+            <p className="mt-1 font-display text-lg font-semibold">Practise out loud with a 3D interviewer</p>
+            <p className="mt-1 text-sm text-snow/70">Voice questions, follow-ups and a scored report. Four interviewer styles.</p>
+            <span className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-snow">Choose an interviewer <ArrowUpRight size={15} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" /></span>
+          </div>
+        </Link>
       </div>
 
       <RoleRecommendations />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Learning progress" className="lg:col-span-2" actions={<Link className="text-sm text-brand-600 hover:underline" to="/student/progress">Details</Link>}>
-          <ProgressChart series={data.progress} />
-        </Card>
-        <div className="space-y-6">
-        <DailyPlan compact />
-        <Card title="Upcoming">
-          {upcomingCount === 0 ? <EmptyState icon={CalendarClock} title="Nothing scheduled" message="Mentor sessions, job interviews and goals will appear here." /> : (
-            <ul className="space-y-3 text-sm">
-              {data.upcoming.job_interviews.map((i) => (
-                <li key={`j${i.application_id}`} className="flex gap-2"><Briefcase size={16} className="mt-0.5 text-amber-600" />
-                  <div><p className="font-medium">{i.job_title} interview</p><p className="text-xs text-slate-500">{i.company} · {fmtDateTime(i.interview_at)}</p></div></li>
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
+        <Card title="My applications" actions={<CardLink to="/student/applications">All applications</CardLink>}>
+          {data.recent_applications.length === 0 ? (
+            <EmptyState icon={Briefcase} title="No applications yet" message="Browse openings that match your profile."
+              action={<Link to="/student/jobs" className={buttonClass("secondary", "sm")}>Browse jobs</Link>} />
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {data.recent_applications.map((a) => (
+                <LinkRow key={a.id} to="/student/applications" icon={Briefcase} title={a.job?.title} meta={a.job?.company_name} right={<StatusPill status={a.status} />} />
               ))}
-              {data.upcoming.mentor_sessions.map((m) => (
-                <li key={`m${m.id}`} className="flex gap-2"><CalendarClock size={16} className="mt-0.5 text-brand-600" />
-                  <div><p className="font-medium">Mentor session with {m.mentor_name}</p><p className="text-xs text-slate-500">{fmtDateTime(m.scheduled_at)}</p></div></li>
-              ))}
-              {data.upcoming.goals.map((g) => (
-                <li key={`g${g.id}`} className="flex gap-2"><Target size={16} className="mt-0.5 text-emerald-600" />
-                  <div><p className="font-medium">{g.title}</p><p className="text-xs text-slate-500">{g.deadline ? `Due ${fmtDate(g.deadline)}` : "No deadline"}</p></div></li>
-              ))}
-            </ul>
-          )}
-        </Card>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card title="Areas to improve">
-          {s.weak_areas.length === 0 ? <p className="text-sm text-slate-500">No weak areas detected yet. Keep practising to get personalised insights.</p> : (
-            <ul className="space-y-2">{s.weak_areas.slice(0, 6).map((w) => <li key={w} className="flex gap-2 text-sm text-slate-700"><span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-slate-400" />{w}</li>)}</ul>
-          )}
-          {s.remedies.length > 0 && (
-            <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
-              <p className="eyebrow">Suggested next steps</p>
-              {s.remedies.slice(0, 3).map((r) => <p key={r.weakness} className="text-sm text-slate-700">{r.remedy}</p>)}
             </div>
           )}
-          <Link to="/student/progress" className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700">Get AI recommendations <ArrowUpRight size={14} /></Link>
         </Card>
-        <Card title="Recent achievements" actions={<Link className="text-sm text-brand-600 hover:underline" to="/student/rewards">All rewards</Link>}>
-          {data.recent_badges.length === 0 ? <p className="text-sm text-slate-500">Complete your first mock interview to earn the <b>First Interview</b> badge.</p> : (
-            <ul className="grid grid-cols-2 gap-3">
-              {data.recent_badges.map((b) => (
-                <li key={b.name} className="rounded-lg border border-slate-200 p-3 text-center">
-                  <div className="text-2xl">{b.icon}</div><p className="text-xs font-semibold">{b.name}</p><p className="text-[11px] text-slate-500">{fmtDate(b.awarded_at)}</p>
+        <Card title="Upcoming">
+          {upcomingCount === 0 ? <EmptyState icon={CalendarClock} title="Nothing scheduled" message="Mentor sessions, job interviews and goals will appear here." /> : (
+            <div className="divide-y divide-slate-100">
+              {data.upcoming.job_interviews.map((i) => (
+                <LinkRow key={`j${i.application_id}`} to="/student/applications" icon={Briefcase} tone="amber" title={`${i.job_title} interview`} meta={`${i.company} · ${fmtDateTime(i.interview_at)}`} />
+              ))}
+              {data.upcoming.mentor_sessions.map((m) => (
+                <LinkRow key={`m${m.id}`} to="/student/mentoring" icon={CalendarClock} tone="brand" title={`Mentor session with ${m.mentor_name}`} meta={fmtDateTime(m.scheduled_at)} />
+              ))}
+              {data.upcoming.goals.map((g) => (
+                <LinkRow key={`g${g.id}`} to="/student/mentoring" icon={Target} tone="green" title={g.title} meta={g.deadline ? `Due ${fmtDate(g.deadline)}` : "No deadline"} />
+              ))}
+            </div>
+          )}
+        </Card>
+        <DailyPlan compact />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
+        <Card title="Today's challenges" actions={<CardLink to="/student/rewards">All</CardLink>}>
+          {data.challenges.length === 0 ? <EmptyState icon={Target} title="No active challenges" /> : (
+            <ul className="space-y-4">
+              {data.challenges.slice(0, 4).map((c) => (
+                <li key={c.id}>
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <span className={`flex min-w-0 items-center gap-2 ${c.completed ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"}`}>
+                      {c.completed ? <CheckCircle2 size={15} className="shrink-0 text-emerald-600" /> : <Circle size={15} className="shrink-0 text-slate-400" />}
+                      <span className="truncate">{c.title}</span>
+                    </span>
+                    <span className="num shrink-0 text-xs text-slate-500">{c.progress}/{c.target}</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className={`h-full rounded-full ${c.completed ? "bg-emerald-500" : "bg-brand-500"}`} style={{ width: `${Math.min(100, c.percent)}%` }} />
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-500">{c.period} · +{c.points} points</p>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-        <Card title="My applications" actions={<Link className="text-sm text-brand-600 hover:underline" to="/student/jobs">Browse jobs</Link>}>
-          {data.recent_applications.length === 0 ? <p className="text-sm text-slate-500">You haven't applied to any jobs yet.</p> : (
-            <ul className="divide-y divide-slate-100">
-              {data.recent_applications.map((a) => (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <div className="min-w-0"><p className="truncate text-sm font-medium">{a.job?.title}</p><p className="text-xs text-slate-500">{a.job?.company_name}</p></div>
-                  <StatusPill status={a.status} />
+        <Card title="Areas to improve" actions={<CardLink to="/student/progress">Insights</CardLink>}>
+          {s.weak_areas.length === 0 ? <EmptyState icon={CheckCircle2} title="No weak areas detected yet" message="Keep practising to get personalised insights." /> : (
+            <ul className="space-y-2.5">
+              {s.weak_areas.slice(0, 6).map((w) => <li key={w} className="flex gap-2.5 text-sm text-slate-700"><span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />{w}</li>)}
+            </ul>
+          )}
+        </Card>
+        <Card title="Achievements" actions={<CardLink to="/student/rewards">All rewards</CardLink>}>
+          <div className="mb-4 flex items-baseline gap-2">
+            <span className="num font-display text-2xl font-bold text-slate-950">{s.rewards.points}</span>
+            <span className="text-sm text-slate-500">points · {s.rewards.badges} badge{s.rewards.badges === 1 ? "" : "s"}</span>
+          </div>
+          {data.recent_badges.length === 0 ? <p className="text-sm text-slate-500">Complete your first mock interview to earn the <b className="font-medium text-slate-700">First Interview</b> badge.</p> : (
+            <ul className="grid grid-cols-2 gap-2">
+              {data.recent_badges.map((b) => (
+                <li key={b.name} className="flex items-center gap-2.5 rounded-lg border border-slate-200 p-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600"><Award size={16} aria-hidden /></span>
+                  <span className="min-w-0"><span className="block truncate text-xs font-semibold text-slate-900">{b.name}</span><span className="block text-[11px] text-slate-500">{fmtDate(b.awarded_at)}</span></span>
                 </li>
               ))}
             </ul>
@@ -288,16 +310,26 @@ export default function StudentDashboard() {
       </div>
 
       {s.interviews.recent.length > 0 && (
-        <Card title="Recent interviews">
-          <div className="flex flex-wrap gap-2">
-            {s.interviews.recent.slice().reverse().map((i) => (
-              <Link key={i.id} to={`/student/interviews/${i.id}`} className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm transition-colors hover:border-slate-300 hover:bg-slate-50">
-                <span className="font-medium">{i.job_role}</span> <Pill tone="brand">{i.category}</Pill>
-                <span className="num ml-1 font-semibold text-slate-900">{i.score ?? "—"}</span>
-              </Link>
-            ))}
+        <Card title="Recent interviews" bodyClass="" actions={<CardLink to="/student/progress?tab=history">Practice history</CardLink>}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead className="border-b border-slate-200 bg-slate-50"><tr><th className="th">Role</th><th className="th">Category</th><th className="th">Completed</th><th className="th text-right">Score</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {s.interviews.recent.slice().reverse().slice(0, 6).map((i) => (
+                  <tr key={i.id} className="transition-colors hover:bg-slate-50">
+                    <td className="td"><Link to={`/student/interviews/${i.id}`} className="font-medium text-slate-900 hover:text-brand-600">{i.job_role}</Link></td>
+                    <td className="td"><Pill>{i.category}</Pill></td>
+                    <td className="td text-slate-500">{fmtDate(i.completed_at)}</td>
+                    <td className="td text-right"><span className={`num font-semibold ${i.score == null ? "text-slate-400" : scoreTone(i.score) === "green" ? "text-emerald-600" : scoreTone(i.score) === "amber" ? "text-amber-600" : "text-rose-600"}`}>{i.score ?? "—"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Card>
+      )}
+      {!resume && s.interviews.completed === 0 && (
+        <p className="flex items-center justify-center gap-2 text-xs text-slate-400"><UserRound size={13} /> New here? Upload your resume first — it personalises interview questions and job matches.</p>
       )}
     </div>
   );

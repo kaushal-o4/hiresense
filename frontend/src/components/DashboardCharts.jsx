@@ -62,18 +62,35 @@ import {
   RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { EmptyState } from "./SharedUiComponents";
+import { useTheme } from "./ThemeContext";
 
-// Accent first, then hues that stay distinguishable from each other and from status colours.
-export const COLORS = ["#818cf8", "#2dd4bf", "#fbbf24", "#f472b6", "#a78bfa", "#94a3b8"];
-const AXIS = { fontSize: 11, fill: "#8b96b6" };
-const GRID = "#1f2842";
-const TOOLTIP = {
-  contentStyle: { borderRadius: 10, border: "1px solid #2f3a5c", background: "rgba(14,20,38,0.95)", color: "#dfe3f0", boxShadow: "0 16px 32px -8px rgb(0 0 0 / 0.6)", fontSize: 12, padding: "8px 10px" },
-  itemStyle: { color: "#dfe3f0" },
-  labelStyle: { color: "#ffffff", fontWeight: 600, marginBottom: 2 },
-  cursor: { fill: "rgb(129 140 248 / 0.08)", stroke: "#2f3a5c" },
-};
-const LEGEND = { wrapperStyle: { fontSize: 12, color: "#a6b0cb" }, iconType: "circle", iconSize: 8 };
+// HireSense categorical palette: brand blue first, then hues distinct from each other and from status colours.
+const LIGHT = { colors: ["#315EF7", "#14A3A0", "#E9A23B", "#7C8BA1", "#DC5353", "#4BA3E3"], axis: "#697586", grid: "#E5E9F0",
+  tipBg: "#FFFFFF", tipBorder: "#E5E9F0", tipText: "#172333", cursor: "rgb(49 94 247 / 0.06)" };
+const DARK = { colors: ["#4778FF", "#2CC4BE", "#F0B95A", "#A0ADC0", "#F07878", "#6CB8F0"], axis: "#8B97AA", grid: "#263142",
+  tipBg: "#172333", tipBorder: "#2F3D52", tipText: "#E6EAF1", cursor: "rgb(71 120 255 / 0.10)" };
+
+// Re-read on theme change (ThemeContext sets html[data-theme]).
+function useChartTheme() {
+  const { resolved } = useTheme();
+  const t = resolved === "dark" ? DARK : LIGHT;
+  return {
+    COLORS: t.colors,
+    AXIS: { fontSize: 11, fill: t.axis },
+    GRID: t.grid,
+    TOOLTIP: {
+      contentStyle: { borderRadius: 10, border: `1px solid ${t.tipBorder}`, background: t.tipBg, color: t.tipText,
+        boxShadow: "0 12px 28px -8px rgb(16 21 29 / 0.25)", fontSize: 12, padding: "8px 10px" },
+      itemStyle: { color: t.tipText },
+      labelStyle: { color: t.tipText, fontWeight: 600, marginBottom: 2 },
+      cursor: { fill: t.cursor, stroke: t.grid },
+    },
+    LEGEND: { wrapperStyle: { fontSize: 12, color: t.axis }, iconType: "circle", iconSize: 8 },
+  };
+}
+
+/** Exported for pages that colour a single series by hand. */
+export const COLORS = LIGHT.colors;
 
 const METRIC_LABELS = {
   interview_score: "Interview", english_score: "English", assessment_score: "Assessment",
@@ -82,6 +99,7 @@ const METRIC_LABELS = {
 
 /** Line chart of progress records. `series` = [{metric, value, date}] */
 export function ProgressChart({ series, metrics = ["interview_score", "english_score", "assessment_score"], height = 260 }) {
+  const { COLORS, AXIS, GRID, TOOLTIP, LEGEND } = useChartTheme();
   const rows = (series || []).filter((s) => metrics.includes(s.metric));
   if (!rows.length) return <EmptyState title="No scores yet" message="Complete an interview, English session or assessment to see your progress." />;
   const data = rows.map((r, i) => ({ idx: i + 1, date: new Date(r.date).toLocaleDateString(undefined, { day: "numeric", month: "short" }), [r.metric]: r.value }));
@@ -102,7 +120,10 @@ export function ProgressChart({ series, metrics = ["interview_score", "english_s
   );
 }
 
-export function SimpleBar({ data, dataKey, nameKey, height = 240, color = COLORS[0], max }) {
+/** `tone` = index into the theme palette (0 = brand blue, 1 = teal, 2 = amber ...). */
+export function SimpleBar({ data, dataKey, nameKey, height = 240, tone = 0, max }) {
+  const { COLORS, AXIS, GRID, TOOLTIP } = useChartTheme();
+  const fill = COLORS[tone % COLORS.length];
   if (!data?.length) return <EmptyState title="No data yet" />;
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -111,13 +132,14 @@ export function SimpleBar({ data, dataKey, nameKey, height = 240, color = COLORS
         <XAxis dataKey={nameKey} tick={AXIS} tickLine={false} axisLine={false} interval={0} />
         <YAxis tick={AXIS} tickLine={false} axisLine={false} domain={max ? [0, max] : undefined} allowDecimals={false} />
         <Tooltip {...TOOLTIP} />
-        <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} maxBarSize={40} />
+        <Bar dataKey={dataKey} fill={fill} radius={[4, 4, 0, 0]} maxBarSize={40} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
 export function MultiBar({ data, keys, nameKey, height = 260, max }) {
+  const { COLORS, AXIS, GRID, TOOLTIP, LEGEND } = useChartTheme();
   if (!data?.length) return <EmptyState title="No data yet" />;
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -134,6 +156,7 @@ export function MultiBar({ data, keys, nameKey, height = 260, max }) {
 }
 
 export function SkillRadar({ data, height = 260, max = 10 }) {
+  const { COLORS, AXIS, GRID, TOOLTIP } = useChartTheme();
   if (!data?.length) return <EmptyState title="No data yet" />;
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -149,6 +172,7 @@ export function SkillRadar({ data, height = 260, max = 10 }) {
 }
 
 export function TimelineChart({ data, keys, height = 260 }) {
+  const { COLORS, AXIS, GRID, TOOLTIP, LEGEND } = useChartTheme();
   if (!data?.length) return <EmptyState title="No data yet" />;
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -158,7 +182,7 @@ export function TimelineChart({ data, keys, height = 260 }) {
         <YAxis tick={AXIS} tickLine={false} axisLine={false} allowDecimals={false} />
         <Tooltip {...TOOLTIP} />
         <Legend {...LEGEND} />
-        {keys.map((k, i) => <Line key={k.key} dataKey={k.key} name={k.label} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={false} />)}
+        {keys.map((k, i) => <Line key={k.key} type="monotone" dataKey={k.key} name={k.label} stroke={COLORS[i % COLORS.length]} strokeWidth={2} dot={false} />)}
       </LineChart>
     </ResponsiveContainer>
   );

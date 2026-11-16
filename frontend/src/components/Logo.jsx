@@ -1,60 +1,28 @@
-// HIRESENSE COMMENT INDEX - START
-// ------------------------------------------------------------
-// FILE NAME:
-// frontend/src/components/Logo.jsx
-//
-// FILE PURPOSE:
-// Draws the HireSense logo (an 'H' mark) and the product name.
-//
-// WHAT THIS FILE DOES:
-// 1. LogoMark draws the SVG icon with a gradient.
-// 2. Logo shows the icon plus the 'HireSense' text.
-//
-// HOW THIS FILE WORKS:
-// useId() gives each logo a unique gradient id so several logos on one page do not break each other.
-//
-// IMPORTANT FUNCTIONS:
-//    Other helper functions: LogoMark, Logo
-//
-// OUTPUT:
-// SVG logo.
-//
-// FILES CONNECTED TO THIS FILE:
-//    Used by: components/AppShellLayout.jsx, pages/AuthShell.jsx,
-//    pages/recruiter/CandidateReport.jsx
-//
-// IMPORTANT DEPENDENCIES:
-//    react
-//
-// ------------------------------------------------------------
-// HIRESENSE COMMENT INDEX - END
-/* HireSense wordmark: a gradient "H" monogram with a single accent dot, plus the name. */
+/*
+ * HireSense brand: a square "H" monogram with a blue signal block, plus the spaced H I R E S E N S E wordmark.
+ * Works on light and dark surfaces (`inverted` forces white type for dark panels). Same mark as public/favicon.svg.
+ */
 
-import { useId } from "react";
-
-export function LogoMark({ size = 28 }) {
-  // unique per instance: a gradient defined inside a hidden (display:none) copy cannot be referenced by another
-  const id = `hs-logo-${useId().replace(/:/g, "")}`;
+export function LogoMark({ size = 28, inverted = false }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden className="shrink-0">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#818cf8" /><stop offset="1" stopColor="#8b5cf6" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="9" fill={`url(#${id})`} />
-      <rect x="0.5" y="0.5" width="31" height="31" rx="8.5" fill="none" stroke="rgba(255,255,255,0.25)" />
-      <path d="M10.5 9v14M21.5 9v14M10.5 16h11" stroke="#ffffff" strokeWidth="2.8" strokeLinecap="round" />
-      <circle cx="25" cy="7" r="2.6" fill="#5eead4" />
+      <rect width="32" height="32" rx="7" fill={inverted ? "#ffffff" : "rgb(var(--n-950))"} />
+      <path d="M10 8.5v15M22 8.5v15M10 16h12" stroke={inverted ? "#10151D" : "rgb(var(--surface))"} strokeWidth="2.6" strokeLinecap="round" />
+      <rect x="20.5" y="5" width="5" height="5" rx="1.2" fill="#315EF7" />
     </svg>
   );
 }
 
-export default function Logo({ size = 28, inverted = false, className = "" }) {
+export default function Logo({ size = 28, inverted = false, className = "", wordmark = true }) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
-      <LogoMark size={size} />
-      <span className={`text-[17px] font-semibold tracking-tight ${inverted ? "text-snow" : "text-slate-950"}`}>HireSense</span>
+      <LogoMark size={size} inverted={inverted} />
+      {wordmark && (
+        <span className={`font-display text-[14px] font-extrabold tracking-[0.28em] ${inverted ? "text-snow" : "text-slate-950"}`}>
+          HIRESENSE
+        </span>
+      )}
+      <span className="sr-only">HireSense</span>
     </span>
   );
 }

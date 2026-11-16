@@ -40,10 +40,10 @@ import Progress from "./ProgressOverview";
 // One "My Progress" area instead of three separate menu items (Progress, Performance Report, Practice History).
 export default function ProgressHub() {
   return (
-    <UrlTabs label="My progress" tabs={[
-      { id: "overview", label: "Overview", element: <Progress /> },
-      { id: "report", label: "Full report", element: <PerformanceReport /> },
-      { id: "history", label: "Practice history", element: <PracticeHistory /> },
+    <UrlTabs label="My progress" title="My progress" subtitle="Scores, trends, strengths and every practice session in one place." tabs={[
+      { id: "overview", label: "Overview", element: <Progress embedded /> },
+      { id: "report", label: "Full report", element: <PerformanceReport embedded /> },
+      { id: "history", label: "Practice history", element: <PracticeHistory embedded /> },
     ]} />
   );
 }

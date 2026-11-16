@@ -155,7 +155,7 @@ export default function Vocabulary() {
   const c = data?.counts;
   return (
     <div className="space-y-6">
-      <PageHeader title="My words" subtitle="Phrases from Aria's corrections and words you add. Review them a little every day: each card comes back just before you are likely to forget it."
+      <PageHeader eyebrow="English practice" title="My words" subtitle="Phrases from Aria's corrections and words you add. Review them a little every day: each card comes back just before you are likely to forget it."
         actions={<Link to="/student/english" className="inline-flex items-center gap-1 text-sm text-brand-600 hover:underline"><ArrowLeft size={14} /> English practice</Link>} />
       {reviewCards ? <Review cards={reviewCards} onDone={() => { setReviewCards(null); reload(); }} /> : (
         <>

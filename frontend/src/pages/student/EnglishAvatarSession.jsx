@@ -49,7 +49,7 @@
 // HIRESENSE COMMENT INDEX - END
 import { Suspense, lazy, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Flame, Gauge, Keyboard, Lightbulb, Mic, Pause, PhoneOff, Play, Send, Sparkles, Square, Timer, Volume2 } from "lucide-react";
+import { CheckCircle2, Flame, Gauge, Keyboard, Lightbulb, Loader2, Mic, Pause, PauseCircle, PenLine, PhoneOff, Play, Radio, Send, Sparkles, Square, Timer, Volume2 } from "lucide-react";
 import { api, del, get, post } from "../../apiClient";
 import { useSpeechToText, usePrefs } from "../../components/useSpeechAndPreferences";
 import { Button, Card, ConfirmButton, Notice, Pill, useToast } from "../../components/SharedUiComponents";
@@ -61,11 +61,28 @@ import {
   E, ENGLISH_STATUS_LABEL, GENERIC_STARTERS, confidenceLabel, englishAvatarMode, englishTransition, initialEnglishState,
 } from "../../voice/englishMachine";
 import { MicRecorder } from "../../voice/recorder";
+import { AiStateIndicator, Equalizer } from "../../voice/RoomParts";
 import { SpeechPlayer } from "../../voice/speechPlayer";
 
 const TTS_WAIT_MS = 8000; // longest Aria waits for the local voice before using the browser voice
 const HESITATION_MS = 5000; // quiet this long on the student's turn -> offer starter phrases
 const STYLE_LABEL = { free_talk: "English free talk", interview: "Job interview practice" };
+
+/** What Aria is doing right now (status chip), derived only from the English state machine. */
+function englishPhase(st) {
+  if (st.recording) return { tone: "rose", icon: Mic, title: "Listening to you", detail: "Take your time - it sends after a short pause.", anim: "eq" };
+  switch (st.status) {
+    case E.READY: return { tone: "gray", icon: Radio, title: ENGLISH_STATUS_LABEL[E.READY], detail: "", anim: null };
+    case E.PREPARING_SPEECH: return { tone: "brand", icon: Sparkles, title: ENGLISH_STATUS_LABEL[E.PREPARING_SPEECH], detail: "", anim: "spin" };
+    case E.SPEAKING: return { tone: "brand", icon: Volume2, title: ENGLISH_STATUS_LABEL[E.SPEAKING], detail: "Your microphone is off while Aria speaks.", anim: "eq" };
+    case E.LISTENING: return { tone: "green", icon: Mic, title: ENGLISH_STATUS_LABEL[E.LISTENING], detail: "", anim: null };
+    case E.TRANSCRIBING: return { tone: "brand", icon: PenLine, title: ENGLISH_STATUS_LABEL[E.TRANSCRIBING], detail: "", anim: "spin" };
+    case E.THINKING: return { tone: "brand", icon: Sparkles, title: ENGLISH_STATUS_LABEL[E.THINKING], detail: "", anim: "spin" };
+    case E.PAUSED: return { tone: "amber", icon: PauseCircle, title: ENGLISH_STATUS_LABEL[E.PAUSED], detail: "", anim: null };
+    case E.ENDING: return { tone: "brand", icon: Loader2, title: ENGLISH_STATUS_LABEL[E.ENDING], detail: "", anim: "spin" };
+    default: return { tone: "green", icon: CheckCircle2, title: ENGLISH_STATUS_LABEL[st.status] || st.status, detail: "", anim: null };
+  }
+}
 
 /**
  * Face-to-face spoken-English practice with Aria. Hands-free loop:
@@ -401,17 +418,13 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       {/* top bar */}
-      <div className="card flex flex-wrap items-center gap-3 px-4 py-3">
+      <div className="card flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
         <div className="mr-auto min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-900">{s.topic}</p>
+          <p className="eyebrow">English practice with Aria</p>
+          <h1 className="mt-0.5 truncate text-lg font-bold tracking-tight text-slate-950">{s.topic}</h1>
           <p className="text-xs text-slate-500">{STYLE_LABEL[style]} · {LEARNING_MODE_LABEL[s.learning_mode] || LEARNING_MODE_LABEL.free_conversation} · {studentTurns} {studentTurns === 1 ? "reply" : "replies"}</p>
         </div>
-        <span role="status" aria-live="polite" className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-          st.recording ? "bg-rose-50 text-rose-700 ring-rose-200" : st.status === E.SPEAKING ? "bg-brand-50 text-brand-700 ring-brand-200"
-            : st.status === E.PAUSED ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-slate-100 text-slate-700 ring-slate-200"}`}>
-          <span className={`h-1.5 w-1.5 rounded-full ${st.recording ? "animate-pulse bg-rose-500" : st.status === E.SPEAKING ? "animate-pulse bg-brand-500" : st.status === E.PAUSED ? "bg-amber-500" : "bg-slate-400"}`} />
-          {st.recording ? "Listening to you" : ENGLISH_STATUS_LABEL[st.status]}
-        </span>
+        <AiStateIndicator phase={englishPhase(st)} compact />
         {live && st.status !== E.PAUSED && <Button size="sm" variant="secondary" onClick={pause}><Pause size={14} /> Pause</Button>}
         {st.status === E.PAUSED && <Button size="sm" onClick={resume}><Play size={14} /> Resume</Button>}
         {st.status !== E.ENDING && (
@@ -424,32 +437,36 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {/* stage */}
-          <div className={`relative overflow-hidden rounded-2xl bg-night-900 ring-1 transition-shadow duration-500 ${st.recording ? "ring-rose-400/50 shadow-[0_0_0_1px_rgb(251_113_133/0.35),0_0_60px_-12px_rgb(244_63_94/0.6)]"
-            : st.status === E.SPEAKING ? "ring-brand-400/45 shadow-[0_0_0_1px_rgb(129_140_248/0.3),0_0_60px_-12px_rgb(99_102_241/0.65)]"
-              : "ring-slate-200 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.9)]"}`}>
+          <div className={`theme-dark relative overflow-hidden rounded-xl bg-night-900 ring-1 transition-[box-shadow] duration-500 ${st.recording ? "ring-rose-500/50"
+            : st.status === E.SPEAKING ? "ring-brand-500/50" : "ring-snow/10"}`}>
             {use3d ? (
-              <Suspense fallback={<div className="flex h-[min(52vh,480px)] w-full items-center justify-center text-sm text-slate-600">Loading Aria…</div>}>
+              <Suspense fallback={<div className="flex h-[min(52vh,480px)] w-full items-center justify-center text-sm text-slate-500">Loading Aria…</div>}>
                 <Avatar3D getVisemes={getVisemes} mode={mode} className="h-[min(52vh,480px)] w-full"
                   onFailed={(why) => { setUse3d(false); toast(`${why} Showing the simple avatar instead.`, "error"); }} />
               </Suspense>
             ) : (
               <Avatar getMouth={getMouth} mode={mode} className="block h-[min(52vh,480px)] w-full" />
             )}
-            <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-full border border-snow/10 bg-black/45 px-3 py-1 text-xs text-snow backdrop-blur-md"><span className={`h-2 w-2 rounded-full ${st.status === E.SPEAKING ? "animate-pulse bg-emerald-400 shadow-[0_0_8px_rgb(52_211_153)]" : st.recording ? "animate-pulse bg-rose-500 shadow-[0_0_8px_rgb(244_63_94)]" : "bg-slate-500"}`} aria-hidden="true" />Aria · English coach</span>
+            <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-full bg-night-950/75 py-1 pl-1.5 pr-3 text-xs text-snow ring-1 ring-snow/10">
+              <span className={`flex h-6 w-6 items-center justify-center rounded-full ${st.status === E.SPEAKING ? "bg-brand-500" : st.recording ? "bg-rose-500" : "bg-snow/10"}`}>
+                {st.status === E.SPEAKING || st.recording ? <Equalizer bars={3} className="bg-snow" /> : <span className="h-1.5 w-1.5 rounded-full bg-snow/60" aria-hidden />}
+              </span>
+              <span className="font-medium">Aria</span><span className="text-snow/50">· English coach</span>
+            </span>
             {lipsync && st.status === E.SPEAKING && (
-              <span className="absolute right-3 top-3 z-10 rounded-full border border-snow/10 bg-black/45 px-3 py-1 text-[11px] text-slate-700 backdrop-blur-md">
+              <span className="absolute right-3 top-3 z-10 hidden rounded-full bg-night-950/75 px-3 py-1 text-[11px] text-snow/60 ring-1 ring-snow/10 sm:block">
                 {lipsync === "phoneme" ? "local voice · phoneme lip sync" : "browser voice · approximate lip sync"}
               </span>
             )}
             {encouragement && [E.SPEAKING, E.LISTENING].includes(st.status) && (
-              <p className="absolute left-3 top-12 z-10 flex max-w-[80%] items-center gap-1.5 rounded-xl border border-emerald-400/30 bg-emerald-500/25 px-3 py-1.5 text-xs text-snow shadow-[0_0_24px_-6px_rgb(16_185_129/0.7)] backdrop-blur-md sm:text-sm">
+              <p className="absolute left-3 top-12 z-10 flex max-w-[80%] items-center gap-1.5 rounded-lg bg-emerald-600/90 px-3 py-1.5 text-xs text-snow sm:text-sm">
                 <Sparkles size={14} className="shrink-0" /> {encouragement}
               </p>
             )}
             {lastAi && live && (
               <div className="absolute inset-x-3 bottom-3 z-10 sm:inset-x-8">
                 {hint && st.status === E.LISTENING && (
-                  <p className="mb-2 rounded-xl bg-amber-400/95 px-3 py-1.5 text-center text-sm font-medium text-night-950 shadow-[0_0_24px_-6px_rgb(251_191_36/0.8)]">Try saying: “{hint}”</p>
+                  <p className="mb-2 rounded-lg bg-amber-400 px-3 py-1.5 text-center text-sm font-medium text-night-950">Try saying: “{hint}”</p>
                 )}
                 <SubtitleLine text={lastAi.content} pos={st.status === E.SPEAKING && subtitles ? subPos : null} dim={st.status !== E.SPEAKING} />
               </div>
@@ -462,8 +479,8 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
           {/* start */}
           {st.status === E.READY && (
             <div className="card p-5">
-              <h2 className="text-lg font-semibold">Ready to chat with Aria?</h2>
-              <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-600 marker:text-brand-400">
+              <h2 className="text-lg font-bold">Ready to chat with Aria?</h2>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-600 marker:text-slate-400">
                 <li>Aria speaks first - turn your sound on. Mistakes are completely fine; she'll never interrupt you.</li>
                 <li>When she finishes, your <b>microphone turns on</b>. Pause for a few seconds or press <b>Done</b> when you finish.</li>
                 {s.learning_mode === "english_learning"
@@ -477,7 +494,7 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
               </ul>
               {voice && !voice.tts?.enabled && <p className="mt-2 text-sm text-amber-700">The local voice is off on this server, so the browser's voice will be used (approximate lip sync).</p>}
               <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button onClick={start} disabled={!voice}><Play size={16} /> Start talking with Aria</Button>
+                <Button size="lg" onClick={start} disabled={!voice}><Play size={16} /> Start talking with Aria</Button>
                 <Link to={`/student/english`} className="text-sm text-slate-500 hover:underline">Back to all sessions</Link>
               </div>
             </div>
@@ -495,7 +512,7 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
                   )}
                   {sttEngine === "local" ? (
                     <div className="h-1.5 w-32 overflow-hidden rounded-full bg-slate-200" aria-label="Microphone level">
-                      <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgb(16_185_129/0.7)] transition-[width] duration-75" style={{ width: `${Math.min(100, micLevel * 900)}%` }} />
+                      <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-75" style={{ width: `${Math.min(100, micLevel * 900)}%` }} />
                     </div>
                   ) : st.recording && <span className="max-w-xs truncate text-xs italic text-slate-500">{heard || "…"}</span>}
                   <span className="text-xs text-slate-500">{st.recording ? "Take your time. I'll send it after a short pause." : "Microphone is off."}</span>
@@ -514,18 +531,26 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
                   <Button type="button" size="sm" variant="ghost" onClick={replay}><Volume2 size={14} /> Say that again</Button>
                 </form>
               )}
-              {st.status === E.TRANSCRIBING && <p className="text-sm text-slate-500">Catching your words…</p>}
-              {st.status === E.THINKING && <p className="text-sm text-slate-500">Aria is thinking about what you said…</p>}
+              {st.status === E.TRANSCRIBING && <p className="flex items-center gap-2 text-sm text-slate-500"><Loader2 size={15} className="animate-spin text-brand-500" aria-hidden /> Catching your words…</p>}
+              {st.status === E.THINKING && <p className="flex items-center gap-2 text-sm text-slate-500"><Sparkles size={15} className="animate-pulse text-brand-500" aria-hidden /> Aria is thinking about what you said…</p>}
               {[E.SPEAKING, E.PREPARING_SPEECH].includes(st.status) && (
                 <p className="flex items-center gap-2 text-sm text-slate-500"><span className="inline-block h-2 w-2 rounded-full bg-slate-400" /> Microphone is off while Aria is speaking.</p>
               )}
             </div>
           )}
-          {st.status === E.ENDING && <p className="text-sm text-slate-500">Aria is preparing your fluency, vocabulary, grammar and sentence-formation report…</p>}
+          {st.status === E.ENDING && (
+            <div className="card flex animate-fade-up flex-col items-center gap-3 px-6 py-10 text-center" role="status">
+              <span className="relative flex h-12 w-12 items-center justify-center">
+                <span className="absolute inset-0 animate-spin rounded-full border-2 border-slate-200 border-t-brand-500" aria-hidden />
+                <Sparkles size={18} className="text-brand-600" aria-hidden />
+              </span>
+              <p className="text-sm text-slate-600">Aria is preparing your fluency, vocabulary, grammar and sentence-formation report…</p>
+            </div>
+          )}
 
           {/* hesitation helpers */}
           {st.status === E.LISTENING && (
-            <div className={`rounded-xl border p-4 transition-colors ${stuck ? "border-amber-400/40 bg-amber-500/10 shadow-[0_0_40px_-20px_rgb(245_158_11/0.7)]" : "border-slate-200 bg-white/70"}`}>
+            <div className={`rounded-xl border p-4 transition-colors ${stuck ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"}`}>
               <p className="flex items-center gap-2 text-sm font-medium text-slate-700">
                 <Lightbulb size={16} className={stuck ? "text-amber-500" : "text-slate-400"} />
                 {stuck ? "No rush - take a breath. You could start with one of these:"
@@ -535,7 +560,7 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
               <div className="mt-2 flex flex-wrap gap-2">
                 {starters.map((p) => (
                   <button key={p} type="button" onClick={() => pickStarter(p)}
-                    className="rounded-full border border-slate-200 bg-slate-100/60 px-3 py-1 text-sm text-slate-700 transition hover:border-brand-400/60 hover:bg-brand-500/10 hover:text-brand-800">{p}</button>
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-soft transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700">{p}</button>
                 ))}
               </div>
             </div>
@@ -548,23 +573,23 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
         <div className="space-y-4">
           <Card title="Confidence meter">
             <div className="flex items-center gap-3">
-              <Gauge size={28} className="text-brand-600" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-600"><Gauge size={20} /></span>
               <div className="flex-1">
                 <div className="h-2 overflow-hidden rounded-full bg-slate-200" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={confidence ?? 0} aria-label="Confidence">
-                  <div className={`h-full transition-all duration-700 ${confidence >= 65 ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgb(16_185_129/0.6)]" : confidence >= 40 ? "bg-gradient-to-r from-brand-500 to-violet-500 shadow-[0_0_10px_rgb(99_102_241/0.6)]" : "bg-amber-400 shadow-[0_0_10px_rgb(251_191_36/0.5)]"}`} style={{ width: `${confidence ?? 4}%` }} />
+                  <div className={`h-full rounded-full transition-all duration-700 ${confidence >= 65 ? "bg-emerald-500" : confidence >= 40 ? "bg-brand-500" : "bg-amber-500"}`} style={{ width: `${confidence ?? 4}%` }} />
                 </div>
                 <p className="mt-1 text-sm font-medium text-slate-700">{confidenceLabel(confidence)}</p>
               </div>
-              <span className="num text-2xl font-semibold text-slate-950">{confidence ?? "–"}</span>
+              <span className="num font-display text-2xl font-bold text-slate-950">{confidence ?? "–"}</span>
             </div>
             <p className="mt-2 text-xs text-slate-500">Grows as you give longer answers, keep the conversation going and speak aloud. Your real scores come at the end.</p>
           </Card>
 
           <Card title="Practice streak">
             <div className="flex items-center gap-3">
-              <Flame size={28} className={stats?.current_streak ? "text-orange-500" : "text-slate-600"} />
+              <span className={`flex h-10 w-10 items-center justify-center rounded-lg ${stats?.current_streak ? "bg-amber-50 text-amber-600" : "bg-slate-100 text-slate-400"}`}><Flame size={20} /></span>
               <div>
-                <p className="text-2xl font-bold">{stats ? stats.current_streak : "–"} <span className="text-sm font-normal text-slate-500">day{stats?.current_streak === 1 ? "" : "s"}</span></p>
+                <p className="num font-display text-2xl font-bold text-slate-950">{stats ? stats.current_streak : "–"} <span className="text-sm font-normal text-slate-500">day{stats?.current_streak === 1 ? "" : "s"}</span></p>
                 <p className="text-xs text-slate-500">
                   {!stats ? "Loading…" : stats.practiced_today ? "You've practised today - keep it going tomorrow!"
                     : stats.current_streak ? "Finish this session (1+ active minute) to extend your streak." : "Finish this session to start a streak."}
@@ -575,7 +600,7 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
           </Card>
 
           <Card title="Verified practice time">
-            <p className="flex items-center gap-2 text-2xl font-semibold"><Timer size={20} className="text-slate-400" />{liveMinutes}:{String(liveSecs).padStart(2, "0")}</p>
+            <p className="num flex items-center gap-2 font-display text-2xl font-bold text-slate-950"><Timer size={20} className="text-slate-400" />{liveMinutes}:{String(liveSecs).padStart(2, "0")}</p>
             <p className="mt-1 text-xs text-slate-500">Counts time spent replying with real sentences (pauses over 2 minutes are not counted). Updates after each reply.</p>
           </Card>
 
@@ -583,7 +608,7 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
             {!lastStudent ? <p className="text-sm text-slate-500">Gentle tips on your latest reply will appear here.</p>
               : corrections.length === 0 ? (
                 <p className="text-sm text-emerald-700">
-                  {s.learning_mode === "english_learning" ? "Nicely said - no corrections on your last reply. 🎉"
+                  {s.learning_mode === "english_learning" ? "Nicely said - no corrections on your last reply."
                     : "Keep talking! In this mode only the occasional important tip appears here."}
                 </p>
               )
@@ -591,7 +616,7 @@ export default function EnglishAvatarSession({ initial, onEnded }) {
                   <ul className="space-y-3">
                     {corrections.map((c, i) => (
                       <li key={i} className="text-sm">
-                        <span className="text-red-600 line-through">{c.original}</span> → <span className="font-medium text-emerald-700">{c.corrected}</span>
+                        <span className="text-rose-600 line-through decoration-rose-300">{c.original}</span> <span className="text-slate-400" aria-hidden>→</span> <span className="font-medium text-emerald-700">{c.corrected}</span>
                         {c.explanation && <span className="block text-xs text-slate-500">{c.explanation}</span>}
                       </li>
                     ))}
@@ -631,7 +656,7 @@ function Conversation({ messages }) {
     <Card title="Conversation" bodyClass="max-h-72 space-y-3 overflow-y-auto p-4">
       {messages.map((m) => (
         <div key={m.id} className={`flex ${m.sender === "student" ? "justify-end" : "justify-start"}`}>
-          <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.sender === "student" ? "bg-brand-500 text-snow shadow-glow" : "bg-slate-100 text-slate-800"}`}>
+          <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${m.sender === "student" ? "rounded-br-md bg-brand-500 text-snow" : "rounded-bl-md bg-slate-100 text-slate-800"}`}>
             {m.content}
           </div>
         </div>

@@ -50,9 +50,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, FileText, Printer } from "lucide-react";
 import { post } from "../../apiClient";
-import {
-  Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, fmtDate, useApi,
-} from "../../components/SharedUiComponents";
+import { Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, buttonClass, fmtDate, useApi } from "../../components/SharedUiComponents";
 import IntegrityOverview from "./IntegrityOverview";
 import { MATCH_METHOD } from "./RecruiterJobApplicants";
 
@@ -101,7 +99,7 @@ export default function CompareCandidates() {
     [id, ids.join(",")],
   );
 
-  const back = <Link to={`/recruiter/jobs/${id}`} className="print:hidden"><Button variant="secondary"><ArrowLeft size={16} /> Back to applicants</Button></Link>;
+  const back = <Link to={`/recruiter/jobs/${id}`} className={`print:hidden ${buttonClass("secondary")}`}><ArrowLeft size={16} /> Back to applicants</Link>;
 
   if (ids.length < 2) {
     return (

@@ -69,7 +69,7 @@ export default function Rewards() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {ch.data?.challenges.map((c) => (
               <div key={c.id} className={`rounded-xl border p-4 ${c.completed ? "border-emerald-300 bg-emerald-50" : "border-slate-200"}`}>
-                <div className="flex items-center justify-between"><p className="font-semibold">{c.title}</p><Pill tone={c.period === "daily" ? "amber" : "violet"}>{c.period}</Pill></div>
+                <div className="flex items-center justify-between"><p className="font-semibold">{c.title}</p><Pill tone={c.period === "daily" ? "amber" : "brand"}>{c.period}</Pill></div>
                 <p className="mt-1 text-xs text-slate-600">{c.description}</p>
                 <div className="mt-3"><ScoreBar value={c.percent} /></div>
                 <p className="mt-1 text-[11px] text-slate-500">{c.progress}/{c.target} · {c.completed ? `completed · +${c.points} pts earned` : `+${c.points} pts`}</p>
@@ -81,9 +81,9 @@ export default function Rewards() {
       <Card title="Badges">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {d.badges.map((b) => (
-            <div key={b.id} className={`rounded-xl border p-4 ${b.earned ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white"}`}>
+            <div key={b.id} className={`rounded-xl border p-4 ${b.earned ? "border-amber-200 bg-amber-50/60" : "border-slate-200 bg-white"}`}>
               <div className="flex items-start gap-3">
-                <span className={`text-3xl ${b.earned ? "" : "opacity-30 grayscale"}`}>{b.icon}</span>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${b.earned ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-400"}`}><Award size={19} aria-hidden /></span>
                 <div className="flex-1">
                   <p className="font-semibold">{b.name}</p>
                   <p className="text-xs text-slate-600">{b.description}</p>

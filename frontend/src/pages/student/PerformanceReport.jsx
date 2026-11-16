@@ -50,7 +50,7 @@ import { CheckCircle2, CircleDashed, Printer, TrendingDown, TrendingUp } from "l
 import { get } from "../../apiClient";
 import { MultiBar } from "../../components/DashboardCharts";
 import { ReadinessCard } from "../../components/PlacementReadinessCard";
-import { Button, Card, ErrorBox, PageHeader, Pill, ScoreBar, Spinner, StatCard, Table, fmtDate, fmtDateTime, useApi } from "../../components/SharedUiComponents";
+import { Button, Card, ErrorBox, PageHeader, Pill, ScoreBar, SectionHeader, Spinner, StatCard, Table, fmtDate, fmtDateTime, useApi } from "../../components/SharedUiComponents";
 
 const Bullets = ({ items, icon: Icon, cls }) => (
   <ul className="space-y-2">{items.map((x) => <li key={x} className="flex gap-2.5 text-sm leading-relaxed text-slate-700"><Icon size={15} className={`mt-[3px] shrink-0 ${cls}`} />{x}</li>)}</ul>
@@ -83,14 +83,15 @@ export function WeeklyChart({ weekly }) {
     keys={[{ key: "activities", label: "Activities" }, { key: "avg_score", label: "Avg score" }, { key: "minutes", label: "English minutes" }]} />;
 }
 
-export default function PerformanceReport() {
+export default function PerformanceReport({ embedded = false }) {
+  const Header = embedded ? SectionHeader : PageHeader;
   const { data, error, loading, reload } = useApi(() => get("/student/report"));
   if (loading) return <Spinner />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   const s = data.summary;
   return (
     <div className="space-y-6 print:space-y-4">
-      <PageHeader title="Performance report" subtitle={`${s.student.full_name} · generated ${fmtDateTime(data.generated_at)}`}
+      <Header title="Performance report" subtitle={`${s.student.full_name} · generated ${fmtDateTime(data.generated_at)}`}
         actions={<Button variant="secondary" onClick={() => window.print()} className="print:hidden"><Printer size={16} /> Print / save as PDF</Button>} />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Interview average" value={s.interviews.average_score ?? "—"} hint={`${s.interviews.completed} interviews · best ${s.interviews.best_score ?? "—"}`} />

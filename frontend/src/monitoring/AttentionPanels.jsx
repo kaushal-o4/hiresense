@@ -70,7 +70,7 @@ export function AttentionCard({ status, cameraOn, cameraLost }) {
   const face = status?.faces === 1 ? (status.edge ? "partly visible" : "detected") : status?.faces > 1 ? "more than one" : "not detected";
   const secs = Math.round((a?.windowMs ?? 30000) / 1000);
   return (
-    <section aria-label="Visual attention" className="rounded-xl border border-slate-200 bg-white/70 px-4 py-2.5 text-xs text-slate-700 backdrop-blur">
+    <section aria-label="Visual attention" className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs text-slate-700 shadow-soft">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <span className="flex items-center gap-1 font-semibold uppercase tracking-wide text-slate-500"><Crosshair size={13} /> Visual attention</span>
         {a?.pct != null ? (
@@ -78,7 +78,7 @@ export function AttentionCard({ status, cameraOn, cameraLost }) {
             <span className="text-lg font-bold text-slate-900" aria-label={`Estimated visual attention ${a.pct} percent over the last ${secs} seconds`}>{a.pct}%</span>
             <span className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-200" role="progressbar" aria-valuemin={0} aria-valuemax={100}
               aria-valuenow={a.pct} aria-label="Estimated visual attention">
-              <span className="block h-full bg-gradient-to-r from-brand-500 to-violet-500 shadow-[0_0_10px_rgb(129_140_248/0.6)] transition-[width] duration-500" style={{ width: `${a.pct}%` }} />
+              <span className="block h-full rounded-full bg-brand-500 transition-[width] duration-500" style={{ width: `${a.pct}%` }} />
             </span>
           </span>
         ) : a?.collecting ? (
@@ -118,7 +118,7 @@ export function AttentionReport({ a }) {
   }
   const reasons = Object.entries(a.unobserved_by_reason).filter(([, v]) => v > 0);
   return (
-    <section className="space-y-3 rounded-xl border border-slate-200 bg-white/60 p-4 text-sm" aria-label="Estimated visual attention">
+    <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-soft" aria-label="Estimated visual attention">
       <div>
         <h3 className="font-semibold">{a.label}</h3>
         <p className="text-xs text-slate-500">Measured in the candidate&apos;s browser from webcam observations; not tamper-proof; shown separately from interview scores.</p>

@@ -51,9 +51,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Printer } from "lucide-react";
 import { get } from "../../apiClient";
 import Logo from "../../components/Logo";
-import {
-  Button, Card, ErrorBox, Pill, ScoreBar, Spinner, StatusPill, fmtDate, fmtDateTime, useApi,
-} from "../../components/SharedUiComponents";
+import { Button, Card, ErrorBox, Pill, ScoreBar, Spinner, StatusPill, buttonClass, fmtDate, fmtDateTime, useApi } from "../../components/SharedUiComponents";
 import IntegrityOverview from "./IntegrityOverview";
 import { MatchPanel } from "./RecruiterJobApplicants";
 
@@ -88,7 +86,7 @@ export default function CandidateReport() {
   return (
     <article className="mx-auto max-w-4xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link to={`/recruiter/jobs/${job.id}`}><Button variant="secondary"><ArrowLeft size={16} /> Back to applicants</Button></Link>
+        <Link to={`/recruiter/jobs/${job.id}`} className={buttonClass("secondary")}><ArrowLeft size={16} /> Back to applicants</Link>
         <Button onClick={() => window.print()}><Printer size={16} /> Print / save as PDF</Button>
       </div>
 

@@ -151,7 +151,7 @@ function Errors() {
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   return (
     <Card title="Application errors" bodyClass="">
-      <Table rows={data.items} empty="No application errors recorded 🎉" columns={[
+      <Table rows={data.items} empty="No application errors recorded" columns={[
         { label: "When", render: (r) => fmtDateTime(r.created_at) }, { label: "Request", render: (r) => <code className="text-xs">{r.method} {r.path}</code> },
         { label: "User", render: (r) => r.user_id ?? "—" },
         { label: "Error", render: (r) => <details><summary className="cursor-pointer text-xs">{r.error.split("\n").filter(Boolean).slice(-1)[0]}</summary><pre className="mt-2 max-w-xl overflow-x-auto whitespace-pre-wrap text-[10px]">{r.error}</pre></details> }]} />
@@ -212,7 +212,7 @@ function AiSpeed({ metrics }) {
             <div className="min-w-0">
               <div className="relative h-2 rounded-full bg-slate-100" title={`p50 ${ms(r.p50_ms)} · p95 ${ms(r.p95_ms)}`}>
                 <div className={`absolute inset-y-0 left-0 rounded-full ${r.live && (r.p95_ms || 0) > WAIT_TARGET_MS ? "bg-rose-200" : "bg-slate-200"}`} style={{ width: `${((r.p95_ms || 0) / scale) * 100}%` }} />
-                <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-brand-500 to-violet-500" style={{ width: `${((r.p50_ms || 0) / scale) * 100}%` }} />
+                <div className="absolute inset-y-0 left-0 rounded-full bg-brand-500" style={{ width: `${((r.p50_ms || 0) / scale) * 100}%` }} />
               </div>
               <div className="mt-1.5 flex flex-wrap gap-1">
                 {Object.entries(r.models || {}).sort((a, b) => b[1] - a[1]).map(([m, n]) => (

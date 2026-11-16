@@ -10,7 +10,7 @@
 
   WHAT THIS FILE DOES:
   1. Sets the page title, icon and mobile viewport.
-  2. Loads the Geist font from Google Fonts.
+  2. Loads the Inter and Manrope fonts from Google Fonts and applies the saved theme before first paint.
   3. Contains the empty <div id="root"> and loads /src/main.jsx.
 
   HOW THIS FILE WORKS:
@@ -26,12 +26,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%236366f1'/><path d='M10 8v16M22 8v16M10 16h12' stroke='white' stroke-width='3' stroke-linecap='round'/><circle cx='25' cy='7' r='3' fill='%235eead4'/></svg>" />
-    <meta name="theme-color" content="#070a16" />
-    <meta name="color-scheme" content="dark" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#10151D" />
+    <meta name="description" content="HireSense - AI interview preparation and placement platform. Your Intelligence. Your Interview. Your Future." />
+    <meta name="color-scheme" content="light dark" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-    <title>HireSense</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <title>HireSense - Prepare Smarter. Interview Better. Get Hired.</title>
+    <script>
+      // Apply the saved theme before React renders, so there is no light/dark flash (see components/ThemeContext.jsx).
+      try {
+        var t = localStorage.getItem("hs-theme") || "light";
+        if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+      } catch (e) { document.documentElement.dataset.theme = "light"; }
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -43,16 +43,14 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { BadgeCheck, Briefcase, MapPin, Search } from "lucide-react";
+import { BadgeCheck, Briefcase, CalendarClock, Compass, MapPin, Search, Wallet } from "lucide-react";
 import { get, post } from "../../apiClient";
-import {
-  Button, Card, EmptyState, ErrorBox, Field, Modal, PageHeader, Pagination, Pill, Spinner, StatusPill, fmtDate,
-  useApi, useToast,
-} from "../../components/SharedUiComponents";
+import { Button, Card, EmptyState, ErrorBox, Field, Modal, PageHeader, Pagination, Pill, SectionHeader, Spinner, StatusPill, buttonClass, fmtDate, useApi, useToast } from "../../components/SharedUiComponents";
 
 const TYPES = { full_time: "Full-time", internship: "Internship", part_time: "Part-time", contract: "Contract" };
 
-export default function Jobs() {
+export default function Jobs({ embedded = false }) {
+  const Header = embedded ? SectionHeader : PageHeader;
   const toast = useToast();
   const [filters, setFilters] = useState({ q: "", location: "", job_type: "", skill: "", eligible_only: false });
   const [applied, setApplied] = useState(filters);
@@ -82,7 +80,7 @@ export default function Jobs() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Placement opportunities" subtitle="Jobs and internships published by recruiters." actions={<Link to="/student/applications"><Button variant="secondary">My applications</Button></Link>} />
+      <Header title="Placement opportunities" subtitle="Jobs and internships published by recruiters." actions={<Link to="/student/applications" className={buttonClass("secondary")}>My applications</Link>} />
       <Card>
         <form className="grid gap-3 md:grid-cols-6" onSubmit={(e) => { e.preventDefault(); setPage(1); setApplied(filters); }}>
           <div className="md:col-span-2"><input className="input" placeholder="Search title, company, keywords" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} aria-label="Search" /></div>
@@ -127,8 +125,12 @@ export default function Jobs() {
           <div className="space-y-4 text-sm">
             {selected.company_verified ? <Pill tone="green"><BadgeCheck size={12} className="mr-1" /> Verified company</Pill>
               : <Pill tone="gray">Company not yet verified by the placement office</Pill>}
-            <p className="flex flex-wrap gap-3 text-slate-600"><span>📍 {selected.location}</span><span>💼 {TYPES[selected.job_type]}</span>
-              <span>🧭 {selected.experience_years} yrs experience</span>{selected.salary && <span>💰 {selected.salary}</span>}{selected.deadline && <span>⏳ Apply by {fmtDate(selected.deadline)}</span>}</p>
+            <p className="flex flex-wrap gap-x-4 gap-y-1.5 text-slate-600">
+              <span className="inline-flex items-center gap-1.5"><MapPin size={14} className="text-slate-400" />{selected.location}</span>
+              <span className="inline-flex items-center gap-1.5"><Briefcase size={14} className="text-slate-400" />{TYPES[selected.job_type]}</span>
+              <span className="inline-flex items-center gap-1.5"><Compass size={14} className="text-slate-400" />{selected.experience_years} yrs experience</span>
+              {selected.salary && <span className="inline-flex items-center gap-1.5"><Wallet size={14} className="text-slate-400" />{selected.salary}</span>}
+              {selected.deadline && <span className="inline-flex items-center gap-1.5"><CalendarClock size={14} className="text-slate-400" />Apply by {fmtDate(selected.deadline)}</span>}</p>
             <p className="whitespace-pre-line">{selected.description}</p>
             <div><p className="font-medium">Required skills</p><div className="mt-1 flex flex-wrap gap-1">{selected.required_skills.map((s) => <Pill key={s} tone="brand">{s}</Pill>)}</div></div>
             {selected.preferred_skills.length > 0 && <div><p className="font-medium">Preferred skills</p><div className="mt-1 flex flex-wrap gap-1">{selected.preferred_skills.map((s) => <Pill key={s}>{s}</Pill>)}</div></div>}

@@ -142,3 +142,32 @@ def test_student_cannot_access_other_students_data(client, new_client):
     # Notifications are private
     n = other.get("/api/notifications").json()["items"][0]
     assert client.post(f"/api/notifications/{n['id']}/read").status_code == 404
+
+
+def test_cross_site_writes_with_session_cookie_are_blocked(client):
+    """CSRF: a page on another site must not be able to make a signed-in browser send writes (body-less POSTs and
+    multipart uploads are "simple" requests that CORS does not stop from being sent)."""
+    register_student(client, email="csrf@test.dev")  # leaves the hs_session cookie in the client
+    evil = {"Origin": "https://evil.example"}
+    # body-less write from a foreign origin: refused, and it did not run (still signed in)
+    r = client.post("/api/auth/logout", headers=evil)
+    assert r.status_code == 403 and r.json()["detail"] == "Cross-site request blocked."
+    assert client.get("/api/auth/me").status_code == 200
+    assert client.post("/api/notifications/read-all", headers=evil).status_code == 403
+    assert client.put("/api/settings", json={"subtitles": False}, headers=evil).status_code == 403
+    # opaque origin (sandboxed iframe / no-referrer form) and a foreign Referer without Origin are refused too
+    assert client.post("/api/notifications/read-all", headers={"Origin": "null"}).status_code == 403
+    assert client.post("/api/notifications/read-all", headers={"Referer": "https://evil.example/page"}).status_code == 403
+    # the real frontend origin, the API's own origin and non-browser clients (no Origin/Referer) still work
+    assert client.post("/api/notifications/read-all", headers={"Origin": "http://localhost:5173"}).status_code == 200
+    assert client.post("/api/notifications/read-all", headers={"Origin": "http://testserver"}).status_code == 200
+    assert client.post("/api/notifications/read-all").status_code == 200
+    # reads are never blocked
+    assert client.get("/api/auth/me", headers=evil).status_code == 200
+
+
+def test_cross_site_check_ignores_requests_without_session_cookie(client):
+    """No session cookie = nothing for a forged request to ride on (Bearer clients, sign-in itself)."""
+    r = client.post("/api/auth/login", json={"email": "nobody@test.dev", "password": "Wrong-pass-1"},
+                    headers={"Origin": "https://evil.example"})
+    assert r.status_code == 401  # normal login handling, not the CSRF block

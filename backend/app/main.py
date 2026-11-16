@@ -124,6 +124,7 @@ from fastapi.responses import JSONResponse
 from .application_configuration import get_settings
 from .database_connection import SessionLocal
 from .database_models import ErrorLog
+from .password_and_token_security import COOKIE_NAME
 from .routers import (
     admin,
     skill_assessment_routes as assessments,
@@ -174,6 +175,40 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "same-origin"
     return response
+
+
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _request_origin(request: Request) -> str | None:
+    """The browser-reported origin of a request: the Origin header, else scheme://host of the Referer."""
+    origin = request.headers.get("origin")
+    if origin:
+        return origin.rstrip("/")
+    referer = request.headers.get("referer")
+    if referer:
+        m = re.match(r"^(https?://[^/?#]+)", referer)
+        return m.group(1) if m else "null"
+    return None
+
+
+@app.middleware("http")
+async def block_cross_site_writes(request: Request, call_next):
+    """CSRF defence for the cookie session. Browsers attach the hs_session cookie automatically, so a page on
+    another site could make a signed-in user's browser send a body-less POST (logout, mark-all-read, finish
+    interview) or a multipart upload; CORS does not stop those "simple" requests from being *sent*. A write that
+    carries the session cookie is therefore accepted only from an origin listed in CORS_ORIGINS (or FRONTEND_URL),
+    or from the API's own origin. Requests without the cookie (Bearer-token API clients, tests) and requests with no
+    Origin/Referer at all (non-browser clients) are unaffected: browsers always send Origin on cross-site writes."""
+    if request.method in UNSAFE_METHODS and COOKIE_NAME in request.cookies:
+        origin = _request_origin(request)
+        if origin is not None:
+            own = f"{request.url.scheme}://{request.headers.get('host', '')}"
+            allowed = {o.rstrip("/") for o in settings.cors_origin_list} | {settings.frontend_url.rstrip("/"), own}
+            if origin not in allowed:
+                logger.warning("Blocked cross-site %s %s from origin %s", request.method, request.url.path, origin[:100])
+                return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked."})
+    return await call_next(request)
 
 
 @app.exception_handler(Exception)

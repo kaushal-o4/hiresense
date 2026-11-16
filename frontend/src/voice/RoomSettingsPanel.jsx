@@ -32,7 +32,7 @@
 // HIRESENSE COMMENT INDEX - END
 /* The live interview room's Settings panel (voice, captions, microphone, auto-send, graphics). */
 import { AVATAR_QUALITY, saveQuality } from "./avatarStates";
-import { Panel, Toggle } from "./RoomParts";
+import { Panel, Segmented, Toggle } from "./RoomParts";
 
 export default function RoomSettingsPanel({ settings, setSetting, toggleVoice, eosMs, use3d, avatarQuality, setAvatarQuality }) {
   return (
@@ -49,14 +49,8 @@ export default function RoomSettingsPanel({ settings, setSetting, toggleVoice, e
         </label>
         <div>
           <span className="text-slate-600">Subtitle size</span>
-          <div className="mt-1 flex gap-1">
-            {["sm", "md", "lg"].map((z) => (
-              <button key={z} type="button" onClick={() => setSetting({ subtitleSize: z })} aria-pressed={settings.subtitleSize === z}
-                className={`rounded border px-3 py-1 text-xs ${settings.subtitleSize === z ? "border-brand-400/60 bg-brand-500 text-snow shadow-glow" : "border-slate-300"}`}>
-                {{ sm: "Small", md: "Medium", lg: "Large" }[z]}
-              </button>
-            ))}
-          </div>
+          <div><Segmented label="Subtitle size" value={settings.subtitleSize} onChange={(z) => setSetting({ subtitleSize: z })}
+            options={[["sm", "Small"], ["md", "Medium"], ["lg", "Large"]]} /></div>
         </div>
         <Toggle label="Turn the microphone on automatically" checked={settings.autoMic} onChange={(v) => setSetting({ autoMic: v })} />
         <label className="block">
@@ -71,14 +65,8 @@ export default function RoomSettingsPanel({ settings, setSetting, toggleVoice, e
         {use3d && (
           <div>
             <span className="text-slate-600">Interviewer graphics</span>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {Object.entries(AVATAR_QUALITY).map(([q, name]) => (
-                <button key={q} type="button" onClick={() => { saveQuality(q); setAvatarQuality(q); }} aria-pressed={avatarQuality === q}
-                  className={`rounded border px-3 py-1 text-xs ${avatarQuality === q ? "border-brand-400/60 bg-brand-500 text-snow shadow-glow" : "border-slate-300"}`}>
-                  {name}
-                </button>
-              ))}
-            </div>
+            <div><Segmented label="Interviewer graphics" value={avatarQuality} onChange={(q) => { saveQuality(q); setAvatarQuality(q); }}
+              options={Object.entries(AVATAR_QUALITY)} /></div>
             <span className="text-xs text-slate-400">Use Performance if the interviewer stutters. Changing it reloads the 3D view.</span>
           </div>
         )}

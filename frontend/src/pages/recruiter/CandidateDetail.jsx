@@ -66,7 +66,7 @@ export default function CandidateDetail() {
         <StatCard label="CGPA" value={st.cgpa ?? "—"} />
         <StatCard label="Interview average" value={s.interviews.average_score ?? "—"} hint={`${s.interviews.completed} interviews`} tone="sky" />
         <StatCard label="English average" value={s.english.average_score ?? "—"} hint={`${s.english.minutes} min practice`} tone="green" />
-        <StatCard label="Assessment average" value={s.assessments.average_score != null ? `${s.assessments.average_score}%` : "—"} hint={`${s.assessments.passed} passed`} tone="violet" />
+        <StatCard label="Assessment average" value={s.assessments.average_score != null ? `${s.assessments.average_score}%` : "—"} hint={`${s.assessments.passed} passed`} tone="sky" />
       </div>
       <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card title="Skills"><div className="flex flex-wrap gap-1">{st.skills.length ? st.skills.map((x) => <Pill key={x} tone="brand">{x}</Pill>) : <span className="text-sm text-slate-500">None listed</span>}</div>

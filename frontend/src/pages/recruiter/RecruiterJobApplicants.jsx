@@ -52,10 +52,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, CheckCircle2, FileText, Scale, Sparkles } from "lucide-react";
 import { get, patch, post } from "../../apiClient";
 import { chipClass } from "../shared/filterChipStyle";
-import {
-  Button, Card, ErrorBox, Field, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, fromLocalInput,
-  useApi, useToast,
-} from "../../components/SharedUiComponents";
+import { Button, Card, ErrorBox, Field, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, buttonClass, fromLocalInput, useApi, useToast } from "../../components/SharedUiComponents";
 
 const MAX_COMPARE = 4;
 const STATUSES = ["applied", "shortlisted", "interview_scheduled", "selected", "rejected"];
@@ -154,7 +151,7 @@ export default function RecruiterJobDetail() {
     <div className="space-y-6">
       <PageHeader title={job.title} subtitle={<span className="flex items-center gap-2">{job.location} · <StatusPill status={job.status} /></span>}
         actions={<>
-          <Link to={`/recruiter/candidates?job_id=${job.id}`}><Button variant="secondary">Find matching candidates</Button></Link>
+          <Link to={`/recruiter/candidates?job_id=${job.id}`} className={buttonClass("secondary")}>Find matching candidates</Link>
           <Button disabled={selected.length < 2} onClick={runCompare}><Scale size={16} /> Compare ({selected.length})</Button>
         </>} />
       <Card>
@@ -191,7 +188,7 @@ export default function RecruiterJobDetail() {
               </div>
               <div className="flex flex-col gap-2">
                 <Button size="sm" variant="secondary" loading={busy === a.id} onClick={() => runMatch(a.id)}><Sparkles size={14} /> {["ai", "semantic+ai"].includes(a.match?.method) ? "Re-run AI match" : "AI match"}</Button>
-                {a.status !== "withdrawn" && <Link to={`/recruiter/applications/${a.id}/report`}><Button size="sm" variant="secondary" className="w-full"><FileText size={14} /> Report</Button></Link>}
+                {a.status !== "withdrawn" && <Link to={`/recruiter/applications/${a.id}/report`} className={`w-full ${buttonClass("secondary", "sm")}`}><FileText size={14} /> Report</Link>}
                 {a.status !== "withdrawn" && <Button size="sm" onClick={() => setStatusModal({ app: a, status: a.status, note: "", interview_at: "" })}>Update status</Button>}
               </div>
             </div>

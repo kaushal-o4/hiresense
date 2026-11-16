@@ -116,7 +116,7 @@ export default function English() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="English communication practice" subtitle="Chat with Aria about anything you enjoy - games, films, cricket, technology, college life. She follows your interests, remembers what you said, and helps your English at the pace you choose." />
+      <PageHeader eyebrow="Practice" title="English communication practice" subtitle="Chat with Aria about anything you enjoy - games, films, cricket, technology, college life. She follows your interests, remembers what you said, and helps your English at the pace you choose." />
       <AIConsentGate action="practise English with Aria" />
       {ai && !ai.available && <Notice>English practice needs the local AI, which is not available right now{ai.setup_hint ? ` (${ai.setup_hint})` : ""}. Please try again later or tell your administrator.</Notice>}
       <Card title="Start a conversation">
@@ -128,7 +128,7 @@ export default function English() {
                 const on = form.learning_mode === m.id;
                 return (
                   <button key={m.id} type="button" role="radio" aria-checked={on} onClick={() => setForm({ ...form, learning_mode: m.id })}
-                    className={`rounded-lg border p-3.5 text-left transition-colors ${on ? "border-brand-400/60 bg-brand-500/10 ring-1 ring-brand-400/40 shadow-glow" : "border-slate-200 bg-white hover:border-slate-300"}`}>
+                    className={`rounded-lg border p-3.5 text-left transition-colors ${on ? "border-brand-500 bg-brand-50/60 ring-1 ring-brand-500" : "border-slate-200 bg-white hover:border-slate-300"}`}>
                     <span className="flex items-center gap-2 text-sm font-semibold">{MODE_ICON[m.id]} {m.label}</span>
                     <span className="mt-1 block text-xs text-slate-600">{m.description}</span>
                   </button>
@@ -138,16 +138,16 @@ export default function English() {
           </fieldset>
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-slate-700">2. What would you like to talk about?</legend>
-            <div className="mb-2 inline-flex rounded-lg border border-slate-200 p-0.5 text-sm" role="radiogroup" aria-label="Practice type">
+            <div className="mb-3 inline-flex flex-wrap gap-0.5 rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm" role="radiogroup" aria-label="Practice type">
               {[["free_talk", "Chat about anything"], ["interview", "Practise interview answers"]].map(([v, label]) => (
                 <button key={v} type="button" role="radio" aria-checked={form.style === v} onClick={() => setStyle(v)}
-                  className={`rounded-md px-3 py-1 ${form.style === v ? "bg-brand-500 text-snow shadow-glow" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
+                  className={`rounded-md px-3 py-1.5 font-medium transition ${form.style === v ? "bg-white text-slate-950 shadow-soft ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-900"}`}>{label}</button>
               ))}
             </div>
             <div className="flex flex-wrap gap-2">
               {TOPICS[form.style].map((t) => (
                 <button key={t} type="button" onClick={() => setForm({ ...form, topic: t })} aria-pressed={form.topic === t}
-                  className={`rounded-full border px-3 py-1 text-sm ${form.topic === t ? "border-brand-400/60 bg-brand-500 text-snow shadow-glow" : "border-slate-300 bg-white text-slate-700 hover:border-brand-400"}`}>{t}</button>
+                  className={`rounded-full border px-3 py-1 text-sm transition ${form.topic === t ? "border-brand-500 bg-brand-500 text-snow" : "border-slate-200 bg-white text-slate-700 shadow-soft hover:border-slate-300"}`}>{t}</button>
               ))}
             </div>
             <div className="mt-2 max-w-md">
@@ -160,10 +160,10 @@ export default function English() {
           <fieldset>
             <legend className="mb-2 text-sm font-medium text-slate-700">3. Speak or type?</legend>
             <div className="flex flex-wrap items-center gap-3">
-              <div className="inline-flex rounded-lg border border-slate-200 p-0.5 text-sm" role="radiogroup" aria-label="Input mode">
+              <div className="inline-flex flex-wrap gap-0.5 rounded-lg border border-slate-200 bg-slate-100 p-0.5 text-sm" role="radiogroup" aria-label="Input mode">
                 {[["voice", "Speak with Aria (avatar)"], ["text", "Text chat"]].map(([v, label]) => (
                   <button key={v} type="button" role="radio" aria-checked={form.mode === v} onClick={() => setForm({ ...form, mode: v })}
-                    className={`rounded-md px-3 py-1 ${form.mode === v ? "bg-brand-500 text-snow shadow-glow" : "text-slate-600 hover:bg-slate-100"}`}>{label}</button>
+                    className={`rounded-md px-3 py-1.5 font-medium transition ${form.mode === v ? "bg-white text-slate-950 shadow-soft ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-900"}`}>{label}</button>
                 ))}
               </div>
               <Button type="submit" loading={busy} disabled={needsConsent}><MessagesSquare size={16} /> Start practice</Button>
@@ -180,7 +180,7 @@ export default function English() {
           {!words ? <Spinner /> : (
             <>
               <p className="text-sm text-slate-700">
-                <span className="num text-2xl font-semibold text-slate-950">{words.counts.due}</span> due for review ·{" "}
+                <span className="num font-display text-2xl font-bold text-slate-950">{words.counts.due}</span> due for review ·{" "}
                 {words.counts.total} in your list · {words.counts.learned} learned
               </p>
               <p className="mt-2 text-xs text-slate-500">Aria's corrections are saved here as cards. A few minutes of review a day moves them into long-term memory.</p>
@@ -207,7 +207,7 @@ export default function English() {
                 { label: "Topic", render: (r) => <span className="font-medium">{r.topic}</span> },
                 { label: "Mode", key: "mode" },
                 { label: "Active time", render: (r) => `${Math.round(r.active_seconds / 60)} min` },
-                { label: "Score", render: (r) => <span className="font-semibold">{r.overall_score ?? "—"}</span> },
+                { label: "Score", render: (r) => <span className="num font-semibold text-slate-900">{r.overall_score ?? "—"}</span> },
                 { label: "Status", render: (r) => <StatusPill status={r.status} /> },
                 { label: "Date", render: (r) => fmtDateTime(r.created_at) },
               ]} />

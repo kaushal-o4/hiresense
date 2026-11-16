@@ -131,7 +131,7 @@ with sync_playwright() as p:
 
     # ---- merged navigation
     nav = page.locator("nav").first.inner_text()
-    ok("menu shows 'My progress' and 'Jobs & drives'", "My progress" in nav and "Jobs & drives" in nav)
+    ok("menu shows 'My progress' and 'Job opportunities'", "My progress" in nav and "Job opportunities" in nav)
     ok("old separate menu items are gone",
        not any(x in nav for x in ("Performance Report", "Practice History", "Placement Drives")))
     page.goto(BASE + "/student/report")

@@ -111,12 +111,12 @@
  * Modal, Pagination, Tabs, ErrorBox, EmptyState and form primitives, plus date-formatting helpers.
  * Change styles here (not per page) so the whole app stays consistent.
  *
- * Visual rules: all colours come from the CSS variables in index.css ("Dark premium" theme). Primary buttons use the
- * brand gradient with a soft glow; elsewhere colour is used only where it carries meaning (status, scores).
+ * Visual rules: all colours come from the CSS variables in index.css (light + dark themes). Solid brand-blue primary
+ * buttons, flat 1px-bordered cards, no gradients or glows; colour is used only where it carries meaning (status, scores).
  */
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Inbox, Info, Loader2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, Inbox, Info, Loader2, X } from "lucide-react";
 
 // ------------------------------------------------------------------ data loading hook
 
@@ -165,10 +165,12 @@ export function ToastProvider({ children }) {
       <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[calc(100%-2rem)] max-w-sm flex-col gap-2" aria-live="polite">
         {toasts.map((t) => (
           <div key={t.id} role="status"
-            className="pointer-events-auto flex animate-fade-up items-start gap-3 rounded-xl border border-slate-200 bg-white/90 px-4 py-3 text-sm text-slate-800 shadow-pop backdrop-blur-xl">
+            className="pointer-events-auto flex animate-scale-in items-start gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-pop">
             {t.type === "error"
-              ? <AlertTriangle size={17} className="mt-0.5 shrink-0 text-rose-600" />
-              : <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-emerald-600" />}
+              ? <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-50 text-rose-600"><AlertTriangle size={13} /></span>
+              : t.type === "info"
+                ? <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600"><Info size={13} /></span>
+                : <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"><CheckCircle2 size={13} /></span>}
             <span className="flex-1 whitespace-pre-line">{t.message}</span>
             <button className="-mr-1 rounded p-0.5 text-slate-400 hover:text-slate-700" onClick={() => dismiss(t.id)} aria-label="Dismiss"><X size={15} /></button>
           </div>
@@ -183,19 +185,25 @@ export const useToast = () => useContext(ToastContext);
 // ------------------------------------------------------------------ primitives
 
 const BTN = {
-  primary: "bg-gradient-to-r from-brand-500 to-violet-500 text-snow shadow-glow hover:brightness-110 hover:shadow-[0_0_0_1px_rgb(129_140_248/0.5),0_10px_30px_-6px_rgb(99_102_241/0.7)] active:brightness-95",
-  secondary: "border border-slate-200 bg-slate-100/60 text-slate-800 backdrop-blur hover:border-slate-300 hover:bg-slate-200/60 hover:text-slate-900",
-  danger: "bg-gradient-to-r from-rose-500 to-rose-600 text-snow shadow-[0_8px_24px_-8px_rgb(244_63_94/0.6)] hover:brightness-110",
+  primary: "bg-brand-500 text-snow shadow-[0_1px_2px_rgb(16_21_29/0.12),inset_0_1px_0_rgb(255_255_255/0.12)] hover:bg-brand-600",
+  secondary: "border border-slate-200 bg-white text-slate-800 shadow-soft hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950",
+  danger: "bg-rose-500 text-snow shadow-[0_1px_2px_rgb(16_21_29/0.12)] hover:bg-rose-600",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-  success: "bg-gradient-to-r from-emerald-500 to-teal-500 text-snow shadow-[0_8px_24px_-8px_rgb(16_185_129/0.55)] hover:brightness-110",
-  accent: "bg-brand-500 text-snow shadow-glow hover:bg-brand-400",
+  success: "bg-emerald-500 text-snow shadow-[0_1px_2px_rgb(16_21_29/0.12)] hover:bg-emerald-600",
+  accent: "bg-brand-500 text-snow hover:bg-brand-600",
+  dark: "bg-slate-950 text-white hover:bg-slate-800",
 };
 
+const SIZE = { sm: "h-8 rounded-lg px-3 text-[13px]", md: "h-10 rounded-lg px-4 text-sm", lg: "h-11 rounded-lg px-5 text-[15px]" };
+const BASE = "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50";
+
+/** Classes for a <Link> that should look like a Button (avoids nesting <button> inside <a>). */
+export const buttonClass = (variant = "primary", size = "md") => `${BASE} ${BTN[variant] || BTN.primary} ${SIZE[size] || SIZE.md}`;
+
 export function Button({ variant = "primary", size = "md", loading, children, className = "", ...props }) {
-  const sz = size === "sm" ? "h-8 rounded-lg px-3 text-[13px]" : size === "lg" ? "h-12 rounded-xl px-6 text-[15px]" : "h-10 rounded-xl px-4 text-sm";
   return (
     <button
-      className={`inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium transition duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-50 active:scale-[0.98] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 ${BTN[variant] || BTN.primary} ${sz} ${className}`}
+      className={`${buttonClass(variant, size)} active:translate-y-px disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       disabled={loading || props.disabled}
       {...props}
     >
@@ -209,8 +217,8 @@ export function Card({ title, actions, children, className = "", bodyClass = "p-
   return (
     <section className={`card ${className}`}>
       {(title || actions) && (
-        <div className="flex min-h-[56px] flex-wrap items-center justify-between gap-2 border-b border-slate-200/70 px-5 py-3">
-          {title && <h2 className="flex items-center gap-2.5 text-[15px] font-semibold"><span className="h-3.5 w-1 rounded-full bg-gradient-to-b from-brand-400 to-violet-500" aria-hidden />{title}</h2>}
+        <div className="flex min-h-[52px] flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-5 py-3">
+          {title && <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-900">{title}</h2>}
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </div>
       )}
@@ -219,29 +227,22 @@ export function Card({ title, actions, children, className = "", bodyClass = "p-
   );
 }
 
-// Each tone: a glowing icon tile + matching corner light, so a row of stats reads as distinct but calm.
+// Each tone tints only the small icon tile, so a row of stats reads as distinct but calm.
 const STAT_TONES = {
-  brand: ["text-brand-700 bg-brand-500/15 ring-brand-400/30", "rgb(99 102 241 / 0.22)"],
-  violet: ["text-brand-700 bg-violet-500/15 ring-violet-400/30", "rgb(139 92 246 / 0.22)"],
-  green: ["text-emerald-700 bg-emerald-500/15 ring-emerald-400/30", "rgb(16 185 129 / 0.2)"],
-  teal: ["text-teal-700 bg-teal-500/15 ring-teal-400/30", "rgb(20 184 166 / 0.2)"],
-  amber: ["text-amber-700 bg-amber-500/15 ring-amber-400/30", "rgb(245 158 11 / 0.2)"],
-  red: ["text-rose-700 bg-rose-500/15 ring-rose-400/30", "rgb(244 63 94 / 0.2)"],
-  pink: ["text-rose-700 bg-rose-500/15 ring-rose-400/30", "rgb(244 63 94 / 0.2)"],
-  sky: ["text-sky-700 bg-sky-500/15 ring-sky-400/30", "rgb(14 165 233 / 0.2)"],
+  brand: "text-brand-600 bg-brand-50", violet: "text-brand-600 bg-brand-50", green: "text-emerald-600 bg-emerald-50",
+  teal: "text-teal-600 bg-teal-50", amber: "text-amber-600 bg-amber-50", red: "text-rose-600 bg-rose-50",
+  pink: "text-rose-600 bg-rose-50", sky: "text-sky-600 bg-sky-50", gray: "text-slate-600 bg-slate-100",
 };
 
 export function StatCard({ label, value, icon: Icon, hint, tone = "brand" }) {
-  const [tile, light] = STAT_TONES[tone] || STAT_TONES.brand;
   return (
-    <div className="card card-hover relative flex flex-col gap-1 overflow-hidden p-4 sm:p-5">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full blur-2xl" style={{ background: light }} aria-hidden />
-      <div className="relative flex items-start justify-between gap-2">
+    <div className="card card-hover flex flex-col p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-2">
         <p className="truncate text-[13px] font-medium text-slate-500">{label}</p>
-        {Icon && <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${tile}`}><Icon size={16} aria-hidden /></span>}
+        {Icon && <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${STAT_TONES[tone] || STAT_TONES.brand}`}><Icon size={16} aria-hidden /></span>}
       </div>
-      <p className="num relative truncate text-[28px] font-semibold leading-tight tracking-tight text-slate-950">{value ?? "—"}</p>
-      {hint && <p className="relative truncate text-xs text-slate-500">{hint}</p>}
+      <p className="num mt-1 truncate font-display text-[28px] font-bold leading-tight tracking-tight text-slate-950">{value ?? "—"}</p>
+      {hint && <p className="mt-0.5 truncate text-xs text-slate-500">{hint}</p>}
     </div>
   );
 }
@@ -283,8 +284,29 @@ export function StatusPill({ status }) {
 
 export function Spinner({ label = "Loading…" }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-16 text-slate-400" role="status">
-      <Loader2 className="animate-spin" size={18} /> <span className="text-sm text-slate-500">{label}</span>
+    <div className="flex items-center justify-center gap-2.5 py-16 text-slate-400" role="status">
+      <Loader2 className="animate-spin text-brand-500" size={18} /> <span className="text-sm text-slate-500">{label}</span>
+    </div>
+  );
+}
+
+/** Shimmering placeholder block. */
+export function Skeleton({ className = "h-4 w-full" }) {
+  return <div className={`skeleton ${className}`} aria-hidden />;
+}
+
+/** Page-level loading placeholder shaped like a dashboard (header, stat row, two panels). */
+export function PageSkeleton({ stats = 4 }) {
+  return (
+    <div className="space-y-6" role="status" aria-label="Loading">
+      <div className="space-y-2"><Skeleton className="h-8 w-64" /><Skeleton className="h-4 w-96 max-w-full" /></div>
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {Array.from({ length: stats }, (_, i) => <div key={i} className="card space-y-3 p-5"><Skeleton className="h-3 w-24" /><Skeleton className="h-7 w-16" /><Skeleton className="h-3 w-32" /></div>)}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="card space-y-3 p-5 lg:col-span-2"><Skeleton className="h-4 w-40" /><Skeleton className="h-48 w-full" /></div>
+        <div className="card space-y-3 p-5"><Skeleton className="h-4 w-32" />{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-9 w-full" />)}</div>
+      </div>
     </div>
   );
 }
@@ -314,10 +336,7 @@ export function Notice({ children, tone = "amber" }) {
 export function EmptyState({ title, message, action, icon: Icon = Inbox }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-14 text-center">
-      <div className="relative mb-3">
-        <div className="absolute inset-0 rounded-2xl bg-brand-500/30 blur-xl" aria-hidden />
-        <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-400/30 bg-gradient-to-br from-brand-500/25 to-violet-500/10 text-brand-700"><Icon size={20} /></div>
-      </div>
+      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500 shadow-soft"><Icon size={19} strokeWidth={1.8} /></div>
       <p className="text-sm font-semibold text-slate-900">{title}</p>
       {message && <p className="max-w-sm text-sm text-slate-500">{message}</p>}
       {action && <div className="mt-3">{action}</div>}
@@ -325,15 +344,42 @@ export function EmptyState({ title, message, action, icon: Icon = Inbox }) {
   );
 }
 
-export function PageHeader({ title, subtitle, actions }) {
+export function PageHeader({ title, subtitle, actions, eyebrow }) {
   return (
     <div className="mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
       <div className="min-w-0">
-        <h1 className="text-gradient text-[28px] font-semibold leading-tight tracking-tight sm:text-[34px]">{title}</h1>
-        {subtitle && <div className="mt-2 max-w-3xl text-[15px] leading-relaxed text-slate-500">{subtitle}</div>}
+        {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
+        <h1 className="text-[26px] font-bold leading-tight tracking-tight text-slate-950 sm:text-[30px]">{title}</h1>
+        {subtitle && <div className="mt-1.5 max-w-3xl text-[15px] leading-relaxed text-slate-500">{subtitle}</div>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </div>
+  );
+}
+
+/** Section title inside a page (between PageHeader and cards). */
+export function SectionHeader({ title, subtitle, actions }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+      <div><h2 className="text-base font-semibold text-slate-900">{title}</h2>{subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}</div>
+      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Password input with a show/hide toggle. The toggle's accessible name is visually hidden text (not aria-label) and
+ * avoids the word "password", so label lookups for "Password" still find only the input. */
+export function PasswordInput({ className = "", ...props }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative block">
+      <input {...props} type={show ? "text" : "password"} className={`input pr-10 ${className}`} />
+      <button type="button" onClick={() => setShow((v) => !v)} aria-pressed={show}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-slate-400 transition-colors hover:text-slate-700 focus-visible:text-slate-900">
+        {show ? <EyeOff size={16} aria-hidden /> : <Eye size={16} aria-hidden />}
+        <span className="sr-only">{show ? "Hide" : "Show"} characters</span>
+      </button>
+    </span>
   );
 }
 
@@ -366,15 +412,15 @@ export function Modal({ open, onClose, title, children, footer, wide }) {
   }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:items-center" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center overflow-y-auto bg-night-900/50 p-4 backdrop-blur-[2px] sm:items-center" onMouseDown={onClose}>
       <div role="dialog" aria-modal="true" aria-label={title} ref={dialogRef} tabIndex={-1}
-        className={`card my-8 w-full animate-fade-up !bg-white shadow-pop focus:outline-none ${wide ? "max-w-3xl" : "max-w-lg"}`} onMouseDown={(e) => e.stopPropagation()}>
+        className={`card my-8 w-full animate-scale-in !bg-white !shadow-pop focus:outline-none ${wide ? "max-w-3xl" : "max-w-lg"}`} onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 pb-1 pt-4">
-          <h2 className="text-base font-semibold">{title}</h2>
+          <h2 className="text-[17px] font-semibold">{title}</h2>
           <button className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" onClick={onClose} aria-label="Close"><X size={18} /></button>
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 rounded-b-2xl border-t border-slate-200 bg-slate-100/40 px-5 py-3">{footer}</div>}
+        {footer && <div className="flex justify-end gap-2 rounded-b-xl border-t border-slate-200 bg-slate-50 px-5 py-3">{footer}</div>}
       </div>
     </div>
   );
@@ -407,13 +453,13 @@ export function Table({ columns, rows, empty = "No records found", rowKey = (r) 
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full">
-        <thead className="border-b border-slate-200 bg-slate-100/40">
+        <thead className="border-b border-slate-200 bg-slate-50">
           <tr>{columns.map((c) => <th key={c.key || c.label} className="th">{c.label}</th>)}</tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {rows.map((r) => (
             <tr key={rowKey(r)} onClick={() => onRowClick?.(r)}
-              className={onRowClick ? "cursor-pointer transition-colors hover:bg-brand-500/[0.06] focus:outline-none focus-visible:bg-brand-50/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-400" : ""}
+              className={onRowClick ? "cursor-pointer transition-colors hover:bg-slate-50 focus:outline-none focus-visible:bg-brand-50/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-500" : ""}
               {...(onRowClick && {
                 tabIndex: 0,
                 onKeyDown: (e) => { if (e.key === "Enter" && e.target === e.currentTarget) { e.preventDefault(); onRowClick(r); } },
@@ -442,11 +488,11 @@ export function Pagination({ page, pages, total, onPage }) {
 
 export function Tabs({ tabs, value, onChange }) {
   return (
-    <div className="mb-6 flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-100/60 p-1 backdrop-blur" role="tablist">
+    <div className="mb-6 flex w-fit max-w-full gap-0.5 overflow-x-auto rounded-lg border border-slate-200 bg-slate-100 p-0.5" role="tablist">
       {tabs.map((t) => (
         <button key={t.value} role="tab" aria-selected={value === t.value} onClick={() => onChange(t.value)}
-          className={`whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition ${
-            value === t.value ? "bg-gradient-to-r from-brand-500 to-violet-500 text-snow shadow-glow" : "text-slate-500 hover:bg-slate-200/60 hover:text-slate-900"}`}>
+          className={`whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-medium transition ${
+            value === t.value ? "bg-white text-slate-950 shadow-soft ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-900"}`}>
           {t.label}
         </button>
       ))}
@@ -456,9 +502,7 @@ export function Tabs({ tabs, value, onChange }) {
 
 export function ScoreBar({ value, max = 100, label }) {
   const pct = value == null ? 0 : Math.max(0, Math.min(100, (value / max) * 100));
-  const color = pct >= 75 ? "bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgb(16_185_129/0.5)]"
-    : pct >= 50 ? "bg-gradient-to-r from-amber-500 to-amber-400 shadow-[0_0_10px_rgb(245_158_11/0.45)]"
-      : "bg-gradient-to-r from-rose-500 to-rose-400 shadow-[0_0_10px_rgb(244_63_94/0.45)]";
+  const color = pct >= 75 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-rose-500";
   return (
     <div>
       {label && (
@@ -482,7 +526,7 @@ export function TagInput({ value = [], onChange, placeholder = "Type and press E
     setText("");
   };
   return (
-    <div className="input flex min-h-9 flex-wrap items-center gap-1.5 focus-within:border-brand-500 focus-within:ring-[3px] focus-within:ring-brand-500/15">
+    <div className="input flex min-h-9 flex-wrap items-center gap-1.5 focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/15">
       {value.map((t) => (
         <span key={t} className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200">
           {t}

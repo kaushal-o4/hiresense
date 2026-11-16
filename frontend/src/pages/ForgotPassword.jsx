@@ -39,18 +39,26 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { MailCheck } from "lucide-react";
 import { post } from "../apiClient";
-import { Button, ErrorBox, Field, Notice } from "../components/SharedUiComponents";
+import { Button, ErrorBox, Field } from "../components/SharedUiComponents";
 import AuthShell from "./AuthShell";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
+  const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(null);
 
+  const invalid = !email.trim() ? "Enter your email address." : !EMAIL_RE.test(email.trim()) ? "Enter a valid email address." : null;
+
   const submit = async (e) => {
     e.preventDefault();
+    setTouched(true);
+    if (invalid) return;
     setBusy(true);
     setError(null);
     try {
@@ -66,19 +74,23 @@ export default function ForgotPassword() {
   return (
     <AuthShell title="Forgot your password?" subtitle="Enter your account email and we'll send you a link to choose a new one.">
       {done ? (
-        <Notice tone="sky">{done}</Notice>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><MailCheck size={19} /></span>
+          <p className="mt-3 text-sm font-semibold text-slate-900">Check your inbox</p>
+          <p className="mt-1 text-sm leading-relaxed text-slate-600" role="status">{done}</p>
+        </div>
       ) : (
-        <form onSubmit={submit} className="space-y-4" noValidate>
+        <form onSubmit={submit} className="space-y-5" noValidate>
           <ErrorBox message={error} />
-          <Field label="Email">
-            <input className="input" type="email" autoComplete="email" required value={email} autoFocus
-              onChange={(e) => setEmail(e.target.value)} />
+          <Field label="Email" error={touched ? invalid : null}>
+            <input className="input h-11" type="email" autoComplete="email" required value={email} autoFocus aria-invalid={!!(touched && invalid)}
+              placeholder="you@college.edu" onBlur={() => setTouched(true)} onChange={(e) => setEmail(e.target.value)} />
           </Field>
-          <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!email.trim()}>Send reset link</Button>
+          <Button type="submit" size="lg" className="w-full" loading={busy}>Send reset link</Button>
         </form>
       )}
-      <p className="mt-6 text-center text-sm text-slate-600">
-        <Link className="font-medium text-brand-600 hover:underline" to="/login">Back to sign in</Link>
+      <p className="mt-8 text-center text-sm text-slate-600">
+        Remembered it? <Link className="font-medium text-brand-600 hover:underline" to="/login">Back to sign in</Link>
       </p>
     </AuthShell>
   );

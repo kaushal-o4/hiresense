@@ -113,6 +113,7 @@ import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import Privacy from "./pages/Privacy";
+import Landing from "./pages/Landing";
 
 const Profile = lazy(() => import("./pages/ProfileEditor"));
 const Notifications = lazy(() => import("./pages/Notifications"));
@@ -176,10 +177,11 @@ export default function App() {
   // Wait for AuthContext's first /auth/me check before deciding which pages to show.
   if (loading) return <Spinner label="Starting HireSense…" />;
 
-  // Signed out: only the public pages exist; every other URL goes to the login page.
+  // Signed out: only the public pages exist; "/" is the marketing landing page, every other URL goes to sign-in.
   if (!user) {
     return (
       <Routes>
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -198,6 +200,7 @@ export default function App() {
       <Route path="/forgot-password" element={<Navigate to="/settings" replace />} />
       <Route path="/reset-password" element={<ResetPassword />} />{/* a reset link may be opened while signed in */}
       <Route path="/privacy" element={<Privacy />} />
+      <Route path="/home" element={<Landing />} />{/* landing page stays reachable when signed in */}
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to={HOME[user.role]} replace />} />
         <Route path="/profile" element={<Profile />} />

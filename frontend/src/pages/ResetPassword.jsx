@@ -39,9 +39,10 @@
 
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { CheckCircle2 } from "lucide-react";
 import { post } from "../apiClient";
-import { Button, ErrorBox, Field, Notice } from "../components/SharedUiComponents";
-import AuthShell from "./AuthShell";
+import { Button, ErrorBox, Notice, buttonClass } from "../components/SharedUiComponents";
+import AuthShell, { PasswordField } from "./AuthShell";
 
 export default function ResetPassword() {
   const [params] = useSearchParams();
@@ -49,11 +50,13 @@ export default function ResetPassword() {
   const [pw, setPw] = useState({ password: "", confirm: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [mismatch, setMismatch] = useState(false);
   const [done, setDone] = useState(null);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (pw.password !== pw.confirm) return setError("The passwords do not match");
+    if (pw.password !== pw.confirm) { setError(null); setMismatch(true); return; }
+    setMismatch(false);
     setBusy(true);
     setError(null);
     try {
@@ -71,24 +74,24 @@ export default function ResetPassword() {
       {!token ? (
         <Notice>This page needs the link from your reset email. <Link className="font-medium underline" to="/forgot-password">Request a new link</Link>.</Notice>
       ) : done ? (
-        <div className="space-y-4">
-          <Notice tone="sky">{done}</Notice>
-          <Link className="flex w-full items-center justify-center h-11 rounded-xl px-4 text-[15px] font-medium bg-gradient-to-r from-brand-500 to-violet-500 text-snow shadow-glow hover:brightness-110" to="/login">Sign in</Link>
+        <div className="space-y-5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600"><CheckCircle2 size={19} /></span>
+            <p className="mt-3 text-sm leading-relaxed text-slate-700" role="status">{done}</p>
+          </div>
+          <Link className={`${buttonClass("primary", "lg")} w-full`} to="/login">Sign in</Link>
         </div>
       ) : (
-        <form onSubmit={submit} className="space-y-4" noValidate>
+        <form onSubmit={submit} className="space-y-5" noValidate>
           <ErrorBox message={error} />
-          <Field label="New password">
-            <input className="input" type="password" autoComplete="new-password" required value={pw.password} autoFocus
-              onChange={(e) => setPw({ ...pw, password: e.target.value })} />
-          </Field>
-          <Field label="Confirm new password">
-            <input className="input" type="password" autoComplete="new-password" required value={pw.confirm}
-              onChange={(e) => setPw({ ...pw, confirm: e.target.value })} />
-          </Field>
+          <PasswordField id="reset-new" label="New password" autoComplete="new-password" required value={pw.password} autoFocus
+            onChange={(e) => { setPw({ ...pw, password: e.target.value }); setMismatch(false); }} />
+          <PasswordField id="reset-confirm" label="Confirm new password" error={mismatch ? "The passwords do not match." : null}
+            autoComplete="new-password" required value={pw.confirm}
+            onChange={(e) => { setPw({ ...pw, confirm: e.target.value }); setMismatch(false); }} />
           <Button type="submit" size="lg" className="w-full" loading={busy} disabled={!pw.password || !pw.confirm}>Save new password</Button>
           {error && /expired|invalid/i.test(error) && (
-            <p className="text-center text-sm"><Link className="text-brand-600 hover:underline" to="/forgot-password">Request a new link</Link></p>
+            <p className="text-center text-sm"><Link className="font-medium text-brand-600 hover:underline" to="/forgot-password">Request a new link</Link></p>
           )}
         </form>
       )}

@@ -39,7 +39,7 @@
 import { Link } from "react-router-dom";
 import { CheckCircle2, ExternalLink, GraduationCap } from "lucide-react";
 import { get, post } from "../../apiClient";
-import { Button, Card, EmptyState, ErrorBox, PageHeader, Pill, ScoreBar, Spinner, StatusPill, fmtDate, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
+import { Button, Card, EmptyState, ErrorBox, PageHeader, Pill, ScoreBar, Spinner, StatusPill, buttonClass, fmtDate, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
 
 const GOAL_LINKS = { mock_interview: "/student/interviews", english_practice: "/student/english", assessment: "/student/assessments", resume_update: "/student/resume" };
 const AUTO = ["mock_interview", "english_practice", "assessment"];
@@ -84,7 +84,7 @@ export default function Mentoring() {
                           {g.resource_url && <a className="mt-1 inline-flex items-center gap-1 text-sm text-brand-600 hover:underline" href={g.resource_url} target="_blank" rel="noreferrer">Open resource <ExternalLink size={12} /></a>}
                         </div>
                         <div className="flex items-center gap-2">
-                          {g.status === "pending" && GOAL_LINKS[g.goal_type] && <Link to={GOAL_LINKS[g.goal_type]}><Button size="sm" variant="secondary">Practise</Button></Link>}
+                          {g.status === "pending" && GOAL_LINKS[g.goal_type] && <Link to={GOAL_LINKS[g.goal_type]} className={buttonClass("secondary", "sm")}>Practise</Link>}
                           {g.status === "pending" && !AUTO.includes(g.goal_type) && <Button size="sm" onClick={() => complete(g)}>Mark done</Button>}
                           {g.status === "completed" && <Pill tone="green">completed {fmtDate(g.completed_at)}</Pill>}
                         </div>

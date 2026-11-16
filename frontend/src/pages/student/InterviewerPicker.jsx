@@ -102,11 +102,11 @@ export default function InterviewerPicker({ interviewers, value, onSelect, voice
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Filter interviewers">
+      <div className="mb-4 flex w-fit max-w-full flex-wrap gap-0.5 rounded-lg border border-slate-200 bg-slate-100 p-0.5" role="group" aria-label="Filter interviewers">
         {FILTERS.map((f) => (
           <button key={f.id} type="button" onClick={() => setFilter(f.id)} aria-pressed={filter === f.id}
-            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${filter === f.id
-              ? "border-brand-400/60 bg-brand-500 text-snow shadow-glow" : "border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-900"}`}>
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${filter === f.id
+              ? "bg-white text-slate-950 shadow-soft ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-900"}`}>
             {f.label}
           </button>
         ))}
@@ -121,25 +121,26 @@ export default function InterviewerPicker({ interviewers, value, onSelect, voice
           const selected = value === p.id;
           return (
             <article key={p.id} data-interviewer-card={p.id} style={{ "--acc": p.ui.accent }}
-              className={`card group flex flex-col overflow-hidden transition duration-300 ${selected
-                ? "!border-transparent shadow-[0_0_0_1.5px_var(--acc),0_0_60px_-14px_var(--acc)]"
-                : "hover:-translate-y-1 hover:shadow-[0_0_0_1px_var(--acc),0_24px_50px_-20px_var(--acc)]"}`}>
+              className={`card group flex flex-col overflow-hidden transition duration-200 ${selected
+                ? "!border-brand-500 ring-1 ring-brand-500"
+                : "hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-pop"}`}>
               <div className="relative">
                 <LazyAvatar persona={p} mode={previewing === p.id ? "greeting" : selected ? "listening" : "idle"}
                   getVisemes={previewing === p.id ? getVisemes : null} />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" aria-hidden />
-                <span className="absolute left-2.5 top-2.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-snow" style={{ background: p.ui.accent, boxShadow: `0 0 16px -2px ${p.ui.accent}` }}>{p.ui.badge}</span>
-                {selected && <span className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full text-snow" style={{ background: p.ui.accent, boxShadow: `0 0 18px ${p.ui.accent}` }}><CheckCircle2 size={17} aria-label="Selected" /></span>}
+                <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-night-950/75 px-2.5 py-0.5 text-[11px] font-semibold text-snow ring-1 ring-snow/10">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: p.ui.accent }} aria-hidden />{p.ui.badge}
+                </span>
+                {selected && <span className="absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-brand-500 text-snow"><CheckCircle2 size={16} aria-label="Selected" /></span>}
               </div>
               <div className="flex flex-1 flex-col gap-2 p-4">
                 <div>
-                  <h3 className="text-lg font-semibold">{p.name}</h3>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.08em] text-slate-600"><span className="h-1.5 w-1.5 rounded-full" style={{ background: p.ui.accent, boxShadow: `0 0 6px ${p.ui.accent}` }} />{p.title}</p>
+                  <h3 className="text-lg font-bold">{p.name}</h3>
+                  <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">{p.title}</p>
                 </div>
                 <p className="text-sm leading-relaxed text-slate-600">{p.description}</p>
-                <p className="text-xs text-slate-500"><Volume2 size={12} className="mr-1 inline" />{p.voice_description}</p>
+                <p className="flex items-start gap-1.5 text-xs text-slate-500"><Volume2 size={12} className="mt-0.5 shrink-0" aria-hidden />{p.voice_description}</p>
                 {p.traits && Object.keys(p.traits).length > 0 && (
-                  <dl className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-lg border border-slate-200 bg-slate-100/40 p-2.5 text-[11px] text-slate-500">
+                  <dl className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-lg bg-slate-50 p-2.5 text-[11px] text-slate-500 ring-1 ring-inset ring-slate-200">
                     {Object.entries(p.traits).map(([k, v]) => (
                       <div key={k} className="contents"><dt className="capitalize">{k}</dt><dd className="font-medium text-slate-700">{v}</dd></div>
                     ))}
@@ -170,7 +171,7 @@ export default function InterviewerPicker({ interviewers, value, onSelect, voice
         const sel = interviewers.find((i) => i.id === value);
         if (!sel?.interrupts) return null;
         return (
-          <div role="note" className="mt-4 rounded-xl border border-rose-400/30 bg-rose-500/[0.08] p-4 text-sm text-rose-800 shadow-[0_0_40px_-20px_rgb(244_63_94/0.6)]">
+          <div role="note" className="mt-4 rounded-xl border border-rose-200 border-l-2 border-l-rose-500 bg-rose-50 p-4 text-sm text-rose-800">
             <p className="font-semibold">You have chosen a stress interview with {sel.name}.</p>
             <ul className="mt-1 list-disc space-y-0.5 pl-5">
               <li>He asks short, direct questions, challenges vague claims and adds realistic constraints.</li>

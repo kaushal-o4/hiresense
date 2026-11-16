@@ -71,10 +71,7 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, Download, FileUp, Loader2, Mic, Pencil, RefreshCw, Trash2, Wand2 } from "lucide-react";
 import { api, del, download, get, patch, post } from "../../apiClient";
 import AIConsentGate from "../../components/HostedAiConsentGate";
-import {
-  Button, Card, ConfirmButton, EmptyState, ErrorBox, Field, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner,
-  StatusPill, fmtDateTime, useApi, useToast,
-} from "../../components/SharedUiComponents";
+import { Button, Card, ConfirmButton, EmptyState, ErrorBox, Field, Modal, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, buttonClass, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
 
 const splitList = (text, sep) => text.split(sep).map((s) => s.trim()).filter(Boolean);
 
@@ -273,7 +270,7 @@ export function ResumeAnalysisView({ resume, practiceLink = false }) {
       </div>
 
       {/* interview prep */}
-      <Section title="Interview preparation" aside={practiceLink && <Link to="/student/interviews"><Button size="sm"><Mic size={14} /> Practise in a mock interview</Button></Link>}>
+      <Section title="Interview preparation" aside={practiceLink && <Link to="/student/interviews" className={buttonClass("primary", "sm")}><Mic size={14} /> Practise in a mock interview</Link>}>
         {a.recommended_topics?.length > 0 && (
           <div className="mb-5">
             <p className="eyebrow mb-2">Topics to revise</p>

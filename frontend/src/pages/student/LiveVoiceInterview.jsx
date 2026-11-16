@@ -84,10 +84,10 @@
 
 import { Suspense, lazy, useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Lightbulb, Play, RotateCcw, Timer } from "lucide-react";
+import { CheckCircle2, Lightbulb, Play, RotateCcw, Sparkles, Timer } from "lucide-react";
 import { api, del, get, post } from "../../apiClient";
 import { usePrefs } from "../../components/useSpeechAndPreferences";
-import { Button, ErrorBox, Notice, Spinner, useToast } from "../../components/SharedUiComponents";
+import { Button, ErrorBox, Notice, Spinner, buttonClass, useToast } from "../../components/SharedUiComponents";
 import Avatar from "../../voice/SvgAvatar2D";
 // three.js is large: load the 3D interviewer only when this page is opened.
 const Avatar3D = lazy(() => import("../../voice/Avatar3D"));
@@ -108,7 +108,7 @@ import { scoreBand } from "../../components/scoreBandLabel";
 
 import { DEFAULT_SETTINGS, FALLBACK, INTERJECTION, REACTION_MS, currentQuestion, fmtClock, localStore as local, savedSettings,
   sessionStore as session_, splitSentences, turnId } from "../../voice/roomUtils";
-import { SubtitleLine } from "../../voice/RoomParts";
+import { AiStateIndicator, Equalizer, SubtitleLine, categoryLabel, interviewPhase } from "../../voice/RoomParts";
 import AnswerDock from "../../voice/AnswerDock";
 import ControlBar from "../../voice/ControlBar";
 import RoomSettingsPanel from "../../voice/RoomSettingsPanel";
@@ -796,12 +796,32 @@ export default function VoiceInterview() {
   if ((st.status === S.INITIALIZING && !session) || (session && !persona)) return <Spinner label="Loading interview…" />;
   if (st.status === S.ERROR && !session) return <ErrorBox message={st.error} onRetry={() => dispatch({ type: "RETRY" })} />;
   if (session?.status === "completed" || st.status === S.COMPLETED) {
+    const overall = session.overall_score;
     return (
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold">{session.job_role} interview with {p.name} - feedback</h1>
-          <Link to="/student/interviews"><Button variant="secondary">All interviews</Button></Link>
-        </div>
+        <header className="theme-dark overflow-hidden rounded-xl bg-night-900 text-slate-700 ring-1 ring-snow/10">
+          <div className="flex flex-wrap items-center gap-6 px-6 py-6 sm:px-8">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 ring-1 ring-inset ring-emerald-500/30">
+              <CheckCircle2 size={22} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="eyebrow">Interview complete</p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 sm:text-[28px]">{session.job_role} interview with {p.name} - feedback</h1>
+              <p className="mt-1 text-sm text-slate-500">
+                <span>{categoryLabel(session.category)}</span>
+                {session.difficulty && <> · <span className="capitalize">{session.difficulty}</span></>}
+                {" · "}{session.answered || session.questions?.filter((q) => q.answer).length || 0} answered
+              </p>
+            </div>
+            {overall != null && (
+              <div className="text-right">
+                <p className="num font-display text-4xl font-bold leading-none tracking-tight text-slate-950">{Math.round(overall)}<span className="text-base font-medium text-slate-500">/100</span></p>
+                <p className="mt-1.5 text-xs text-slate-500">Overall · {scoreBand(overall).label}</p>
+              </div>
+            )}
+            <Link to="/student/interviews" className={buttonClass("secondary")}>All interviews</Link>
+          </div>
+        </header>
         <InterviewerFeedback session={session} persona={p} voice={voice} rate={settings.rate} />
         <InterviewReport session={session} />
         <MonitoringSummary sessionId={id} />
@@ -819,31 +839,25 @@ export default function VoiceInterview() {
   const talking = st.status === S.SPEAKING && lipsync !== "silent";
   const showSubs = settings.captions || !settings.voiceOn;
   const timeLeft = answerLimit - recSeconds;
+  const phase = interviewPhase(st, p.name, { talking });
+  const stageRing = st.recording ? "ring-rose-500/50" : talking ? "ring-brand-500/50" : "ring-snow/10";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-3">
-      {/* top bar */}
-      <div className="card relative overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+    <div className="mx-auto max-w-7xl space-y-4">
+      {/* header: who, what, where we are, and what the AI is doing right now */}
+      <header className="card overflow-hidden">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3.5 sm:px-5">
           <div className="mr-auto min-w-0">
-            <p className="flex flex-wrap items-center gap-x-2 text-sm">
-              <span className="font-semibold text-slate-900">{p.name}</span>
-              <span className="text-slate-400">·</span><span className="text-slate-600">{session.job_role}</span>
-              <span className="text-slate-400">·</span><span className="text-slate-600">{session.category}</span>
-            </p>
-            <p className="num text-xs text-slate-500">Question {Math.min(qNumber, total)} of {total} · {fmtClock(elapsed)}</p>
+            <p className="eyebrow">Live interview</p>
+            <h1 className="mt-0.5 truncate text-lg font-bold tracking-tight text-slate-950">{session.job_role} <span className="font-medium text-slate-400">with</span> {p.name}</h1>
+            <p className="num text-xs text-slate-500"><span>{categoryLabel(session.category)}</span> · Question {Math.min(qNumber, total)} of {total} · {fmtClock(elapsed)}</p>
           </div>
-          <span role="status" aria-live="polite" className={`inline-flex items-center gap-2 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset ${
-            st.recording ? "bg-rose-50 text-rose-700 ring-rose-200" : st.status === S.SPEAKING ? "bg-brand-50 text-brand-700 ring-brand-200"
-              : st.status === S.PAUSED ? "bg-amber-50 text-amber-800 ring-amber-200" : "bg-slate-100 text-slate-700 ring-slate-200"}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${st.recording ? "animate-pulse bg-rose-500" : st.status === S.SPEAKING ? "animate-pulse bg-brand-500" : st.status === S.PAUSED ? "bg-amber-500" : "bg-slate-400"}`} />
-            {st.recording ? "Recording your answer" : STATUS_LABEL[st.status]}
-          </span>
+          <AiStateIndicator phase={phase} className="max-w-full" />
         </div>
-        <div className="h-0.5 bg-slate-100" aria-label="Interview progress">
-          <div className="h-full bg-gradient-to-r from-brand-500 to-violet-500 transition-all" style={{ width: `${total ? ((session.answered || 0) / total) * 100 : 0}%` }} />
+        <div className="h-1 bg-slate-100" aria-label="Interview progress">
+          <div className="h-full bg-brand-500 transition-[width] duration-700 ease-out" style={{ width: `${total ? ((session.answered || 0) / total) * 100 : 0}%` }} />
         </div>
-      </div>
+      </header>
       {live && (
         <MonitorBar features={monFeatures?.withdrawn ? null : monFeatures} status={monStatus} cameraOn={camOn} cameraLost={camLost} micProblem={micProblem}
           recording={st.recording} warning={monWarning} onDismiss={() => setMonWarnings((list) => list.slice(0, -1))}
@@ -851,53 +865,77 @@ export default function VoiceInterview() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-3">
-          {/* stage: the interviewer is the visual focus */}
-          <div className={`relative overflow-hidden rounded-2xl bg-night-900 ring-1 transition-shadow duration-500 ${st.recording ? "ring-rose-400/50 shadow-[0_0_0_1px_rgb(251_113_133/0.35),0_0_60px_-12px_rgb(244_63_94/0.6)]"
-              : talking ? "ring-brand-400/45 shadow-[0_0_0_1px_rgb(129_140_248/0.3),0_0_60px_-12px_rgb(99_102_241/0.65)]"
-                : "ring-slate-200 shadow-[0_30px_60px_-30px_rgb(0_0_0/0.9)]"}`}>
-            {use3d ? (
-              <Suspense fallback={<div className="flex h-[min(62vh,580px)] w-full items-center justify-center text-sm text-slate-600">Loading {p.name}…</div>}>
-                <Avatar3D getVisemes={getVisemes} mode={avatarState} interviewer={p.id} modelUrl={p.ui.model} hdModelUrl={p.ui.hd_model}
-                  quality={avatarQuality} label={`${p.name}, AI interviewer`}
-                  className="h-[min(62vh,580px)] min-h-[320px] w-full"
-                  onFailed={(why) => { setUse3d(false); toast(`${why} Showing a simplified 2D interviewer instead.`, "error"); }} />
-              </Suspense>
-            ) : (
-              <Avatar getMouth={getMouth} mode={avatarState} palette={p.id} className="block h-[min(62vh,580px)] w-full" />
-            )}
-            <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full border border-snow/10 bg-black/45 px-3 py-1 text-xs text-snow backdrop-blur-md">
-              <span className={`h-2 w-2 rounded-full ${talking ? "animate-pulse bg-emerald-400 shadow-[0_0_8px_rgb(52_211_153)]" : st.recording ? "animate-pulse bg-rose-500 shadow-[0_0_8px_rgb(244_63_94)]" : "bg-slate-500"}`} aria-hidden="true" />
-              {p.name} · {p.title}
-              <span className="hidden text-slate-600 sm:inline">· {AVATAR_STATE_LABEL[avatarState]}</span>
+        <div className="min-w-0 space-y-4">
+          {/* stage: the interviewer is the visual focus; the control dock is attached underneath */}
+          <section className={`theme-dark overflow-hidden rounded-xl bg-night-900 ring-1 transition-[box-shadow] duration-500 ${stageRing}`} aria-label="Interview stage">
+            <div className="relative">
+              {use3d ? (
+                <Suspense fallback={<div className="flex h-[min(58vh,560px)] w-full flex-col items-center justify-center gap-3 text-sm text-slate-500"><span className="h-8 w-8 animate-spin rounded-full border-2 border-snow/15 border-t-brand-400" aria-hidden />Loading {p.name}…</div>}>
+                  <Avatar3D getVisemes={getVisemes} mode={avatarState} interviewer={p.id} modelUrl={p.ui.model} hdModelUrl={p.ui.hd_model}
+                    quality={avatarQuality} label={`${p.name}, AI interviewer`}
+                    className="h-[min(58vh,560px)] min-h-[300px] w-full"
+                    onFailed={(why) => { setUse3d(false); toast(`${why} Showing a simplified 2D interviewer instead.`, "error"); }} />
+                </Suspense>
+              ) : (
+                <Avatar getMouth={getMouth} mode={avatarState} palette={p.id} className="block h-[min(58vh,560px)] min-h-[300px] w-full" />
+              )}
+              <div className="absolute left-3 top-3 z-10 flex items-center gap-2 rounded-full bg-night-950/75 py-1 pl-1.5 pr-3 text-xs text-snow ring-1 ring-snow/10">
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full ${talking ? "bg-brand-500" : st.recording ? "bg-rose-500" : "bg-snow/10"}`}>
+                  {talking || st.recording ? <Equalizer bars={3} className="bg-snow" /> : <span className="h-1.5 w-1.5 rounded-full bg-snow/60" aria-hidden />}
+                </span>
+                <span className="font-medium">{p.name}</span><span className="text-snow/50">· {p.title}</span>
+                <span className="hidden text-snow/50 sm:inline">· {AVATAR_STATE_LABEL[avatarState]}</span>
+              </div>
+              {lipsync && st.status === S.SPEAKING && (
+                <span className="absolute right-3 top-3 z-10 hidden rounded-full bg-night-950/75 px-3 py-1 text-[11px] text-snow/60 ring-1 ring-snow/10 sm:block">
+                  {lipsync === "phoneme" ? "local voice · phoneme lip sync" : lipsync === "approx" ? "browser voice · approximate lip sync" : "voice off · read the question"}
+                </span>
+              )}
+              {st.recording && (
+                <div className={`absolute right-3 top-12 z-10 flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-snow ring-1 ${p.interrupts && timeLeft <= 15 ? "bg-rose-500 ring-rose-400" : "bg-night-950/75 ring-snow/10"}`}>
+                  <Timer size={13} aria-hidden /> <span className="num">{p.interrupts ? `${Math.max(0, timeLeft)} s left` : fmtClock(recSeconds)}</span>
+                </div>
+              )}
+              {camOn && (
+                // Hidden self-view stays mounted (transparent) so on-device monitoring keeps working; the status bar
+                // above always shows that the camera is on.
+                <video ref={camVideo} autoPlay muted playsInline
+                  className={`absolute right-3 top-24 z-10 w-24 -scale-x-100 rounded-lg ring-1 ring-snow/20 sm:bottom-3 sm:top-auto sm:w-40 ${camHidden ? "pointer-events-none opacity-0" : ""}`}
+                  aria-label={monitoredCamera ? "Your camera (analysed only in this browser, not recorded)" : "Your camera preview (not recorded)"} />
+              )}
+              {live && st.status !== S.WRAP_UP && showSubs && (current || liveText || (talking && player.current.queueActive)) && (
+                <div className={`absolute inset-x-3 bottom-3 z-10 sm:inset-x-10 ${camOn && !camHidden ? "sm:!right-44" : ""}`}>
+                  <SubtitleLine text={talking && player.current.queueActive ? player.current.queueText()
+                    : talking && audioRef.current?.text ? audioRef.current.text
+                      : st.status === S.EVALUATING && liveText ? liveText
+                        : [current?.preface, current?.text].filter(Boolean).join(" ")}
+                    pos={subPos} size={settings.subtitleSize} speaking={talking} />
+                </div>
+              )}
             </div>
-            {lipsync && st.status === S.SPEAKING && (
-              <span className="absolute right-3 top-3 z-10 rounded-full border border-snow/10 bg-black/45 px-3 py-1 text-[11px] text-slate-700 backdrop-blur-md">
-                {lipsync === "phoneme" ? "local voice · phoneme lip sync" : lipsync === "approx" ? "browser voice · approximate lip sync" : "voice off · read the question"}
-              </span>
-            )}
-            {st.recording && (
-              <div className={`absolute right-3 top-12 z-10 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold text-snow backdrop-blur-md ${p.interrupts && timeLeft <= 15 ? "bg-rose-600 shadow-[0_0_18px_rgb(244_63_94/0.7)]" : "border border-snow/10 bg-black/45"}`}>
-                <Timer size={13} /> {p.interrupts ? `${Math.max(0, timeLeft)} s left` : fmtClock(recSeconds)}
+            {live && ![S.COMPLETING, S.WRAP_UP].includes(st.status) && (
+              <div className="border-t border-snow/10 bg-night-950/60 px-3 py-3">
+                <ControlBar st={st} sttEnabled={voice?.stt?.enabled} toggleMic={toggleMic} replay={replay} resume={resume} pause={pause}
+                  voiceOn={settings.voiceOn} toggleVoice={toggleVoice} monitoredCamera={monitoredCamera} camHidden={camHidden}
+                  toggleCamera={toggleCamera} showSettings={showSettings} setShowSettings={setShowSettings}
+                  answered={session?.answered} endInterview={endInterview} />
               </div>
             )}
-            {camOn && (
-              // Hidden self-view stays mounted (transparent) so on-device monitoring keeps working; the status bar
-              // above always shows that the camera is on.
-              <video ref={camVideo} autoPlay muted playsInline
-                className={`absolute bottom-3 right-3 z-10 w-28 -scale-x-100 rounded-xl border border-snow/25 shadow-pop ring-1 ring-black/40 sm:w-40 ${camHidden ? "pointer-events-none opacity-0" : ""}`}
-                aria-label={monitoredCamera ? "Your camera (analysed only in this browser, not recorded)" : "Your camera preview (not recorded)"} />
-            )}
-            {live && st.status !== S.WRAP_UP && showSubs && (current || liveText || (talking && player.current.queueActive)) && (
-              <div className="absolute inset-x-3 bottom-3 z-10 sm:inset-x-10" style={camOn && !camHidden ? { right: "11rem" } : undefined}>
-                <SubtitleLine text={talking && player.current.queueActive ? player.current.queueText()
-                  : talking && audioRef.current?.text ? audioRef.current.text
-                    : st.status === S.EVALUATING && liveText ? liveText
-                      : [current?.preface, current?.text].filter(Boolean).join(" ")}
-                  pos={subPos} size={settings.subtitleSize} speaking={talking} />
+          </section>
+
+          {/* the current question, always readable (with or without subtitles); fades in on each new question */}
+          {live && current && st.status !== S.WRAP_UP && (
+            <section key={current.id} className="card animate-fade-up p-4 sm:p-5" aria-label="Current question">
+              <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+                <span className="num rounded-md bg-slate-950 px-2 py-0.5 font-semibold text-white">Q{current.position}</span>
+                <span className="font-medium text-slate-600">{categoryLabel(session.category)}</span>
+                {current.is_followup && <span className="rounded-md bg-brand-50 px-2 py-0.5 font-medium text-brand-700 ring-1 ring-inset ring-brand-200">Follow-up</span>}
+                <span className="ml-auto text-slate-400">of {total}</span>
               </div>
-            )}
-          </div>
+              {current.preface && <p className="mb-1 text-sm text-slate-500">{current.preface}</p>}
+              <p className="text-[15px] font-medium leading-relaxed text-slate-900 sm:text-base">{current.text}</p>
+            </section>
+          )}
 
           {st.error && <Notice>{st.error}</Notice>}
           {st.status === S.ERROR && session && (
@@ -921,25 +959,29 @@ export default function VoiceInterview() {
           )}
 
           {st.status === S.WRAP_UP && (
-            <div className="card flex flex-col items-center gap-3 p-6 text-center">
-              <p className="font-medium">All {total} questions answered.</p>
-              <Button onClick={() => dispatch({ type: "FINISH" })}>Finish & get my feedback</Button>
+            <div className="card flex animate-fade-up flex-col items-center gap-3 px-6 py-10 text-center">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200"><CheckCircle2 size={22} aria-hidden /></span>
+              <p className="font-display text-lg font-bold text-slate-950">All {total} questions answered.</p>
+              <p className="max-w-sm text-sm text-slate-500">{p.name} will score every answer and write your feedback report.</p>
+              <Button size="lg" className="mt-1" onClick={() => dispatch({ type: "FINISH" })}>Finish & get my feedback</Button>
             </div>
           )}
-          {st.status === S.COMPLETING && <Spinner label={`${p.name} is preparing your interview report…`} />}
-
-          {/* control bar */}
-          {live && ![S.COMPLETING, S.WRAP_UP].includes(st.status) && (
-            <ControlBar st={st} sttEnabled={voice?.stt?.enabled} toggleMic={toggleMic} replay={replay} resume={resume} pause={pause}
-              voiceOn={settings.voiceOn} toggleVoice={toggleVoice} monitoredCamera={monitoredCamera} camHidden={camHidden}
-              toggleCamera={toggleCamera} showSettings={showSettings} setShowSettings={setShowSettings}
-              answered={session?.answered} endInterview={endInterview} />
+          {st.status === S.COMPLETING && (
+            <div className="card flex animate-fade-up flex-col items-center gap-3 px-6 py-10 text-center" role="status">
+              <span className="relative flex h-12 w-12 items-center justify-center">
+                <span className="absolute inset-0 animate-spin rounded-full border-2 border-slate-200 border-t-brand-500" aria-hidden />
+                <Sparkles size={18} className="text-brand-600" aria-hidden />
+              </span>
+              <p className="font-display text-lg font-bold text-slate-950">{p.name} is preparing your interview report…</p>
+              <p className="max-w-sm text-sm text-slate-500">Scoring each answer and summarising strengths and next steps.</p>
+            </div>
           )}
+
           {lastFeedback?.score != null && (
             <p className="text-center text-sm text-slate-500">Last answer <b className={`num font-semibold ${lastFeedback.score >= 75 ? "text-emerald-700" : lastFeedback.score >= 50 ? "text-amber-700" : "text-rose-700"}`}>{lastFeedback.score}/100</b> <span className="text-slate-400">({scoreBand(lastFeedback.score).label})</span>{lastFeedback.details?.next_difficulty && <> · next question {lastFeedback.details.next_difficulty}</>}</p>
           )}
           {coaching && lastFeedback?.feedback && (
-            <div className="card p-4 text-sm leading-relaxed text-slate-700">
+            <div className="card border-l-2 border-l-amber-500 p-4 text-sm leading-relaxed text-slate-700">
               <p className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-slate-900"><Lightbulb size={15} className="text-amber-600" /> Coaching notes on your last answer</p>
               <p className="whitespace-pre-line">{lastFeedback.feedback}</p>
               {lastFeedback.details?.improvements?.length > 0 && (
@@ -950,7 +992,7 @@ export default function VoiceInterview() {
         </div>
 
         {/* right panel */}
-        <aside className="space-y-3">
+        <aside className="space-y-4">
           {showSettings && (
             <RoomSettingsPanel settings={settings} setSetting={setSetting} toggleVoice={toggleVoice} eosMs={eosMs} use3d={use3d}
               avatarQuality={avatarQuality} setAvatarQuality={setAvatarQuality} />

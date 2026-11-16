@@ -37,19 +37,20 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { get } from "../../apiClient";
-import { Card, ErrorBox, PageHeader, Pill, Spinner, Table, fmtDateTime, useApi } from "../../components/SharedUiComponents";
+import { Card, ErrorBox, PageHeader, Pill, SectionHeader, Spinner, Table, fmtDateTime, useApi } from "../../components/SharedUiComponents";
 import { chipClass } from "../shared/filterChipStyle";
 
 const TYPES = [["", "All"], ["interview", "Interviews"], ["english", "English conversations"], ["assessment", "Assessments"]];
-const TONE = { interview: "brand", english: "blue", pronunciation: "violet", speaking: "blue", assessment: "amber" };
+const TONE = { interview: "brand", english: "blue", pronunciation: "gray", speaking: "blue", assessment: "amber" };
 
-export default function PracticeHistory() {
+export default function PracticeHistory({ embedded = false }) {
+  const Header = embedded ? SectionHeader : PageHeader;
   const navigate = useNavigate();
   const [type, setType] = useState("");
   const { data, error, loading, reload } = useApi(() => get("/student/history", { type }), [type]);
   return (
     <div className="space-y-6">
-      <PageHeader title="Practice history" subtitle="Every interview, English session, drill and test you've completed. Click a row to review answers." />
+      <Header title="Practice history" subtitle="Every interview, English session, drill and test you've completed. Click a row to review answers." />
       <div className="flex flex-wrap gap-2">
         {TYPES.map(([v, l]) => <button key={v || "all"} onClick={() => setType(v)} aria-pressed={type === v} className={chipClass(type === v)}>{l}</button>)}
       </div>

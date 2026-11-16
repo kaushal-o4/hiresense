@@ -82,7 +82,7 @@ import { ArrowRight, CheckCircle2, ChevronDown, ChevronRight, CircleDashed, Ligh
 import { del, get, post } from "../../apiClient";
 import { Subtitles, speak, usePrefs, useSpeaker, useSpeechToText } from "../../components/useSpeechAndPreferences";
 import {
-  Button, Card, ConfirmButton, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, useApi, useToast,
+  Button, Card, ConfirmButton, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, buttonClass, useApi, useToast,
 } from "../../components/SharedUiComponents";
 import { findInterviewer, useInterviewers } from "../../voice/useInterviewers";
 import InterviewerFeedback from "./InterviewerFeedback";
@@ -254,16 +254,17 @@ export function InterviewReport({ session, onRetry, retrying }) {
         </Notice>
       )}
 
-      <div className="card card-glow grid overflow-hidden lg:grid-cols-[1fr_360px]">
-        <div className="p-6">
+      <div className="card grid overflow-hidden lg:grid-cols-[1fr_360px]">
+        <div className="p-6 sm:p-8">
+          <p className="eyebrow mb-3">Overall score</p>
           <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
-            <p className="num text-6xl font-semibold leading-none tracking-tight text-slate-900">{score ?? "—"}<span className="text-xl font-normal text-slate-400">/100</span></p>
+            <p className="num font-display text-6xl font-bold leading-none tracking-tight text-slate-950">{score ?? "—"}<span className="text-xl font-medium text-slate-400">/100</span></p>
             {level && <Pill dot tone={scoreTone(score)} className="mb-1.5">{level}</Pill>}
           </div>
           {r?.summary ? <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-slate-700">{r.summary}</p>
             : <p className="mt-5 text-sm text-slate-500">The written summary appears after AI evaluation.</p>}
         </div>
-        <div className="border-t border-slate-200 bg-slate-50/60 p-6 lg:border-l lg:border-t-0">
+        <div className="border-t border-slate-200 bg-slate-50 p-6 lg:border-l lg:border-t-0">
           <h2 className="mb-4 text-[15px] font-semibold">Skill breakdown</h2>
           {r?.dimensions ? (
             <div className="space-y-3.5">
@@ -286,7 +287,7 @@ export function InterviewReport({ session, onRetry, retrying }) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <Card title="Next steps" actions={<Link to="/student/interviews"><Button size="sm"><Mic size={14} /> Start next interview</Button></Link>}>
+        <Card title="Next steps" actions={<Link to="/student/interviews" className={buttonClass("primary", "sm")}><Mic size={14} /> Start next interview</Link>}>
           {next && (
             <div className="mb-5 rounded-lg border border-slate-200 p-4">
               <p className="text-sm text-slate-900">Next: <b className="font-semibold">{next.difficulty}</b> difficulty with <b className="font-semibold">{INTERVIEWER_NAME[next.interviewer] || next.interviewer}</b></p>
@@ -419,8 +420,8 @@ export default function InterviewSession() {
         subtitle={<span className="flex flex-wrap items-center gap-2"><Pill>{INTERVIEWER_NAME[session.interviewer] || session.interviewer}</Pill><Pill>{session.category}</Pill><Pill>{session.mode}</Pill><Pill>{session.difficulty}</Pill><StatusPill status={session.status} />
           {session.question_source !== "ai" && <Pill tone="amber">question bank</Pill>}</span>}
         actions={<>
-          {session.mode === "voice" && session.status === "in_progress" && <Link to={`/student/interviews/${id}/live`}><Button><Mic size={16} /> Open live interviewer</Button></Link>}
-          <Link to="/student/interviews"><Button variant="secondary">All interviews</Button></Link>
+          {session.mode === "voice" && session.status === "in_progress" && <Link to={`/student/interviews/${id}/live`} className={buttonClass()}><Mic size={16} /> Open live interviewer</Link>}
+          <Link to="/student/interviews" className={buttonClass("secondary")}>All interviews</Link>
         </>} />
 
       {session.status === "in_progress" && !mon.features ? (
@@ -444,7 +445,7 @@ export default function InterviewSession() {
             {awaitingAnswer ? (
               <Card>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-400">Question {current.position} of {session.planned_questions}</span>
+                  <span className="num rounded-md bg-slate-950 px-2 py-0.5 text-xs font-semibold text-white">Q{current.position}</span><span className="text-xs text-slate-500">of {session.planned_questions}</span>
                   <Pill>{current.question_type}</Pill>{current.difficulty && <Pill>{current.difficulty}</Pill>}{current.is_followup && <Pill tone="blue">follow-up</Pill>}
                   <button className="ml-auto rounded p-1 text-slate-500 hover:bg-slate-100" onClick={() => speaker.speak(current.text)} aria-label="Read question aloud"><Volume2 size={18} /></button>
                 </div>
@@ -458,7 +459,7 @@ export default function InterviewSession() {
                       ) : (
                         <Button onClick={() => { speaker.stop(); speech.start(); }}><Mic size={16} /> {answer ? "Continue speaking" : "Start speaking"}</Button>
                       )}
-                      {speech.listening && <span className="flex items-center gap-2 text-sm text-red-600"><span className="h-2 w-2 animate-pulse rounded-full bg-red-600" /> Listening…</span>}
+                      {speech.listening && <span className="flex items-center gap-2 text-sm font-medium text-rose-600"><span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" /> Listening…</span>}
                       {speech.error && <span className="text-sm text-red-600">{speech.error}</span>}
                     </div>
                   )}
@@ -474,9 +475,9 @@ export default function InterviewSession() {
                 </div>
               </Card>
             ) : allDone ? (
-              <Card><div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckCircle2 size={40} className="text-emerald-500" />
-                <p className="font-medium">All questions answered!</p>
+              <Card><div className="flex flex-col items-center gap-3 py-8 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-200"><CheckCircle2 size={22} /></span>
+                <p className="font-display text-lg font-bold text-slate-950">All questions answered</p>
                 <Button onClick={finish} loading={finishing}>Finish & get my report</Button>
               </div></Card>
             ) : <Spinner label="Preparing next question…" />}
@@ -485,7 +486,7 @@ export default function InterviewSession() {
             <Card title="Feedback on last answer">
               {lastFeedback?.score != null ? (
                 <>
-                  <p className={`num text-4xl font-semibold tracking-tight ${scoreText(lastFeedback.score)}`}>{lastFeedback.score}<span className="text-sm font-normal text-slate-400">/100</span></p>
+                  <p className={`num font-display text-4xl font-bold tracking-tight ${scoreText(lastFeedback.score)}`}>{lastFeedback.score}<span className="text-sm font-normal text-slate-400">/100</span></p>
                   <p className="mt-1 text-xs text-slate-500">{scoreBand(lastFeedback.score).text} · AI estimate, a few points either way</p>
                   <div className="mt-3 space-y-2">{lastFeedback.scores && Object.entries(lastFeedback.scores).map(([k, v]) => <ScoreBar key={k} label={k} value={v} max={10} />)}</div>
                   {lastFeedback.feedback

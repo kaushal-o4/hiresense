@@ -38,15 +38,16 @@
 
 import { CalendarDays, MapPin } from "lucide-react";
 import { del, get, post } from "../../apiClient";
-import { Button, Card, EmptyState, ErrorBox, PageHeader, Pill, Spinner, StatusPill, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
+import { Button, Card, EmptyState, ErrorBox, PageHeader, Pill, SectionHeader, Spinner, StatusPill, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
 
-export default function StudentDrives() {
+export default function StudentDrives({ embedded = false }) {
+  const Header = embedded ? SectionHeader : PageHeader;
   const toast = useToast();
   const { data, error, loading, reload } = useApi(() => get("/student/drives"));
   const act = async (fn, msg) => { try { await fn(); toast(msg); reload(); } catch (e) { toast(e.message, "error"); } };
   return (
     <div className="space-y-6">
-      <PageHeader title="Placement drives" subtitle="Campus recruitment drives organised by the placement office." />
+      <Header title="Placement drives" subtitle="Campus recruitment drives organised by the placement office." />
       {loading && <Spinner />}
       <ErrorBox message={error} onRetry={reload} />
       {data?.length === 0 && <Card><EmptyState icon={CalendarDays} title="No placement drives announced yet" /></Card>}

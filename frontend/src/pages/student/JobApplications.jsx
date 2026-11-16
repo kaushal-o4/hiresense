@@ -40,7 +40,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarClock, CheckCircle2, ClipboardList } from "lucide-react";
 import { get, post } from "../../apiClient";
-import { Button, Card, ConfirmButton, EmptyState, ErrorBox, PageHeader, Pill, Spinner, StatusPill, fmtDate, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
+import { Card, ConfirmButton, EmptyState, ErrorBox, PageHeader, Pill, Spinner, StatusPill, buttonClass, fmtDate, fmtDateTime, useApi, useToast } from "../../components/SharedUiComponents";
 import { chipClass } from "../shared/filterChipStyle";
 
 const FILTERS = ["", "applied", "shortlisted", "interview_scheduled", "selected", "rejected", "withdrawn"];
@@ -52,7 +52,7 @@ export default function Applications() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My applications" subtitle="Track application status, interview invitations and results." actions={<Link to="/student/jobs"><Button>Browse jobs</Button></Link>} />
+      <PageHeader title="My applications" subtitle="Track application status, interview invitations and results." actions={<Link to="/student/jobs" className={buttonClass("primary")}>Browse jobs</Link>} />
       <div className="flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button key={f || "all"} onClick={() => setStatus(f)} aria-pressed={status === f} className={chipClass(status === f)}>

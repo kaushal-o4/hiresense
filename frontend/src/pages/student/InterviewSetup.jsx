@@ -192,18 +192,23 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
   if (!policy && !policyError) return <Spinner label="Preparing the interview room…" />;
 
   return (
-    <div className="card card-glow space-y-5 p-5 sm:p-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto text-xl font-semibold tracking-tight">Before we start with {p.name}</h2>
-        <span className="rounded-full border border-brand-400/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-700">{typed ? "Typed interview" : coaching ? "Coaching mode" : "Fast interview mode"}</span>
+    <div className="card overflow-hidden">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
+        <div className="mr-auto">
+          <p className="eyebrow">Preparation</p>
+          <h2 className="mt-0.5 text-xl font-bold tracking-tight">Before we start with {p.name}</h2>
+        </div>
+        <span className="rounded-md bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 ring-1 ring-inset ring-brand-200">{typed ? "Typed interview" : coaching ? "Coaching mode" : "Fast interview mode"}</span>
       </div>
+      <ol className="divide-y divide-slate-200">
+      <Step n={1} title="How this interview works">
       {typed ? (
-        <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-600 marker:text-brand-400">
+        <ul className="space-y-1.5 text-sm leading-relaxed text-slate-600 [&>li]:relative [&>li]:pl-4 [&>li]:before:absolute [&>li]:before:left-0 [&>li]:before:top-[9px] [&>li]:before:h-1 [&>li]:before:w-1 [&>li]:before:rounded-full [&>li]:before:bg-slate-400">
           <li>{p.name} asks questions on screen and you type your answers.</li>
           <li>Your typed answers are scored by a local model on this app's server.</li>
         </ul>
       ) : (
-      <ul className="list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-slate-600 marker:text-brand-400">
+      <ul className="space-y-1.5 text-sm leading-relaxed text-slate-600 [&>li]:relative [&>li]:pl-4 [&>li]:before:absolute [&>li]:before:left-0 [&>li]:before:top-[9px] [&>li]:before:h-1 [&>li]:before:w-1 [&>li]:before:rounded-full [&>li]:before:bg-slate-400">
           <li>{p.name} asks each question aloud. Turn your sound on, or switch the voice off and read the subtitles.</li>
           <li>When {p.name} finishes, your <b>microphone turns on</b> (red "Recording" badge) and stops after a short pause. You can change how long it waits in Settings, stop it yourself, and correct the text before sending.</li>
           <li>{coaching ? `Coaching mode: ${p.name} gives short spoken feedback and hints after each answer, and you get more time.` : `Fast mode: short questions and quick transitions. Detailed feedback comes at the end.`}</li>
@@ -211,10 +216,12 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
           <li>Your voice is transcribed <b>on this app's server</b> by a local model; the audio is <b>not saved</b>.</li>
         </ul>
       )}
+      </Step>
 
       {/* ---------------- monitoring disclosure */}
-      <section className="rounded-xl border border-slate-200 bg-slate-100/30 p-4 sm:p-5" aria-labelledby="mon-title">
-        <h3 id="mon-title" className="flex items-center gap-2.5 font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-500/15 text-brand-700 ring-1 ring-inset ring-brand-400/30"><ShieldCheck size={15} /></span> Camera and interview monitoring</h3>
+      <Step n={2}>
+      <section aria-labelledby="mon-title">
+        <h3 id="mon-title" className="flex items-center gap-2 text-[15px] font-semibold"><ShieldCheck size={16} className="text-slate-500" aria-hidden /> Camera and interview monitoring</h3>
         {policyError && <Notice>The monitoring policy could not be loaded ({policyError}). Monitoring stays off.</Notice>}
         {policy && !monitoringOn && <p className="mt-2 text-sm text-slate-600">Monitoring is switched off on this platform. Nothing is monitored.</p>}
         {policy && monitoringOn && (
@@ -227,7 +234,7 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
                 const f = policy.features[k];
                 const locked = required && REQUIRED_WITH_CAMERA.includes(k);
                 return (
-                  <label key={k} className={`flex items-start gap-3 rounded-lg border p-2.5 transition-colors ${features[k] ? "border-brand-400/35 bg-brand-500/[0.07]" : "border-transparent hover:bg-slate-100/60"}`}>
+                  <label key={k} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${features[k] ? "border-brand-300 bg-brand-50/60" : "border-slate-200 hover:border-slate-300"}`}>
                     <input type="checkbox" className="mt-1" checked={features[k]} disabled={locked}
                       onChange={(e) => toggle(k, e.target.checked)} aria-describedby={`why-${k}`} />
                     <span className="text-sm"><b>{f.label}</b>{locked && <span className="ml-1 text-xs text-slate-500">(required)</span>}
@@ -236,7 +243,7 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
                 );
               })}
             </div>
-            <dl className="mt-4 grid gap-x-6 gap-y-3 rounded-lg border border-slate-200 bg-slate-50/50 p-4 text-sm sm:grid-cols-2">
+            <dl className="mt-4 grid gap-x-6 gap-y-3 rounded-lg bg-slate-50 p-4 text-sm ring-1 ring-inset ring-slate-200 sm:grid-cols-2">
               <Term t="Where it is processed">{policy.processing}</Term>
               <Term t="What is stored">{policy.stored}</Term>
               <Term t="Never stored">{policy.not_stored}</Term>
@@ -252,11 +259,13 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
           </>
         )}
       </section>
+      </Step>
 
       {/* ---------------- device check */}
-      <section className="rounded-xl border border-slate-200 bg-slate-100/30 p-4 sm:p-5" aria-labelledby="chk-title">
-        <h3 id="chk-title" className="flex items-center gap-2.5 font-semibold"><span className="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-500/15 text-teal-700 ring-1 ring-inset ring-teal-400/30"><Camera size={15} /></span>Check your setup</h3>
-        <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-slate-600 marker:text-teal-400">
+      <Step n={3}>
+      <section aria-labelledby="chk-title">
+        <h3 id="chk-title" className="flex items-center gap-2 text-[15px] font-semibold"><Camera size={16} className="text-slate-500" aria-hidden />Check your setup</h3>
+        <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm text-slate-600 marker:text-slate-400">
           <li>Sit comfortably and position your face within the camera frame.</li>
           <li>Look toward the interview screen.</li>
           <li>Make sure the room is lit well enough for your face to be clearly visible.</li>
@@ -265,10 +274,10 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
           ? "Your browser will ask for camera and microphone permission when you press the button. The camera picture is only analysed in this browser to help with framing - nothing is recorded."
           : "Your browser will ask for microphone permission when you press the button."}</p>
         <div className="mt-3 grid gap-4 md:grid-cols-[260px_1fr]">
-          <div className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-night-900 text-xs text-slate-600 ring-1 transition-shadow ${camState.status === "on" ? "ring-emerald-400/40 shadow-[0_0_40px_-10px_rgb(16_185_129/0.55)]" : "ring-slate-200"}`}>
+          <div className={`relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-night-900 text-xs text-snow/50 ring-2 transition-colors ${camState.status === "on" ? "ring-emerald-500/60" : "ring-transparent"}`}>
             <video ref={video} autoPlay muted playsInline className={`h-full w-full -scale-x-100 object-cover ${camState.status === "on" ? "" : "hidden"}`} aria-label="Your camera preview" />
             {camState.status !== "on" && <span className="p-3 text-center">{features.camera ? "Camera preview appears here" : "Camera not used"}</span>}
-            {camState.status === "on" && <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-rose-600 px-2 py-0.5 text-[11px] text-snow shadow-[0_0_12px_rgb(244_63_94/0.7)]"><Camera size={11} /> Camera on</span>}
+            {camState.status === "on" && <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-medium text-snow"><Camera size={11} /> Camera on</span>}
           </div>
           <ul className="space-y-1.5 text-sm">
             <Check ok={net?.ok} label="Connection to the interview server" detail={net?.ok ? `${net.ms} ms` : net ? "Cannot reach the server" : "Checking…"} icon={<Wifi size={14} />} />
@@ -279,7 +288,7 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
               <Check ok={mic.status === "ok" ? true : mic.status === "idle" || mic.status === "testing" ? null : false}
                 label="Microphone" icon={<Mic size={14} />}
                 detail={mic.status === "testing" ? "Say something…" : mic.status === "ok" ? "Working" : mic.status === "quiet" ? "Very quiet - check the selected microphone, or type your answers" : mic.message || "Not tested yet"}>
-                {mic.status === "testing" && <div className="mt-1.5 h-1.5 w-40 overflow-hidden rounded-full bg-slate-200"><div className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgb(16_185_129/0.7)]" style={{ width: `${Math.min(100, mic.level * 900)}%` }} /></div>}
+                {mic.status === "testing" && <div className="mt-1.5 h-1.5 w-40 overflow-hidden rounded-full bg-slate-200"><div className="h-full rounded-full bg-emerald-500 transition-[width] duration-75" style={{ width: `${Math.min(100, mic.level * 900)}%` }} /></div>}
               </Check>
             )}
             {features.camera && (
@@ -316,23 +325,40 @@ export default function InterviewSetup({ session, persona: p, voice, camera, ans
           {camState.status === "on" && !required && <Button variant="ghost" onClick={() => toggle("camera", false)}>Turn camera off</Button>}
         </div>
       </section>
+      </Step>
+      </ol>
+      <div className="space-y-4 border-t border-slate-200 bg-slate-50 px-5 py-5 sm:px-6">
 
       {voice && !voice.tts?.enabled && <p className="text-sm text-amber-700">The local voice is off on this server, so the browser's voice will be used (approximate lip sync).</p>}
       {voice && !voice.stt?.enabled && <p className="text-sm text-amber-700">Speech recognition is off on this server - you will type your answers.</p>}
       {error && <Notice>{error}</Notice>}
       {anyMonitoring && (
-        <label className={`flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed transition-colors ${agreed ? "border-brand-400/40 bg-brand-500/[0.08] text-slate-800" : "border-slate-200 bg-slate-100/30 text-slate-600"}`}>
+        <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 text-sm leading-relaxed transition-colors ${agreed ? "border-brand-300 bg-brand-50/60 text-slate-800" : "border-slate-200 bg-white text-slate-600"}`}>
           <input type="checkbox" className="mt-1" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
           <span>I have read what is monitored, why, what is stored, who can see it and how long it is kept, and I agree to the monitoring selected above. If I need help or an accommodation, I can contact my placement cell before starting.</span>
         </label>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={start} disabled={!canStart} loading={starting}><Play size={16} /> {anyMonitoring ? `I agree - start the interview with ${p.name}` : `Continue - start the interview with ${p.name}`}</Button>
+        <Button size="lg" onClick={start} disabled={!canStart} loading={starting}><Play size={16} /> {anyMonitoring ? `I agree - start the interview with ${p.name}` : `Continue - start the interview with ${p.name}`}</Button>
         {anyMonitoring && !agreed && <span className="text-xs text-slate-500">Please confirm the monitoring notice above first.</span>}
         {cameraBlocked && !required && <span className="text-xs text-slate-500">Camera not tested: the interview will start without camera monitoring.</span>}
         {required && camState.status !== "on" && <span className="text-xs text-rose-700">The camera check must pass first.</span>}
       </div>
+      </div>
     </div>
+  );
+}
+
+/** One numbered step of the preparation checklist. */
+function Step({ n, title, children }) {
+  return (
+    <li className="flex gap-4 px-5 py-5 sm:px-6">
+      <span className="num flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600 ring-1 ring-inset ring-slate-200" aria-hidden>{n}</span>
+      <div className="min-w-0 flex-1">
+        {title && <h3 className="mb-2 text-[15px] font-semibold">{title}</h3>}
+        {children}
+      </div>
+    </li>
   );
 }
 
@@ -343,8 +369,8 @@ function Term({ t, children }) {
 function Check({ ok, label, detail, icon, children }) {
   const Icon = ok === true ? CheckCircle2 : ok === false ? XCircle : Circle;
   return (
-    <li className={`flex items-start gap-3 rounded-lg border px-3 py-2 transition-colors ${ok === true ? "border-emerald-400/25 bg-emerald-500/[0.06]" : ok === false ? "border-rose-400/30 bg-rose-500/[0.07]" : "border-slate-200 bg-slate-100/30"}`}>
-      <Icon size={18} className={`mt-0.5 shrink-0 ${ok === true ? "text-emerald-600 drop-shadow-[0_0_6px_rgb(52_211_153/0.7)]" : ok === false ? "text-rose-600 drop-shadow-[0_0_6px_rgb(244_63_94/0.7)]" : "text-slate-400"}`} aria-hidden="true" />
+    <li className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 transition-colors ${ok === true ? "border-emerald-200 bg-emerald-50/60" : ok === false ? "border-rose-200 bg-rose-50/60" : "border-slate-200 bg-white"}`}>
+      <Icon size={18} className={`mt-0.5 shrink-0 ${ok === true ? "text-emerald-600" : ok === false ? "text-rose-600" : "text-slate-300"}`} aria-hidden="true" />
       <div className="min-w-0"><p className="flex items-center gap-1.5 font-medium text-slate-900">{icon}{label}</p><p className="text-xs leading-relaxed text-slate-500">{detail}</p>{children}</div>
     </li>
   );

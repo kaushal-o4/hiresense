@@ -38,9 +38,9 @@ import Jobs from "./StudentJobOpenings";
 // Job openings and campus placement drives in one place (previously two menu items).
 export default function Opportunities() {
   return (
-    <UrlTabs label="Opportunities" tabs={[
-      { id: "jobs", label: "Job openings", element: <Jobs /> },
-      { id: "drives", label: "Placement drives", element: <StudentDrives /> },
+    <UrlTabs label="Opportunities" title="Job opportunities" subtitle="Openings matched to your skills, and campus drives from the placement office." tabs={[
+      { id: "jobs", label: "Job openings", element: <Jobs embedded /> },
+      { id: "drives", label: "Placement drives", element: <StudentDrives embedded /> },
     ]} />
   );
 }

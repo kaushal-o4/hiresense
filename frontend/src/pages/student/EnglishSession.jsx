@@ -55,7 +55,7 @@ import { get, post } from "../../apiClient";
 import { streamPost } from "../../voice/turnStream";
 import { SkillRadar } from "../../components/DashboardCharts";
 import { Subtitles, useSpeaker } from "../../components/useSpeechAndPreferences";
-import { Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, useApi, useToast } from "../../components/SharedUiComponents";
+import { Button, Card, ErrorBox, Notice, PageHeader, Pill, ScoreBar, Spinner, StatusPill, buttonClass, useApi, useToast } from "../../components/SharedUiComponents";
 import ConversationMemory, { LEARNING_MODE_LABEL } from "../../components/ConversationMemory";
 import EnglishAvatarSession from "./EnglishAvatarSession";
 
@@ -133,24 +133,24 @@ function EnglishChat({ s, setData }) {
   return (
     <div className="space-y-6">
       <Subtitles subtitle={speaker.subtitle} show={speaker.showSubtitles} />
-      <PageHeader title={s.topic} subtitle={<span className="flex items-center gap-2"><Pill>{s.mode}</Pill><Pill>{STYLE_LABEL[s.style] || s.style}</Pill><Pill>{LEARNING_MODE_LABEL[s.learning_mode] || LEARNING_MODE_LABEL.free_conversation}</Pill><StatusPill status={s.status} /></span>}
+      <PageHeader eyebrow="English conversation" title={s.topic} subtitle={<span className="flex items-center gap-2"><Pill>{s.mode}</Pill><Pill>{STYLE_LABEL[s.style] || s.style}</Pill><Pill>{LEARNING_MODE_LABEL[s.learning_mode] || LEARNING_MODE_LABEL.free_conversation}</Pill><StatusPill status={s.status} /></span>}
         actions={<>
-          <Link to="/student/english"><Button variant="secondary">All sessions</Button></Link>
-          {s.status === "in_progress" && <Button variant="success" onClick={end} loading={ending}>End & get feedback</Button>}
+          <Link to="/student/english" className={buttonClass("secondary")}>All sessions</Link>
+          {s.status === "in_progress" && <Button onClick={end} loading={ending}>End & get feedback</Button>}
         </>} />
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2" bodyClass="flex h-[60vh] flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {s.messages.map((m) => (
               <div key={m.id} className={`flex ${m.sender === "student" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm ${m.sender === "student" ? "bg-brand-500 text-snow shadow-glow" : "bg-slate-100 text-slate-800"}`}>
+                <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${m.sender === "student" ? "rounded-br-md bg-brand-500 text-snow" : "rounded-bl-md bg-slate-100 text-slate-800"}`}>
                   {m.meta?.encouragement && <p className="mb-1 flex items-center gap-1 text-xs font-medium text-emerald-700"><Sparkles size={12} /> {m.meta.encouragement}</p>}
                   <p className="whitespace-pre-line">{m.content}</p>
                   {m.sender === "ai" && <button className="mt-1 text-slate-400 hover:text-slate-700" onClick={() => speaker.speak(m.content)} aria-label="Read aloud"><Volume2 size={14} /></button>}
                   {m.corrections?.length > 0 && (
-                    <div className="mt-2 space-y-1 rounded-lg bg-white/95 p-2 text-xs text-slate-700">
+                    <div className="mt-2 space-y-1 rounded-lg bg-white p-2 text-xs text-slate-700 ring-1 ring-slate-200">
                       {m.corrections.map((c, i) => (
-                        <p key={i}><span className="text-red-600 line-through">{c.original}</span> → <span className="font-medium text-emerald-700">{c.corrected}</span><br /><span className="text-slate-500">{c.explanation}</span></p>
+                        <p key={i}><span className="text-rose-600 line-through decoration-rose-300">{c.original}</span> <span className="text-slate-400" aria-hidden>→</span> <span className="font-medium text-emerald-700">{c.corrected}</span><br /><span className="text-slate-500">{c.explanation}</span></p>
                       ))}
                     </div>
                   )}
@@ -159,10 +159,10 @@ function EnglishChat({ s, setData }) {
             ))}
             {pending && (
               <>
-                <div className="flex justify-end"><div className="max-w-[85%] rounded-2xl bg-gradient-to-br from-brand-500 to-violet-500 text-snow px-4 py-2 text-sm"><p className="whitespace-pre-line">{pending.student}</p></div></div>
+                <div className="flex justify-end"><div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand-500 px-4 py-2.5 text-sm text-snow opacity-80"><p className="whitespace-pre-line">{pending.student}</p></div></div>
                 {pending.draft
-                  ? <div className="flex justify-start"><div className="max-w-[85%] rounded-2xl bg-slate-100 px-4 py-2 text-sm text-slate-800"><p className="whitespace-pre-line">{pending.draft}<span className="animate-pulse">▍</span></p></div></div>
-                  : <div className="text-sm text-slate-400">Aria is typing…</div>}
+                  ? <div className="flex justify-start"><div className="max-w-[85%] rounded-2xl rounded-bl-md bg-slate-100 px-4 py-2.5 text-sm text-slate-800"><p className="whitespace-pre-line">{pending.draft}<span className="animate-pulse">▍</span></p></div></div>
+                  : <div className="flex items-center gap-1.5 text-sm text-slate-400" role="status"><span className="flex gap-1" aria-hidden>{[0, 1, 2].map((i) => <span key={i} className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" style={{ animationDelay: `${i * 0.2}s` }} />)}</span> Aria is typing…</div>}
               </>
             )}
             <div ref={bottomRef} />
@@ -180,7 +180,7 @@ function EnglishChat({ s, setData }) {
         <div className="space-y-4">
           <Card title="Session">
             <p className="text-sm text-slate-600">Verified active time</p>
-            <p className="text-2xl font-semibold">{Math.round((s.status === "in_progress" ? s.live_active_seconds : s.active_seconds) / 60)} min</p>
+            <p className="num font-display text-2xl font-bold text-slate-950">{Math.round((s.status === "in_progress" ? s.live_active_seconds : s.active_seconds) / 60)} min</p>
             {s.status === "in_progress" && <p className="mt-1 text-xs text-slate-500">Updates after each reply; final when you end the session.</p>}
           </Card>
           {s.status === "in_progress" && <ConversationMemory memory={s.memory} learningMode={s.learning_mode} />}
@@ -188,7 +188,7 @@ function EnglishChat({ s, setData }) {
             s.evaluation_status === "completed" ? (
               <>
                 <Card title="Your scores">
-                  <p className="num text-4xl font-semibold tracking-tight text-slate-900">{s.overall_score}<span className="text-sm font-normal text-slate-400">/100</span></p>
+                  <p className="num font-display text-4xl font-bold tracking-tight text-slate-950">{s.overall_score}<span className="text-sm font-normal text-slate-400">/100</span></p>
                   <SkillRadar data={radar} height={220} />
                   <div className="space-y-2">{Object.entries(s.scores).map(([k, v]) => <ScoreBar key={k} label={k.replace(/_/g, " ")} value={v} max={10} />)}</div>
                   {s.scores.pronunciation_clarity != null && <p className="mt-2 text-xs text-slate-500">Pronunciation clarity is estimated from speech-recognition confidence.</p>}

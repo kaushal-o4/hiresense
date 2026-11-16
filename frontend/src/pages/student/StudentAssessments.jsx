@@ -56,7 +56,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ClipboardCheck, Code2, Play, RefreshCw, Timer } from "lucide-react";
+import { Check, ClipboardCheck, Code2, Play, RefreshCw, Timer, X } from "lucide-react";
 import { get, post } from "../../apiClient";
 import { runJavaScript } from "../../components/browserCodeRunner";
 import { chipClass } from "../shared/filterChipStyle";
@@ -79,7 +79,7 @@ function CodingQuestion({ q, value, onChange }) {
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-        <Pill tone="violet">{q.language}</Pill> function <code>{q.function_name}</code> · {q.marks} marks
+        <Pill tone="gray">{q.language}</Pill> function <code>{q.function_name}</code> · {q.marks} marks
       </div>
       <textarea className="input font-mono text-xs" rows={10} spellCheck={false} value={value ?? q.starter_code}
         onChange={(e) => onChange(e.target.value)}
@@ -99,8 +99,8 @@ function CodingQuestion({ q, value, onChange }) {
           {q.test_cases.map((t, i) => (
             <p key={i} className="font-mono">
               {q.function_name}({(t.input || []).map((x) => JSON.stringify(x)).join(", ")}) → {JSON.stringify(t.expected)}
-              {run?.results?.[i] && (run.results[i].ok ? <span className="ml-2 text-emerald-700">✓ pass</span>
-                : <span className="ml-2 text-red-700">✗ got {run.results[i].error || run.results[i].output}</span>)}
+              {run?.results?.[i] && (run.results[i].ok ? <span className="ml-2 inline-flex items-center gap-1 text-emerald-700"><Check size={12} /> pass</span>
+                : <span className="ml-2 inline-flex items-center gap-1 text-red-700"><X size={12} /> got {run.results[i].error || run.results[i].output}</span>)}
             </p>
           ))}
           {run?.error && <p className="mt-1 text-red-700">{run.error}</p>}
@@ -123,7 +123,7 @@ export function ReviewList({ review }) {
               <ul className="mt-2 space-y-1 text-sm">
                 {q.options.map((o, j) => (
                   <li key={j} className={`rounded px-2 py-1 ${j === q.answer_index ? "bg-emerald-50 text-emerald-800" : j === q.your_answer ? "bg-red-50 text-red-800" : ""}`}>
-                    {o} {j === q.answer_index && "✓"} {j === q.your_answer && j !== q.answer_index && "(your answer)"}
+                    <span className="inline-flex items-center gap-1.5">{o} {j === q.answer_index && <Check size={13} aria-label="correct answer" />} {j === q.your_answer && j !== q.answer_index && "(your answer)"}</span>
                   </li>
                 ))}
               </ul>
@@ -131,13 +131,13 @@ export function ReviewList({ review }) {
             </>
           ) : (
             <div className="mt-2 space-y-2 text-sm">
-              <pre className="max-h-48 overflow-auto rounded bg-night-950 p-3 text-xs text-slate-800 ring-1 ring-inset ring-slate-200">{q.your_answer || "(no code submitted)"}</pre>
+              <pre className="max-h-48 overflow-auto rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-800 ring-1 ring-inset ring-slate-200">{q.your_answer || "(no code submitted)"}</pre>
               {q.result.status === "pending" ? <Notice>Awaiting AI review: {q.result.feedback}</Notice> : (
                 <>
                   <p><b>{q.result.marks}/{q.result.max_marks} marks</b> {q.result.method === "ai_review" && <Pill tone="brand" className="ml-1">AI-reviewed · code not executed</Pill>}</p>
                   <p className="text-slate-600">{q.result.feedback}</p>
-                  {q.result.verdicts?.length > 0 && <ul className="text-xs">{q.result.verdicts.map((v) => <li key={v.case}>{v.likely_passes ? "✓" : "✗"} Test {v.case}: {v.reason}</li>)}</ul>}
-                  {q.result.improved_solution && <details><summary className="cursor-pointer text-brand-600">Reference solution</summary><pre className="mt-1 overflow-auto rounded bg-night-950 p-3 text-xs text-slate-800 ring-1 ring-inset ring-slate-200">{q.result.improved_solution}</pre></details>}
+                  {q.result.verdicts?.length > 0 && <ul className="text-xs">{q.result.verdicts.map((v) => <li key={v.case} className="flex items-start gap-1.5">{v.likely_passes ? <Check size={12} className="mt-0.5 shrink-0 text-emerald-600" aria-label="likely passes" /> : <X size={12} className="mt-0.5 shrink-0 text-red-600" aria-label="likely fails" />} Test {v.case}: {v.reason}</li>)}</ul>}
+                  {q.result.improved_solution && <details><summary className="cursor-pointer text-brand-600">Reference solution</summary><pre className="mt-1 overflow-auto rounded-lg bg-slate-50 p-3 font-mono text-xs text-slate-800 ring-1 ring-inset ring-slate-200">{q.result.improved_solution}</pre></details>}
                 </>
               )}
             </div>
@@ -268,7 +268,7 @@ export default function StudentAssessments() {
             {available.data?.map((a) => (
               <Card key={a.id} className={a.assignment?.status === "assigned" ? "ring-2 ring-amber-300" : ""}>
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold">{a.has_coding && <Code2 size={16} className="mr-1 inline text-violet-600" />}{a.title}</h3>
+                  <h3 className="font-semibold">{a.has_coding && <Code2 size={16} className="mr-1 inline text-brand-600" />}{a.title}</h3>
                   <Pill tone="brand">{a.category}</Pill>
                 </div>
                 {a.assignment && <p className="mt-1 text-xs font-medium text-amber-700">{a.assignment.status === "assigned" ? `Assigned by recruiter${a.assignment.due_at ? ` · due ${fmtDateTime(a.assignment.due_at)}` : ""}` : "Assigned · completed ✓"}</p>}

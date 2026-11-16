@@ -163,10 +163,10 @@ function SessionDetail({ data, onChange }) {
       <AttentionReport a={data.attention} />
       <p className="text-xs text-slate-500">{data.note}</p>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1" role="tablist">
+        <div className="flex gap-0.5 rounded-lg border border-slate-200 bg-slate-100 p-0.5" role="tablist">
           {["timeline", "review"].map((v) => (
             <button key={v} role="tab" aria-selected={view === v} onClick={() => setView(v)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold ${view === v ? "bg-brand-500 text-snow shadow-glow" : "bg-slate-100 text-slate-600"}`}>
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${view === v ? "bg-white text-slate-950 shadow-soft ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-900"}`}>
               {v === "timeline" ? "Timeline" : "Review events"}
             </button>))}
         </div>

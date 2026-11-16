@@ -5,17 +5,18 @@
  * frontend/src/index.css
  *
  * FILE PURPOSE:
- * Global stylesheet: the colour theme and shared CSS classes of the whole app.
+ * Global stylesheet: the design tokens (light + dark theme) and shared CSS classes of the whole app.
  *
  * WHAT THIS FILE DOES:
  * 1. Loads Tailwind CSS (base, components, utilities).
- * 2. Defines the 'dark premium' theme colours as CSS variables (used by tailwind.config.js).
- * 3. Defines shared classes such as .card, .input, .label, .th/.td for tables, .skeleton loaders.
+ * 2. Defines the HireSense light (default) and dark theme colours as CSS variables (used by tailwind.config.js).
+ * 3. Defines shared classes such as .card, .input, .label, .th/.td for tables, .skeleton loaders, .reveal.
  * 4. Contains print styles so reports can be saved as PDF in a light layout.
  *
  * HOW THIS FILE WORKS:
- * Colours are RGB variables in :root; Tailwind classes like bg-slate-50 read these variables, so
- * changing the variables re-themes the whole application.
+ * Colours are RGB variables; Tailwind classes like bg-slate-50 read these variables, so changing the
+ * variables re-themes the whole application. html[data-theme="dark"] (set by components/ThemeContext.jsx)
+ * or a .theme-dark wrapper switches a page or a section to the dark palette.
  *
  * INPUT:
  * Imported once by main.jsx.
@@ -33,100 +34,134 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ------------------------------------------------------------------ theme tokens ("dark premium")
-   RGB triplets so Tailwind opacity modifiers work. See tailwind.config.js for what each scale means. */
-:root {
+/* ------------------------------------------------------------------ design tokens
+   RGB triplets so Tailwind opacity modifiers work (bg-white/90). See tailwind.config.js.
+   slate ("n") is ROLE-based in both themes: 50 = page background, 200 = borders, 500 = supporting text,
+   900 = headings, 950 = strongest ink. `white` (--surface) = card surface.
+   Light is the default. Dark applies to html[data-theme="dark"] and to any subtree with .theme-dark
+   (landing page, auth brand panel); .theme-light forces light inside a dark page. */
+:root, .theme-light {
+  color-scheme: light;
+  --surface: 255 255 255;
+  --n-50: 245 247 250; --n-100: 238 241 245; --n-200: 229 233 240; --n-300: 208 214 224; --n-400: 152 162 178;
+  --n-500: 105 117 134; --n-600: 82 94 112; --n-700: 52 64 84; --n-800: 35 47 66; --n-900: 23 35 51; --n-950: 16 21 29;
+  --brand-50: 239 243 255; --brand-100: 222 231 255; --brand-200: 193 210 254; --brand-300: 150 178 252;
+  --brand-400: 71 120 255; --brand-500: 49 94 247; --brand-600: 38 80 226; --brand-700: 30 64 196;
+  --brand-800: 28 52 150; --brand-900: 24 41 110; --brand-950: 16 26 70;
+  --emerald-50: 236 250 243; --emerald-100: 213 244 230; --emerald-200: 170 230 200; --emerald-300: 110 205 160;
+  --emerald-400: 52 185 130; --emerald-500: 22 163 106; --emerald-600: 18 140 90; --emerald-700: 14 112 72;
+  --emerald-800: 12 88 58; --emerald-900: 10 66 44; --emerald-950: 6 40 27;
+  --rose-50: 253 242 242; --rose-100: 252 228 228; --rose-200: 249 202 202; --rose-300: 243 160 160;
+  --rose-400: 232 112 112; --rose-500: 220 83 83; --rose-600: 196 60 60; --rose-700: 163 45 45;
+  --rose-800: 133 37 37; --rose-900: 105 30 30; --rose-950: 60 15 15;
+  --amber-50: 254 248 236; --amber-100: 252 239 210; --amber-200: 248 222 165; --amber-300: 242 196 110;
+  --amber-400: 237 178 80; --amber-500: 233 162 59; --amber-600: 196 125 25; --amber-700: 150 92 15;
+  --amber-800: 120 72 14; --amber-900: 92 56 12; --amber-950: 55 33 8;
+  --sky-50: 239 248 255; --sky-100: 220 239 252; --sky-200: 186 224 250; --sky-300: 130 196 240;
+  --sky-400: 70 165 225; --sky-500: 30 140 210; --sky-600: 20 118 182; --sky-700: 18 96 148;
+  --sky-800: 18 78 120; --sky-900: 16 60 92; --sky-950: 10 38 60;
+  --teal-50: 239 251 249; --teal-100: 210 243 238; --teal-200: 165 228 219; --teal-300: 100 200 186;
+  --teal-400: 45 170 155; --teal-500: 20 148 135; --teal-600: 15 125 115; --teal-700: 15 100 93;
+  --teal-800: 15 80 75; --teal-900: 13 62 58; --teal-950: 6 38 36;
+  --shadow-card: 0 1px 2px rgb(16 21 29 / 0.04), 0 1px 1px rgb(16 21 29 / 0.02);
+  --shadow-pop: 0 12px 32px -8px rgb(16 21 29 / 0.18), 0 0 0 1px rgb(16 21 29 / 0.06);
+}
+
+html[data-theme="dark"], .theme-dark {
   color-scheme: dark;
-  --surface: 14 20 38;          /* cards */
-  --n-50: 7 10 22;  --n-100: 18 24 44;  --n-200: 32 41 68;  --n-300: 47 58 92;  --n-400: 98 110 146;
-  --n-500: 139 150 182; --n-600: 166 176 203; --n-700: 198 205 225; --n-800: 223 227 240; --n-900: 243 245 251;
+  --surface: 23 31 44;
+  --n-50: 16 21 29; --n-100: 28 37 51; --n-200: 38 49 66; --n-300: 54 67 87; --n-400: 96 110 132;
+  --n-500: 139 151 170; --n-600: 166 177 194; --n-700: 200 208 220; --n-800: 222 228 237; --n-900: 238 241 246;
   --n-950: 255 255 255;
-  --brand-50: 23 25 62;  --brand-100: 31 34 84;  --brand-200: 49 53 128; --brand-300: 82 86 196; --brand-400: 129 140 248;
-  --brand-500: 99 102 241; --brand-600: 112 116 255; --brand-700: 168 172 255; --brand-800: 201 203 255;
-  --brand-900: 228 229 255; --brand-950: 241 241 255;
-  --emerald-50: 9 36 34; --emerald-100: 12 50 44; --emerald-200: 19 82 66; --emerald-300: 28 120 90; --emerald-400: 52 211 153;
-  --emerald-500: 16 185 129; --emerald-600: 45 200 140; --emerald-700: 110 231 183; --emerald-800: 167 243 208;
+  --brand-50: 22 33 66; --brand-100: 27 42 88; --brand-200: 38 60 130; --brand-300: 55 88 190; --brand-400: 110 150 255;
+  --brand-500: 49 94 247; --brand-600: 71 120 255; --brand-700: 140 170 255; --brand-800: 185 205 255;
+  --brand-900: 220 230 255; --brand-950: 240 244 255;
+  --emerald-50: 12 38 30; --emerald-100: 14 52 40; --emerald-200: 20 84 62; --emerald-300: 28 120 88; --emerald-400: 52 200 140;
+  --emerald-500: 22 163 106; --emerald-600: 52 200 140; --emerald-700: 110 225 175; --emerald-800: 167 240 205;
   --emerald-900: 209 250 229; --emerald-950: 236 253 245;
-  --rose-50: 44 15 28; --rose-100: 60 19 35; --rose-200: 99 29 52; --rose-300: 150 44 75; --rose-400: 251 113 133;
-  --rose-500: 244 63 94; --rose-600: 230 60 92; --rose-700: 253 164 175; --rose-800: 254 205 211; --rose-900: 255 228 230;
-  --rose-950: 255 241 242;
-  --amber-50: 42 31 10; --amber-100: 58 42 12; --amber-200: 97 70 18; --amber-300: 146 104 22; --amber-400: 251 191 36;
-  --amber-500: 245 158 11; --amber-600: 251 191 36; --amber-700: 252 211 77; --amber-800: 253 230 138; --amber-900: 254 243 199;
-  --amber-950: 255 251 235;
-  --sky-50: 9 31 50; --sky-100: 12 43 68; --sky-200: 20 68 104; --sky-300: 30 110 160; --sky-400: 56 189 248;
-  --sky-500: 14 165 233; --sky-600: 56 189 248; --sky-700: 125 211 252; --sky-800: 186 230 253; --sky-900: 224 242 254;
-  --sky-950: 240 249 255;
-  --teal-50: 9 38 39; --teal-100: 12 53 53; --teal-200: 18 84 80; --teal-300: 25 120 110; --teal-400: 45 212 191;
-  --teal-500: 20 184 166; --teal-600: 45 212 191; --teal-700: 94 234 212; --teal-800: 153 246 228; --teal-900: 204 251 241;
-  --teal-950: 240 253 250;
+  --rose-50: 48 20 24; --rose-100: 64 24 28; --rose-200: 104 36 40; --rose-300: 150 52 56; --rose-400: 240 120 120;
+  --rose-500: 220 83 83; --rose-600: 240 120 120; --rose-700: 250 165 165; --rose-800: 253 205 205;
+  --rose-900: 255 228 228; --rose-950: 255 242 242;
+  --amber-50: 44 33 14; --amber-100: 60 44 16; --amber-200: 98 70 22; --amber-300: 146 104 30; --amber-400: 240 185 90;
+  --amber-500: 233 162 59; --amber-600: 240 185 90; --amber-700: 248 210 140; --amber-800: 252 230 180;
+  --amber-900: 254 243 210; --amber-950: 255 251 235;
+  --sky-50: 12 32 50; --sky-100: 14 44 68; --sky-200: 20 68 104; --sky-300: 30 110 160; --sky-400: 80 180 240;
+  --sky-500: 30 140 210; --sky-600: 80 180 240; --sky-700: 140 210 250; --sky-800: 190 230 253;
+  --sky-900: 224 242 254; --sky-950: 240 249 255;
+  --teal-50: 10 38 38; --teal-100: 12 52 50; --teal-200: 18 84 78; --teal-300: 25 120 110; --teal-400: 50 200 180;
+  --teal-500: 20 148 135; --teal-600: 50 200 180; --teal-700: 100 230 210; --teal-800: 155 245 228;
+  --teal-900: 204 251 241; --teal-950: 240 253 250;
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6), 0 0 0 1px rgb(255 255 255 / 0.06);
 }
 
 @layer base {
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
   body {
     @apply bg-slate-50 text-slate-700 antialiased;
-    font-feature-settings: "ss01", "cv11";
-    /* soft light from the top corners, fixed so it stays put while scrolling */
-    background-image:
-      radial-gradient(60rem 36rem at 85% -12%, rgb(99 102 241 / 0.16), transparent 60%),
-      radial-gradient(48rem 30rem at -8% 8%, rgb(139 92 246 / 0.10), transparent 60%),
-      radial-gradient(40rem 30rem at 50% 115%, rgb(45 212 191 / 0.06), transparent 60%);
-    background-attachment: fixed;
+    font-feature-settings: "cv11", "ss01";
   }
-  h1, h2, h3 { @apply font-display tracking-tight text-slate-900; }
-  ::selection { background: rgb(99 102 241 / 0.45); color: #fff; }
-  :focus-visible { outline: 2px solid rgb(var(--brand-400)); outline-offset: 2px; }
+  h1, h2, h3, h4 { @apply font-display tracking-tight text-slate-900; }
+  ::selection { background: rgb(var(--brand-500) / 0.25); }
+  :focus-visible { outline: 2px solid rgb(var(--brand-500)); outline-offset: 2px; }
   * { scrollbar-color: rgb(var(--n-300)) transparent; scrollbar-width: thin; }
   input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: rgb(var(--brand-500)); }
-  option { background: rgb(var(--n-100)); color: rgb(var(--n-900)); }
+  option { background: rgb(var(--surface)); color: rgb(var(--n-900)); }
   @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
     *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
   }
 }
 
 @layer components {
+  /* ---- forms */
   .input {
-    @apply h-10 w-full rounded-xl border border-slate-200 bg-slate-100/70 px-3.5 text-sm text-slate-900 transition
-           placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-400 focus:bg-slate-100 focus:outline-none
-           focus:ring-4 focus:ring-brand-500/20 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 transition
+           placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:outline-none
+           focus:ring-4 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70;
+    box-shadow: var(--shadow-card);
   }
+  .input[aria-invalid="true"] { @apply border-rose-500 focus:border-rose-500 focus:ring-rose-500/15; }
   textarea.input, select[multiple].input, div.input { @apply h-auto py-2.5; }
   select.input { @apply pr-8; }
-  .label { @apply mb-1.5 block text-[13px] font-medium text-slate-700; }
+  .label { @apply mb-1.5 block text-[13px] font-medium text-slate-800; }
 
-  /* glass card: surface + a faint top highlight + soft depth */
-  .card {
-    @apply rounded-2xl border border-slate-200/80 bg-white/80 backdrop-blur-xl;
-    background-image: linear-gradient(180deg, rgb(255 255 255 / 0.035), rgb(255 255 255 / 0) 40%);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 20px 40px -24px rgb(0 0 0 / 0.8);
-  }
-  .card-hover { @apply transition duration-200 hover:-translate-y-0.5 hover:border-brand-300/60; }
-  .card-glow { position: relative; }
-  .card-glow::before {
-    content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
-    background: linear-gradient(135deg, rgb(129 140 248 / 0.55), rgb(139 92 246 / 0.15) 35%, transparent 60%, rgb(45 212 191 / 0.25));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude;
-  }
-  .th { @apply whitespace-nowrap px-4 py-3 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-slate-500; }
-  .td { @apply px-4 py-3.5 text-sm text-slate-700; }
-  .text-gradient {
-    background: linear-gradient(90deg, rgb(var(--n-950)), rgb(var(--brand-700)) 60%, #c4b5fd);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-  }
+  /* ---- surfaces: flat card, 1px border, barely-there shadow. No glass, no glow. */
+  .card { @apply rounded-xl border border-slate-200 bg-white; box-shadow: var(--shadow-card); }
+  .card-hover { @apply transition duration-200 hover:border-slate-300; }
+  .card-hover:hover { box-shadow: var(--shadow-pop); }
+  .card-glow { position: relative; }   /* legacy: glow border removed */
+  .surface-muted { @apply rounded-lg bg-slate-100/70; }
+
+  /* ---- tables */
+  .th { @apply whitespace-nowrap px-4 py-2.5 text-left text-[11.5px] font-medium uppercase tracking-[0.06em] text-slate-500; }
+  .td { @apply px-4 py-3 text-sm text-slate-700; }
+
+  /* ---- type helpers */
+  .text-gradient { color: rgb(var(--n-900)); }   /* legacy: gradient text removed */
   .num { font-variant-numeric: tabular-nums; }
-  .eyebrow { @apply text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500; }
+  .eyebrow { @apply text-[11.5px] font-semibold uppercase tracking-[0.12em] text-slate-500; }
+  .link { @apply font-medium text-brand-600 underline-offset-4 hover:underline; }
+  .kbd { @apply inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-slate-200 bg-slate-50 px-1 font-mono text-[10.5px] font-medium text-slate-500; }
+
+  /* ---- decoration */
   .grid-bg {
-    background-image: linear-gradient(to right, rgb(255 255 255 / 0.04) 1px, transparent 1px),
-                      linear-gradient(to bottom, rgb(255 255 255 / 0.04) 1px, transparent 1px);
-    background-size: 40px 40px;
+    background-image: linear-gradient(to right, rgb(var(--n-950) / 0.05) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgb(var(--n-950) / 0.05) 1px, transparent 1px);
+    background-size: 48px 48px;
   }
   .skeleton {
     background: linear-gradient(90deg, rgb(var(--n-100)), rgb(var(--n-200)), rgb(var(--n-100)));
-    background-size: 200% 100%; border-radius: 0.5rem; animation: hs-shimmer 2.5s linear infinite;
+    background-size: 200% 100%; border-radius: 0.5rem; animation: hs-shimmer 1.8s linear infinite;
   }
-  @keyframes hs-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+  @keyframes hs-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+  /* scroll reveal (components/Reveal.jsx adds .is-visible) */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+  .reveal.is-visible { opacity: 1; transform: none; }
 }
+
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1 !important; transform: none !important; } }
 
 /* soft vignette for 3D stages placed directly on a panel (no visible box edge) */
 .fade-edges {
@@ -134,31 +169,21 @@
   mask-image: radial-gradient(closest-side at 45% 52%, #000 62%, transparent 100%);
 }
 
-/* ------------------------------------------------------------------ print ("Save as PDF")
-   Paper is white: swap the role-based tokens for a light palette and drop glass, glow and background light.
-   App chrome (sidebar, header) carries print:!hidden in AppShellLayout.jsx. */
+/* ------------------------------------------------------------------ print ("Save as PDF"): always light */
 @media print {
   @page { size: A4; margin: 14mm 12mm; }
-  :root {
+  html[data-theme="dark"], .theme-dark {
     color-scheme: light;
     --surface: 255 255 255;
     --n-50: 255 255 255; --n-100: 243 245 248; --n-200: 226 230 236; --n-300: 203 210 220; --n-400: 148 156 170;
     --n-500: 100 108 122; --n-600: 75 82 96; --n-700: 51 58 70; --n-800: 32 38 50; --n-900: 17 22 33; --n-950: 0 0 0;
-    --brand-50: 238 240 255; --brand-100: 224 228 255; --brand-200: 199 205 254; --brand-300: 165 172 250;
-    --brand-400: 129 140 248; --brand-500: 99 102 241; --brand-600: 79 70 229; --brand-700: 67 56 202;
-    --brand-800: 55 48 163; --brand-900: 49 46 129; --brand-950: 30 27 75;
-    --emerald-50: 236 253 245; --emerald-100: 209 250 229; --emerald-200: 167 243 208; --emerald-500: 16 185 129;
-    --emerald-600: 5 150 105; --emerald-700: 4 120 87; --emerald-800: 6 95 70;
-    --rose-50: 255 241 242; --rose-100: 255 228 230; --rose-200: 254 205 211; --rose-500: 244 63 94;
-    --rose-600: 225 29 72; --rose-700: 190 18 60; --rose-800: 159 18 57;
-    --amber-50: 255 251 235; --amber-100: 254 243 199; --amber-200: 253 230 138; --amber-500: 245 158 11;
-    --amber-600: 217 119 6; --amber-700: 180 83 9; --amber-800: 146 64 14;
-    --sky-50: 240 249 255; --sky-100: 224 242 254; --sky-600: 2 132 199; --sky-700: 3 105 161;
+    --brand-50: 239 243 255; --brand-100: 222 231 255; --brand-500: 49 94 247; --brand-600: 38 80 226; --brand-700: 30 64 196;
+    --emerald-50: 236 250 243; --emerald-600: 18 140 90; --emerald-700: 14 112 72;
+    --rose-50: 253 242 242; --rose-600: 196 60 60; --rose-700: 163 45 45;
+    --amber-50: 254 248 236; --amber-600: 196 125 25; --amber-700: 150 92 15;
   }
-  body { background: #fff !important; background-image: none !important; }
-  .card { backdrop-filter: none !important; background-image: none !important; box-shadow: none !important; }
-  .card-glow::before { display: none; }
-  .text-gradient { background: none; color: rgb(var(--n-950)); }
+  body { background: #fff !important; }
+  .card { box-shadow: none !important; }
   #main-content { max-width: none !important; padding: 0 !important; }
   a { color: inherit; text-decoration: none; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

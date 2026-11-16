@@ -45,12 +45,12 @@ import { get, put } from "../apiClient";
 import { Button, ConfirmButton } from "../components/SharedUiComponents";
 import { AttentionCard, AttentionReport } from "./AttentionPanels";
 
-// Glass status pills: tinted fill + ring; "live" capture (camera/mic) glows rose so it is never missed.
-const PILL = "flex items-center gap-1.5 rounded-full px-3 py-1 font-medium ring-1 ring-inset backdrop-blur";
+// Status pills: tinted fill + ring; "live" capture (camera/mic) is solid rose so it is never missed.
+const PILL = "flex items-center gap-1.5 rounded-full px-3 py-1 font-medium ring-1 ring-inset";
 const ON = "bg-emerald-500/10 text-emerald-700 ring-emerald-400/30";
 const OFF = "bg-slate-100/70 text-slate-600 ring-slate-200";
 const WARN = "bg-amber-500/10 text-amber-700 ring-amber-400/35";
-const LIVE = "bg-rose-500/15 text-rose-700 ring-rose-400/45 shadow-[0_0_14px_-2px_rgb(244_63_94/0.55)]";
+const LIVE = "bg-rose-50 text-rose-700 ring-rose-300";
 const GAZE = { calibrating: ["Eye tracking: calibrating - look at the screen", ON], active: ["Eye tracking: active", ON],
   uncalibrated: ["Eye tracking: active (not calibrated)", ON] };
 
@@ -99,7 +99,7 @@ export function MonitorBar({ features, status, cameraOn, recording, warning, onD
         <AttentionCard status={status} cameraOn={cameraOn} cameraLost={cameraLost} />
       )}
       {warning && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-2.5 text-sm text-amber-800 backdrop-blur" role="alert">
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800" role="alert">
           <span className="mr-auto">{warning.message}</span>
           {warning.type === "fullscreen_exit" && document.documentElement.requestFullscreen && (
             <button type="button" className="text-xs font-semibold underline"

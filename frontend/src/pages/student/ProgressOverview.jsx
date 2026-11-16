@@ -49,7 +49,7 @@ import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { get, post } from "../../apiClient";
 import { MultiBar, ProgressChart, SimpleBar } from "../../components/DashboardCharts";
-import { Button, Card, ErrorBox, PageHeader, Pill, Spinner, StatCard, StatusPill, useApi, useToast } from "../../components/SharedUiComponents";
+import { Button, Card, ErrorBox, PageHeader, Pill, SectionHeader, Spinner, StatCard, StatusPill, useApi, useToast } from "../../components/SharedUiComponents";
 
 export function RecommendationsCard({ endpoint }) {
   const toast = useToast();
@@ -87,8 +87,8 @@ export function SummaryCharts({ summary, series }) {
     <div className="grid gap-6 lg:grid-cols-2">
       <Card title="Score trend" className="lg:col-span-2"><ProgressChart series={series} /></Card>
       <Card title="Interview score by focus area"><SimpleBar data={cat} dataKey="score" nameKey="name" max={100} /></Card>
-      <Card title="English skills (out of 10)"><SimpleBar data={eng} dataKey="score" nameKey="name" max={10} color="#38bdf8" /></Card>
-      <Card title="Assessment score by topic"><SimpleBar data={topics} dataKey="score" nameKey="name" max={100} color="#34d399" /></Card>
+      <Card title="English skills (out of 10)"><SimpleBar data={eng} dataKey="score" nameKey="name" max={10} /></Card>
+      <Card title="Assessment score by topic"><SimpleBar data={topics} dataKey="score" nameKey="name" max={100} /></Card>
       <Card title="Interview types over time">
         <ProgressChart series={series} metrics={["technical_score", "hr_score", "behavioral_score", "communication_score"]} />
       </Card>
@@ -96,19 +96,20 @@ export function SummaryCharts({ summary, series }) {
   );
 }
 
-export default function Progress() {
+export default function Progress({ embedded = false }) {
+  const Header = embedded ? SectionHeader : PageHeader;
   const { data, error, loading, reload } = useApi(() => get("/student/progress"));
   if (loading) return <Spinner />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   const s = data.summary;
   return (
     <div className="space-y-6">
-      <PageHeader title="Performance & progress" subtitle={<span>Overall trend: <StatusPill status={s.trend} /></span>} />
+      <Header title="Performance & progress" subtitle={<span>Overall trend: <StatusPill status={s.trend} /></span>} />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard label="Interviews" value={s.interviews.completed} hint={`Avg ${s.interviews.average_score ?? "—"} · best ${s.interviews.best_score ?? "—"}`} />
         <StatCard label="English" value={`${s.english.minutes} min`} tone="sky" hint={`Avg score ${s.english.average_score ?? "—"}`} />
         <StatCard label="Assessments" value={s.assessments.taken} tone="green" hint={`${s.assessments.passed} passed · avg ${s.assessments.average_score ?? "—"}%`} />
-        <StatCard label="Resume score" value={s.resume?.resume_score ?? "—"} tone="violet" hint={s.resume ? s.resume.filename : "No resume"} />
+        <StatCard label="Resume score" value={s.resume?.resume_score ?? "—"} tone="sky" hint={s.resume ? s.resume.filename : "No resume"} />
       </div>
       <SummaryCharts summary={s} series={data.series} />
       <div className="grid gap-6 lg:grid-cols-2">

@@ -116,17 +116,17 @@ export default function Interviews() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="AI mock interviews" subtitle="Practise with questions generated from your resume and target role. Questions get harder when you answer well and simpler when you struggle." />
+      <PageHeader eyebrow="Practice" title="AI mock interviews" subtitle="Practise with questions generated from your resume and target role. Questions get harder when you answer well and simpler when you struggle." />
       <AIConsentGate action="start an AI interview" />
       {ai && !ai.available && (
         <Notice>The local AI is not available right now{ai.setup_hint ? ` (${ai.setup_hint})` : ""}. Interviews will use the admin question bank, and answers will be evaluated once AI is available.</Notice>
       )}
-      <Card title="1. Choose your interviewer">
+      <Card title={<><StepNo n={1} />Choose your interviewer</>}>
         {ivError && <ErrorBox message={`Interviewers could not be loaded: ${ivError}`} />}
         {!interviewers && !ivError && <Spinner label="Loading interviewers…" />}
         {interviewers && <InterviewerPicker interviewers={interviewers} value={form.interviewer} onSelect={select} voiceStatus={voiceStatus} />}
       </Card>
-      <Card title={`2. Interview settings${chosen ? ` - with ${chosen.name}` : ""}`}>
+      <Card title={<><StepNo n={2} />Interview settings{chosen ? <span className="font-normal text-slate-500"> - with {chosen.name}</span> : ""}</>}>
         <form onSubmit={start} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
             <Field label="Job role"><input className="input" required minLength={2} placeholder="e.g. Backend Developer" value={form.job_role} onChange={(e) => setForm({ ...form, job_role: e.target.value })} /></Field>
@@ -159,7 +159,7 @@ export default function Interviews() {
             <legend className="label">Response mode</legend>
             <div className="grid gap-3 sm:grid-cols-2">
               {RESPONSE_MODES.map((m) => (
-                <label key={m.value} className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${form.response_mode === m.value ? "border-brand-600 bg-brand-50" : "border-slate-200"}`}>
+                <label key={m.value} className={`flex cursor-pointer gap-3 rounded-lg border p-3.5 transition-colors ${form.response_mode === m.value ? "border-brand-500 bg-brand-50/60 ring-1 ring-brand-500" : "border-slate-200 hover:border-slate-300"}`}>
                   <input type="radio" name="response_mode" className="mt-1" value={m.value} checked={form.response_mode === m.value}
                     onChange={() => setForm({ ...form, response_mode: m.value })} />
                   <span><span className="font-medium">{m.label}</span><span className="block text-xs text-slate-500">{m.help}</span></span>
@@ -167,11 +167,11 @@ export default function Interviews() {
               ))}
             </div>
           </fieldset>
-          <div className="sm:col-span-2 lg:col-span-4">
-            <Button type="submit" loading={busy}>{form.mode === "voice" ? <Mic size={16} /> : <Play size={16} />} Start interview{chosen ? ` with ${chosen.name}` : ""}</Button>
-            {busy && <span className="ml-3 text-xs text-slate-500">{form.mode === "voice" ? "Opening the interview room…" : "Generating your first question with the local AI…"}</span>}
-            {form.mode === "voice" && !busy && <span className="ml-3 text-xs text-slate-500">{chosen?.name || "The interviewer"} asks the questions aloud and you answer by speaking. Needs a microphone; speech is processed on this server.</span>}
-            {form.mode === "text" && !busy && <span className="ml-3 text-xs text-slate-500">Text mode keeps {chosen?.name || "the interviewer"}'s questioning style and feedback, without the avatar.</span>}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-slate-100 pt-4 sm:col-span-2 lg:col-span-4">
+            <Button type="submit" size="lg" loading={busy}>{form.mode === "voice" ? <Mic size={16} /> : <Play size={16} />} Start interview{chosen ? ` with ${chosen.name}` : ""}</Button>
+            {busy && <span className="text-xs text-slate-500">{form.mode === "voice" ? "Opening the interview room…" : "Generating your first question with the local AI…"}</span>}
+            {form.mode === "voice" && !busy && <span className="text-xs text-slate-500">{chosen?.name || "The interviewer"} asks the questions aloud and you answer by speaking. Needs a microphone; speech is processed on this server.</span>}
+            {form.mode === "text" && !busy && <span className="text-xs text-slate-500">Text mode keeps {chosen?.name || "the interviewer"}'s questioning style and feedback, without the avatar.</span>}
           </div>
         </form>
       </Card>
@@ -189,7 +189,7 @@ export default function Interviews() {
                 { label: "Focus", render: (r) => <span className="flex gap-1"><Pill tone="brand">{r.category}</Pill><Pill>{r.difficulty}</Pill></span> },
                 { label: "Mode", key: "mode" },
                 { label: "Answered", render: (r) => `${r.answered}/${r.planned_questions}` },
-                { label: "Score", render: (r) => <span className="font-semibold">{r.overall_score ?? "—"}</span> },
+                { label: "Score", render: (r) => <span className={`num font-semibold ${r.overall_score == null ? "text-slate-400" : r.overall_score >= 75 ? "text-emerald-700" : r.overall_score >= 50 ? "text-amber-700" : "text-rose-700"}`}>{r.overall_score ?? "—"}</span> },
                 { label: "Status", render: (r) => <span className="flex gap-1"><StatusPill status={r.status} />{r.flagged && <Pill tone="red">flagged</Pill>}</span> },
                 { label: "Date", render: (r) => fmtDateTime(r.created_at) },
               ]} />
@@ -199,4 +199,9 @@ export default function Interviews() {
       </Card>
     </div>
   );
+}
+
+/** Small numbered badge used in the step card titles. */
+function StepNo({ n }) {
+  return <span className="num mr-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-xs font-semibold text-white" aria-hidden>{n}</span>;
 }
