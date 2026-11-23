@@ -1,4 +1,19 @@
-# Rendered by the nginx image at start-up (${API_UPSTREAM} comes from the environment).
+# Rendered by the nginx image at start-up (${API_*} come from the environment).
+# Two setups share this template:
+#   docker-compose: API_UPSTREAM=backend:8000, API_UPSTREAM_SCHEME=http, API_RESOLVER_LINE empty
+#                   -> nginx resolves "backend" once at start-up (Docker's internal DNS).
+#   Render:         API_UPSTREAM=<api-host>.onrender.com, API_UPSTREAM_SCHEME=https, and a resolver
+#                   line -> the free API service changes IPs on restart/redeploy, so nginx must ask
+#                   DNS again per request, and Render routes by the Host header, so it must carry the
+#                   API's host, not the web app's.
+# Keep the browser on one domain (the web app's): the httpOnly SameSite=Lax login cookie just works.
+map $http_x_forwarded_proto $forwarded_proto {
+    # Render's edge proxy terminates HTTPS and tells us the original scheme; keep it for the API so
+    # uvicorn's --proxy-headers sees https. Without the header (plain HTTP in front) fall back to ours.
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
 server {
     listen 80;
     server_name _;
@@ -15,11 +30,14 @@ server {
 
     # API: same origin for the browser, so the httpOnly SameSite=Lax login cookie just works
     location /api/ {
-        proxy_pass http://${API_UPSTREAM};
+${API_RESOLVER_LINE}
+        set $api_upstream "${API_UPSTREAM_SCHEME}://${API_UPSTREAM}";
+        proxy_pass $api_upstream;
+        proxy_ssl_server_name on;  # https upstreams need SNI (onrender.com serves many names)
         proxy_http_version 1.1;
-        proxy_set_header Host $host;
+        proxy_set_header Host ${API_UPSTREAM};  # Render routes by Host: must be the API's own host
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Request-ID $request_id;
         # streamed interviewer replies (Server-Sent Events) must not be buffered
         proxy_buffering off;

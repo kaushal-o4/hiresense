@@ -1,5 +1,6 @@
-# Render Blueprint for the HireSense API (cloud profile: Gemini, no local models). docs/DEPLOY.md, step 3.
-# Render dashboard -> New -> Blueprint -> pick this repository. Values marked "sync: false" are asked for once.
+# Render Blueprint for the whole HireSense demo (cloud profile: Gemini, no local models). docs/DEPLOY.md.
+# Render dashboard -> New -> Blueprint -> pick this repository. Render creates both services and asks
+# once for the values marked "sync: false". MongoDB stays on MongoDB Atlas (free M0 cluster).
 services:
   - type: web
     name: hiresense-api
@@ -21,14 +22,17 @@ services:
         generateValue: true       # Render creates a long random value
       - key: COOKIE_SECURE
         value: "true"
-      # lax: the browser calls the API through Vercel's /api rewrite (frontend/vercel.json), so the cookie is
-      # first-party. Use "none" only if the frontend calls this onrender.com URL directly (VITE_API_URL).
+      # lax: the browser calls the API through the web app's nginx /api proxy (hiresense-web below), so the
+      # cookie is first-party. Use "none" only if some client calls this onrender.com URL directly (VITE_API_URL).
       - key: COOKIE_SAMESITE
         value: lax
-      - key: FRONTEND_URL         # e.g. https://hiresense.vercel.app (links in emails)
-        sync: false
-      - key: CORS_ORIGINS         # same value as FRONTEND_URL
-        sync: false
+      # The web app's address: nginx/CSRF checks and links in emails. You don't know it at creation time:
+      # enter https://hiresense-web.onrender.com and correct it after the first deploy if Render appended
+      # a suffix (the name was taken). Same value in CORS_ORIGINS.
+      - key: FRONTEND_URL
+        value: https://hiresense-web.onrender.com
+      - key: CORS_ORIGINS
+        value: https://hiresense-web.onrender.com
       - key: ADMIN_EMAIL
         value: admin@hiresense.app
       - key: ADMIN_PASSWORD       # strong password for the first admin login
@@ -49,3 +53,25 @@ services:
         value: /tmp/hiresense-uploads
       - key: REDIS_URL            # optional; leave empty for one instance
         sync: false
+
+  # The web app on Render as well: nginx serves the built React app and forwards /api/* to the API service
+  # above, so the browser stays on one domain and the login cookie is first-party (SameSite=Lax).
+  - type: web
+    name: hiresense-web
+    runtime: docker
+    plan: free            # static content; sleeps like the API
+    region: singapore     # same region as the API
+    rootDir: frontend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      # Host of the API service (no scheme). If Render appended a suffix because "hiresense-api" was taken,
+      # copy the real host here (Render -> hiresense-web -> Environment) and redeploy.
+      - key: API_UPSTREAM
+        value: hiresense-api.onrender.com
+      - key: API_UPSTREAM_SCHEME
+        value: https
+      # nginx must re-resolve the API host on every request: free services move between IPs.
+      - key: API_RESOLVER_LINE
+        value: "resolver 8.8.8.8 valid=30s ipv6=off;"
