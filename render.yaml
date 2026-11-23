@@ -26,13 +26,12 @@ services:
       # cookie is first-party. Use "none" only if some client calls this onrender.com URL directly (VITE_API_URL).
       - key: COOKIE_SAMESITE
         value: lax
-      # The web app's address: nginx/CSRF checks and links in emails. You don't know it at creation time:
-      # enter https://hiresense-web.onrender.com and correct it after the first deploy if Render appended
-      # a suffix (the name was taken). Same value in CORS_ORIGINS.
+      # The web app's address: nginx/CSRF checks and links in emails. These are the real service URLs
+      # (Render suffixed both names, they were taken): api -8jz0, web -lv8l.
       - key: FRONTEND_URL
-        value: https://hiresense-web.onrender.com
+        value: https://hiresense-web-lv8l.onrender.com
       - key: CORS_ORIGINS
-        value: https://hiresense-web.onrender.com
+        value: https://hiresense-web-lv8l.onrender.com
       - key: ADMIN_EMAIL
         value: admin@hiresense.app
       - key: ADMIN_PASSWORD       # strong password for the first admin login
@@ -66,10 +65,9 @@ services:
     healthCheckPath: /
     autoDeploy: true
     envVars:
-      # Host of the API service (no scheme). If Render appended a suffix because "hiresense-api" was taken,
-      # copy the real host here (Render -> hiresense-web -> Environment) and redeploy.
+      # Host of the API service (no scheme). Render suffixed the name when it was taken: real host is -8jz0.
       - key: API_UPSTREAM
-        value: hiresense-api.onrender.com
+        value: hiresense-api-8jz0.onrender.com
       - key: API_UPSTREAM_SCHEME
         value: https
       # nginx must re-resolve the API host on every request: free services move between IPs.
