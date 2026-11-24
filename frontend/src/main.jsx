@@ -55,7 +55,14 @@ import App from "./App";
 import { AuthProvider } from "./AuthContext";
 import { ToastProvider } from "./components/SharedUiComponents";
 import { ThemeProvider } from "./components/ThemeContext";
+import { apiUrl } from "./apiClient";
 import "./index.css";
+
+// Wake the free-tier backend while the visitor reads the page. Render sleeps the API after ~15 idle
+// minutes and it needs ~60-90 s to wake, which used to 502 the first login of the day. This fire-and-
+// forget ping starts the wake the moment the site opens, so by the time the sign-in form is submitted
+// the API is already up. Failures are normal when offline - api() shows real errors on real requests.
+fetch(apiUrl("/api/health/live")).catch(() => {});
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

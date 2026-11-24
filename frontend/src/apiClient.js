@@ -161,6 +161,14 @@ export async function api(path, { method = "GET", body, params, raw = false } = 
   let res;
   try {
     res = await fetch(url, opts);
+    // Free-tier hosting (Render) sleeps the backend after ~15 idle minutes and it needs ~60-90 s to
+    // wake; the first request after idle then comes back 502/504 from the proxy while the backend is
+    // still booting. The wake is already in progress (started by this request or the main.jsx warm-up
+    // ping), so one transparent retry after a short pause succeeds instead of showing the user an error.
+    if (res.status === 502 || res.status === 504) {
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+      res = await fetch(url, opts);
+    }
   } catch {
     throw new ApiError("Cannot reach the server. Is the backend running?", 0);
   }
